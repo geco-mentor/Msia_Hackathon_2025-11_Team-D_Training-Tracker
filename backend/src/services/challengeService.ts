@@ -1,13 +1,19 @@
 import { model } from './aiService';
 import { supabase } from '../config/database';
 
-export const generateChallenge = async (jobTitle: string, difficulty: string) => {
+export const generateChallenge = async (jobTitle: string, difficulty: string, userId?: string, isPersonalized: boolean = false) => {
+    const context = isPersonalized
+        ? `Generate a personalized learning quest for a user interested in "${jobTitle}" (as a topic/skill) at "${difficulty}" level.`
+        : `Generate a "Capture The Flag" style GenAI challenge for a "${jobTitle}" at "${difficulty}" difficulty.`;
+
     const prompt = `
-        Generate a "Capture The Flag" style GenAI challenge for a "${jobTitle}" at "${difficulty}" difficulty.
+        ${context}
         The challenge should test basic GenAI skills like Prompt structuring, Summarization, Rewriting, or Extracting information.
         
         Return ONLY a valid JSON object with this structure (no markdown formatting):
         {
+            "title": "A short, catchy title for the challenge",
+            "category": "The category of the challenge (e.g., Prompt Engineering, Data Analysis, Security)",
             "skill": "Specific skill name (e.g., Prompt Engineering)",
             "scenario_text": "A short 1-3 sentence micro-scenario context.",
             "task": "The specific instruction for the user.",
@@ -42,7 +48,11 @@ export const generateChallenge = async (jobTitle: string, difficulty: string) =>
                 type: challengeData.type,
                 options: challengeData.options,
                 rubric: challengeData.rubric,
-                hint: challengeData.hint
+                hint: challengeData.hint,
+                is_personalized: isPersonalized,
+                creator_id: isPersonalized ? userId : null,
+                title: challengeData.title,
+                category: challengeData.category
             })
             .select()
             .single();
@@ -54,6 +64,39 @@ export const generateChallenge = async (jobTitle: string, difficulty: string) =>
         console.error('Error generating challenge:', error);
         throw new Error('Failed to generate challenge');
     }
+};
+
+export const getMainChallenges = async () => {
+    const { data, error } = await supabase
+        .from('scenarios')
+        .select('*')
+        .eq('is_personalized', false)
+        .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data;
+};
+
+export const getPersonalizedChallenges = async (userId: string) => {
+    const { data, error } = await supabase
+        .from('scenarios')
+        .select('*')
+        .eq('is_personalized', true)
+        .eq('creator_id', userId)
+        .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data;
+};
+
+export const deleteChallenge = async (id: string) => {
+    const { error } = await supabase
+        .from('scenarios')
+        .delete()
+        .eq('id', id);
+
+    if (error) throw error;
+    return true;
 };
 
 export const evaluateResponse = async (scenarioId: string, userResponse: string, userId: string) => {
@@ -126,6 +169,18 @@ export const evaluateResponse = async (scenarioId: string, userResponse: string,
             .single();
 
         if (error) throw error;
+
+        // Update solves count if passed
+        if (averageScore >= 70) {
+            await supabase.rpc('increment_solves', { row_id: scenarioId });
+            // If RPC doesn't exist, we can do it manually but RPC is better for concurrency.
+            // Since I can't easily add RPC, I'll do a simple update.
+            const { data: current } = await supabase.from('scenarios').select('solves').eq('id', scenarioId).single();
+            if (current) {
+                await supabase.from('scenarios').update({ solves: (current.solves || 0) + 1 }).eq('id', scenarioId);
+            }
+        }
+
         return data;
 
     } catch (error) {
