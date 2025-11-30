@@ -1,9 +1,0 @@
-{
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImU4YzU3MTQ3LWZkYjEtNDAyMS04NTY1LWI1NTgxNDJjNGU5YiIsInVzZXJuYW1lIjoiYWRtaW44NDMiLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NjQzNDU1NTUsImV4cCI6MTc2NDQzMTk1NX0.7iCl6_IvBJnzhV6ZB9WoYjD7k1lMSiIByHkAb0xyPqU",
-  "user": {
-    "id": "e8c57147-fdb1-4021-8565-b558142c4e9b",
-    "name": "Test Admin",
-    "username": "admin843",
-    "role": "admin"
-  }
-}

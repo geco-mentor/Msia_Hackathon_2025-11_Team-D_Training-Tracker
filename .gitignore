@@ -1,70 +1,46 @@
 # Dependencies
 node_modules/
+pnpm-lock.yaml
+yarn.lock
+package-lock.json
 
-# Backend
-backend/node_modules/
-backend/dist/
-backend/package-lock.json
-
-# Frontend
-frontend/node_modules/
-frontend/dist/
-frontend/package-lock.json
-
-# Build outputs - compiled TypeScript
-backend/src/**/*.js
-backend/src/**/*.d.ts
-backend/src/**/*.js.map
-backend/src/**/*.d.ts.map
-
-# Centralized build directory
+# Build outputs
+dist/
 build/
-
-# Connectivity tests
-connectivity-tests/node_modules/
-connectivity-tests/package-lock.json
-bedrock-models-raw.json
-
-# Python (legacy - no longer used)
-__pycache__/
-*.pyc
-*.pyo
-*.py[cod]
-*$py.class
+coverage/
+.nyc_output/
 
 # Environment variables
 .env
 .env.local
 .env.*.local
 
-# IDE
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+logs/
+*.txt
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# IDEs
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 
-# OS
-.DS_Store
-Thumbs.db
-
+# Temporary files
+tmp/
+temp/
+cred.txt
+__pycache__/
+*.pyc
 
 # Local utility scripts
 refToken.py
-
-# Logs
-*.log
-debug_log.txt
-request_log.txt
-logs/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Testing
-coverage/
-.nyc_output/
-
-# Misc
-.cursorignore
-.cursorindexingignore
+fix_env.py

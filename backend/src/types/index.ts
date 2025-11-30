@@ -9,6 +9,8 @@ export interface Employee {
     ranking: number;
     win_rate: number;
     streak: number;
+    total_points: number;
+    level: number;
     created_at: string;
 }
 
@@ -47,6 +49,8 @@ export interface AuthResponse {
         ranking?: number;
         win_rate?: number;
         streak?: number;
+        total_points?: number;
+        level?: number;
     };
 }
 

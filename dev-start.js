@@ -103,12 +103,13 @@ async function checkAndRefreshAWSTokens() {
             timeout: 30000
         });
 
-        if (stdout.includes('refreshed') || stdout.includes('success') ||
-            stderr.includes('Credentials refreshed') || stderr.includes('successfully')) {
-            logSuccess('AWS tokens refreshed successfully');
-        } else {
-            logSuccess('AWS token script completed');
+        if (stdout && stdout.trim()) {
+            console.log(stdout.trim());
         }
+        if (stderr && stderr.trim()) {
+            console.error(stderr.trim());
+        }
+        logSuccess('AWS token check completed');
 
     } catch (error) {
         if (error.message.includes('timeout')) {

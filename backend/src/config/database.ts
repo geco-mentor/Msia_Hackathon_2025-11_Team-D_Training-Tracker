@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 
 // Load .env from root directory
-dotenv.config({ path: path.join(__dirname, '../../.env') });
+dotenv.config({ path: path.join(__dirname, '../../../.env') });
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;

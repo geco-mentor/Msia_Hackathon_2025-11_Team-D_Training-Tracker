@@ -1,7 +1,9 @@
 import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Terminal, Cpu, Trophy, Activity, Flame, FileText, ArrowRight, User, LogOut } from 'lucide-react';
+import { Terminal, Cpu, Trophy, Activity, Flame, FileText, User, LogOut } from 'lucide-react';
+import { CTFChallenge } from '../components/CTFChallenge';
+import { GoalSetter } from '../components/GoalSetter';
 
 export const EmployeeDashboard: React.FC = () => {
     const { user, logout } = useAuth();
@@ -79,12 +81,9 @@ export const EmployeeDashboard: React.FC = () => {
                             WELCOME BACK, <span className="text-cyan-400">{user?.name?.split(' ')[0].toUpperCase()}</span>
                         </h1>
                         <p className="text-gray-400">
-                            Here's what's happening with your training today.
+                            Ready for your next mission?
                         </p>
                     </div>
-                    <button className="px-6 py-3 bg-cyan-600/20 border border-cyan-500/50 text-cyan-400 font-bold tracking-wider hover:bg-cyan-600/30 hover:scale-105 transition-all uppercase rounded-sm shadow-[0_0_15px_rgba(6,182,212,0.2)]">
-                        Start New Assessment
-                    </button>
                 </div>
 
                 {/* Stats Grid */}
@@ -107,15 +106,16 @@ export const EmployeeDashboard: React.FC = () => {
 
                 {/* Main Content Grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* Recent Activity */}
+                    {/* CTF Challenge Section (2 cols) */}
                     <div className="lg:col-span-2 space-y-6">
-                        <div className="flex items-center justify-between">
-                            <h2 className="text-lg font-bold text-white tracking-wider flex items-center gap-2">
+                        <CTFChallenge />
+
+                        {/* Recent Activity (Below Challenge) */}
+                        <div className="bg-[#111] border border-white/5 rounded-lg p-6">
+                            <h2 className="text-lg font-bold text-white tracking-wider flex items-center gap-2 mb-6">
                                 <Activity size={18} className="text-cyan-400" />
                                 RECENT ACTIVITY
                             </h2>
-                        </div>
-                        <div className="bg-[#111] border border-white/5 rounded-lg p-6">
                             <div className="space-y-6">
                                 {[1, 2, 3].map((_, i) => (
                                     <div key={i} className="flex items-center gap-4 pb-6 border-b border-white/5 last:pb-0 last:border-0 group">
@@ -133,30 +133,9 @@ export const EmployeeDashboard: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Recommended Training */}
+                    {/* Sidebar (1 col) */}
                     <div className="space-y-6">
-                        <h2 className="text-lg font-bold text-white tracking-wider flex items-center gap-2">
-                            <Terminal size={18} className="text-purple-400" />
-                            RECOMMENDED
-                        </h2>
-
-                        {/* Featured Card */}
-                        <div className="bg-gradient-to-br from-indigo-900/50 to-purple-900/50 border border-indigo-500/30 rounded-lg p-6 relative overflow-hidden group">
-                            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                                <Cpu size={80} />
-                            </div>
-                            <div className="mb-4">
-                                <span className="px-2 py-1 bg-indigo-500/20 text-indigo-300 text-xs font-bold border border-indigo-500/30 rounded backdrop-blur-sm">
-                                    FEATURED_COURSE
-                                </span>
-                            </div>
-                            <h3 className="text-xl font-bold text-white mb-2">Generative AI Fundamentals</h3>
-                            <p className="text-indigo-200/70 text-sm mb-6">Master the basics of LLMs and image generation tools.</p>
-                            <button className="w-full py-2 bg-white/10 hover:bg-white/20 text-white border border-white/10 rounded font-medium transition-all flex items-center justify-center gap-2 group-hover:border-indigo-500/50">
-                                <span>START LEARNING</span>
-                                <ArrowRight size={16} />
-                            </button>
-                        </div>
+                        <GoalSetter />
 
                         {/* Skills Cloud */}
                         <div className="bg-[#111] border border-white/5 rounded-lg p-6">
