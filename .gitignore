@@ -44,3 +44,5 @@ __pycache__/
 # Local utility scripts
 refToken.py
 fix_env.py
+token.json
+admin_token.json

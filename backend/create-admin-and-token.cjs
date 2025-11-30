@@ -12,7 +12,7 @@ const JWT_SECRET = process.env.JWT_SECRET;
 
 async function createAdmin() {
     const username = `admin${Math.floor(Math.random() * 1000)}`;
-    const password = 'adminpassword123';
+    const password = 'adminpassword123'; // WARNING: Hardcoded for local testing only. Do not use in production.
     const password_hash = await bcrypt.hash(password, 10);
 
     console.log(`Creating admin: ${username}`);

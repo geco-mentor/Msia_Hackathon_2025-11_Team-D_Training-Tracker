@@ -12,7 +12,7 @@ const userData = {
     name: `Test Employee ${randomId}`,
     username: `testemp${randomId}`,
     employee_id: `EMP${randomId}`,
-    password: 'password123',
+    password: 'password123', // WARNING: Hardcoded for local testing only. Do not use in production.
     job_title: 'Junior Developer'
 };
 
