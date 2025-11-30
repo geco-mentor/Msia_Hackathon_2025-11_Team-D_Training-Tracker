@@ -72,7 +72,7 @@ export const getAllEmployees = async (req: AuthRequest, res: Response): Promise<
         console.log('Fetching all employees...');
         const { data: employees, error } = await supabase
             .from('employees')
-            .select('id, name, job_title, ranking, win_rate, streak')
+            .select('id, name, job_title, department, ranking, win_rate, streak')
             .order('name');
 
         if (error) {
@@ -91,6 +91,7 @@ export const getAllEmployees = async (req: AuthRequest, res: Response): Promise<
             id: emp.id,
             name: emp.name,
             role: emp.job_title, // Using job_title as role for display
+            department: emp.department || 'Unassigned',
             progress: emp.win_rate || 0, // Using win_rate as progress proxy
             status: 'Active' // Mock status for now
         }));

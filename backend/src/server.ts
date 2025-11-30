@@ -88,11 +88,21 @@ app.use('/api/challenges', challengeRoutes);
 app.use('/api/goals', goalRoutes);
 
 // 404 handler
-app.use((req: Request, res: Response) => {
+// Serve static files from frontend/dist
+const frontendPath = path.join(__dirname, '../../frontend/dist');
+app.use(express.static(frontendPath));
+
+// Handle API 404s
+app.use('/api/*', (req: Request, res: Response) => {
     res.status(404).json({
         success: false,
-        message: 'Route not found'
+        message: 'API Route not found'
     });
+});
+
+// SPA Fallback: Serve index.html for any other route
+app.get('*', (req: Request, res: Response) => {
+    res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
 // Error handling middleware

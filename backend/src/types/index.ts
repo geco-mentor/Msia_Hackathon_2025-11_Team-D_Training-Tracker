@@ -1,3 +1,11 @@
+export interface Job {
+    id: string;
+    title: string;
+    description?: string;
+    required_skills: string[];
+    created_at: string;
+}
+
 export interface Employee {
     id: string;
     name: string;
@@ -5,6 +13,8 @@ export interface Employee {
     employee_id: string;
     password_hash?: string; // Not exposed in API responses
     job_title: string;
+    job_id?: string;
+    department?: string;
     skills_profile: Record<string, number>;
     ranking: number;
     win_rate: number;
@@ -28,6 +38,7 @@ export interface RegisterRequestBody {
     employee_id: string;
     password: string;
     job_title: string;
+    department?: string;
 }
 
 export interface LoginRequestBody {
@@ -46,6 +57,7 @@ export interface AuthResponse {
         role: 'employee' | 'admin';
         employee_id?: string;
         job_title?: string;
+        department?: string;
         ranking?: number;
         win_rate?: number;
         streak?: number;

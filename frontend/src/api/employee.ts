@@ -16,6 +16,7 @@ export interface EmployeeSummary {
     id: string;
     name: string;
     role: string;
+    department: string;
     progress: number;
     status: string;
 }

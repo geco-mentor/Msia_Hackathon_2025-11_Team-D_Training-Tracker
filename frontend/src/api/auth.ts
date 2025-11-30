@@ -24,6 +24,7 @@ export interface RegisterData {
     employee_id: string;
     password: string;
     job_title: string;
+    department?: string;
 }
 
 export interface LoginData {

@@ -151,6 +151,7 @@ export const AdminDashboard: React.FC = () => {
                                 <tr>
                                     <th className="px-6 py-3 font-medium">Operative</th>
                                     <th className="px-6 py-3 font-medium">Role</th>
+                                    <th className="px-6 py-3 font-medium">Department</th>
                                     <th className="px-6 py-3 font-medium">Progress</th>
                                     <th className="px-6 py-3 font-medium">Status</th>
                                     <th className="px-6 py-3 font-medium text-right">Actions</th>
@@ -163,6 +164,7 @@ export const AdminDashboard: React.FC = () => {
                                             {emp.name}
                                         </td>
                                         <td className="px-6 py-4 text-white/60">{emp.role}</td>
+                                        <td className="px-6 py-4 text-white/60">{emp.department}</td>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-full max-w-[100px] h-1.5 bg-white/10 rounded-full overflow-hidden">

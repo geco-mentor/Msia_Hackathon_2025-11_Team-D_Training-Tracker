@@ -115,6 +115,19 @@ export const Register: React.FC = () => {
                             </div>
 
                             <div>
+                                <label className="input-label" htmlFor="department">Department</label>
+                                <input
+                                    type="text"
+                                    id="department"
+                                    name="department"
+                                    value={(formData as any).department || ''}
+                                    onChange={handleChange}
+                                    className="input-field mt-1"
+                                    placeholder="Engineering"
+                                />
+                            </div>
+
+                            <div>
                                 <label className="input-label" htmlFor="password">Password</label>
                                 <input
                                     type="password"

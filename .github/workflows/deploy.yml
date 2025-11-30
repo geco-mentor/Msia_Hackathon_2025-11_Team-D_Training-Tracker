@@ -1,0 +1,47 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches: [ deployment ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install Dependencies
+        run: npm run install:all
+
+      - name: Build
+        run: npm run build
+
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            # Navigate to project directory (adjust path as needed)
+            cd ~/ai-hackathon
+            
+            # Pull latest changes
+            git pull origin main
+            
+            # Install dependencies again on server (to be safe)
+            npm run install:all
+            
+            # Build on server (optional, if you want to build on server instead of transferring artifacts)
+            # It's often easier to build on server for simple setups to avoid artifact transfer issues
+            npm run build
+            
+            # Restart backend with PM2
+            # Assuming pm2 is installed globally: npm install -g pm2
+            cd backend
+            pm2 restart ai-backend || pm2 start dist/server.js --name ai-backend

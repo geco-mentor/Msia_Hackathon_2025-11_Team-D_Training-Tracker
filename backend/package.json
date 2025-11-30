@@ -5,6 +5,7 @@
     "main": "dist/server.js",
     "scripts": {
         "dev": "node -r dotenv/config -r ts-node/register --watch src/server.ts dotenv_config_path=../.env",
+        "migrate": "node -r dotenv/config -r ts-node/register run_migration.ts dotenv_config_path=../.env",
         "build": "tsc",
         "start": "node dist/server.js"
     },

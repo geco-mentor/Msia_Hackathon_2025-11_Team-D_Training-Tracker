@@ -1,18 +1,19 @@
 # Supabase Database Schema
 
-Based on your project's TypeScript interfaces, here is a simple and effective database schema for Supabase (PostgreSQL).
+Based on your project's TypeScript interfaces and the latest feature requirements (FEATURES.md), here is the updated database schema for Supabase (PostgreSQL).
 
 ## Overview
 
-We will use 7 main tables to map your data:
+We will use 8 main tables to map your data:
 
-1.  **employees**: Stores employee profiles, including their stats, job title, skill profiles, and gamification progress.
-2.  **admins**: Stores admin profiles.
-3.  **scenarios**: Stores the training scenarios (CTF challenges), including the rubric (as JSON).
-4.  **assessments**: Stores the history of completed scenarios by employees.
-5.  **goals**: Stores employee goals.
-6.  **achievements**: Stores available badges and milestones.
-7.  **user_achievements**: Links employees to their earned achievements.
+1.  **jobs**: Stores job titles and their specific skill requirements (Basic GenAI skills).
+2.  **employees**: Stores employee profiles, including their stats, job title, department, skill profiles, and gamification progress.
+3.  **admins**: Stores admin profiles.
+4.  **scenarios**: Stores the training scenarios (CTF challenges), including the rubric (as JSON).
+5.  **assessments**: Stores the history of completed scenarios by employees.
+6.  **goals**: Stores employee goals.
+7.  **achievements**: Stores available badges and milestones.
+8.  **user_achievements**: Links employees to their earned achievements.
 
 ## SQL Setup
 
@@ -22,25 +23,40 @@ You can run the following SQL in your Supabase **SQL Editor** to create the tabl
 -- Enable UUID extension if not already enabled
 create extension if not exists "uuid-ossp";
 
--- 1. Admins Table
-create table public.admins (
+-- 1. Jobs Table (New)
+create table public.jobs (
   id uuid primary key default uuid_generate_v4(),
-  name text not null,
+  title text not null unique, -- e.g., "Software Engineer", "Marketing Specialist"
+  description text,
+  required_skills jsonb default '[]'::jsonb, -- Array of strings: ["Prompt Engineering", "Summarization"]
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- 2. Employees Table (Enhanced for Gamification)
+-- 2. Admins Table
+create table public.admins (
+  id uuid primary key default uuid_generate_v4(),
+  name text not null,
+  username text unique not null,
+  password_hash text not null,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- 3. Employees Table (Enhanced)
 create table public.employees (
   id uuid primary key default uuid_generate_v4(),
   name text not null,
-  username text unique,
-  employee_id text unique,
-  password_hash text,
-  job_title text default 'Employee',
+  username text unique not null,
+  employee_id text unique not null,
+  password_hash text not null,
+  
+  -- Job & Department
+  job_id uuid references public.jobs(id) on delete set null,
+  job_title text, -- Kept for display/fallback, or sync with jobs.title
+  department text, -- e.g., "Engineering", "Sales" (For team-level insights)
   
   -- Skills & Stats
   skills_profile jsonb default '{}'::jsonb, -- Stores { "Empathy": 80, "Active Listening": 70 }
-  ranking int default 0,      -- Global rank (can be derived from leaderboard view)
+  ranking int default 0,      -- Global rank
   win_rate float default 0.0,
   streak int default 0,
   
@@ -51,7 +67,7 @@ create table public.employees (
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- 3. Scenarios Table (CTF Challenges)
+-- 4. Scenarios Table (CTF Challenges)
 create table public.scenarios (
   id uuid primary key default uuid_generate_v4(),
   
@@ -62,14 +78,14 @@ create table public.scenarios (
   points int default 10, -- Points awarded for completion
   
   -- Content
-  scenario_text text not null,
-  task text not null,
-  hint text,
+  scenario_text text not null, -- The micro-scenario (1-3 sentences)
+  task text not null, -- Specific instruction for the user
+  hint text, -- Optional hint to encourage learning
   
   -- Type & Validation
   type text check (type in ('text', 'multiple_choice', 'code')) default 'text',
   options jsonb, -- For multiple_choice: ["Option A", "Option B"]
-  rubric jsonb not null, -- AI evaluation criteria or correct answer hash
+  rubric jsonb not null, -- AI evaluation criteria (relevance, accuracy, reasoning, safety)
   
   -- Settings
   time_limit int, -- Optional: seconds to complete
@@ -78,16 +94,16 @@ create table public.scenarios (
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- 4. Assessments Table (History & Scoring)
+-- 5. Assessments Table (History & Scoring)
 create table public.assessments (
   id uuid primary key default uuid_generate_v4(),
   user_id uuid references public.employees(id) on delete cascade not null,
   scenario_id uuid references public.scenarios(id) on delete set null,
   
   -- Results
-  score int not null, -- 0-100
-  points_awarded int default 0, -- Actual points given (may be adjusted for hints/retries)
-  feedback text,
+  score int not null, -- 0-100 (AI evaluated)
+  points_awarded int default 0, -- Actual points given
+  feedback text, -- AI generated personalized feedback
   user_response text,
   difficulty text, -- Snapshot of difficulty at time of attempt
   
@@ -96,16 +112,16 @@ create table public.assessments (
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- 5. Goals Table
+-- 6. Goals Table
 create table public.goals (
   id uuid primary key default uuid_generate_v4(),
   user_id uuid references public.employees(id) on delete cascade not null,
-  description text not null,
+  description text not null, -- Actionable task generated by AI
   completed boolean default false,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- 6. Achievements Table (New)
+-- 7. Achievements Table
 create table public.achievements (
   id uuid primary key default uuid_generate_v4(),
   name text not null, -- e.g., "First Blood", "Prompt Master"
@@ -115,7 +131,7 @@ create table public.achievements (
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- 7. User Achievements Table (New)
+-- 8. User Achievements Table
 create table public.user_achievements (
   id uuid primary key default uuid_generate_v4(),
   user_id uuid references public.employees(id) on delete cascade not null,
@@ -124,28 +140,23 @@ create table public.user_achievements (
   unique(user_id, achievement_id)
 );
 
--- 8. Leaderboard View (New)
+-- 9. Leaderboard View
 create or replace view public.leaderboard as
 select 
   id as user_id,
   username,
   total_points,
+  department,
   rank() over (order by total_points desc) as rank
 from public.employees;
 ```
 
 ## Typescript Interface Mapping
 
-*   **Employee**: Maps to `employees` table. Now includes `total_points` and `level`.
+*   **Job**: Maps to `jobs` table.
+*   **Employee**: Maps to `employees` table. Now includes `department` and `job_id`.
 *   **Admin**: Maps to `admins` table.
-*   **Scenario**: Maps to `scenarios` table. Now includes `title`, `points`, `is_active`.
+*   **Scenario**: Maps to `scenarios` table.
 *   **HistoryItem**: Maps to a row in `assessments`.
 *   **Goal**: Maps to `goals` table.
 *   **Achievement**: Maps to `achievements` table.
-
-## Next Steps
-
-1.  Go to your Supabase Project Dashboard.
-2.  Open the **SQL Editor**.
-3.  Paste the SQL code above and click **Run**.
-4.  (Optional) If you want to use Supabase Auth for login, you might link the `users` table to `auth.users` using a trigger, but for simplicity, this schema works as a standalone application data structure.
