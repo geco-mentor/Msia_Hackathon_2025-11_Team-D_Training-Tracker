@@ -6,7 +6,7 @@ import authRoutes from './routes/auth';
 import { testConnection } from './config/database';
 
 // Load environment variables from root directory
-dotenv.config({ path: path.resolve(__dirname, '../.env') });
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 const app: Application = express();
 const PORT = process.env.PORT || 3001;
@@ -78,10 +78,14 @@ app.get('/health', (req: Request, res: Response) => {
 });
 
 import employeeRoutes from './routes/employee';
+import challengeRoutes from './routes/challenge';
+import goalRoutes from './routes/goal';
 
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/employees', employeeRoutes);
+app.use('/api/challenges', challengeRoutes);
+app.use('/api/goals', goalRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {
