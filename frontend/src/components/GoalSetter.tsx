@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Target, CheckSquare, Square, Loader, Sparkles } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { API_BASE_URL } from '../config';
 
 interface Goal {
     id: string;
@@ -22,7 +23,7 @@ export const GoalSetter: React.FC = () => {
 
     const fetchGoals = async () => {
         try {
-            const res = await fetch(`http://localhost:3001/api/goals/${user?.id}`);
+            const res = await fetch(`${API_BASE_URL}/api/goals/${user?.id}`);
             const data = await res.json();
             if (data.success) {
                 setGoals(data.data);
@@ -36,7 +37,7 @@ export const GoalSetter: React.FC = () => {
         if (!keyword) return;
         setGenerating(true);
         try {
-            const res = await fetch('http://localhost:3001/api/goals/generate', {
+            const res = await fetch(`${API_BASE_URL}/api/goals/generate`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ keyword, userId: user?.id })
@@ -58,7 +59,7 @@ export const GoalSetter: React.FC = () => {
         setGoals(goals.map(g => g.id === id ? { ...g, completed: !currentStatus } : g));
 
         try {
-            await fetch(`http://localhost:3001/api/goals/${id}`, {
+            await fetch(`${API_BASE_URL}/api/goals/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ completed: !currentStatus })

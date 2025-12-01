@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Send, Loader, CheckCircle, XCircle, HelpCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { API_BASE_URL } from '../config';
 
 interface ChallengeModalProps {
     challenge: any;
@@ -19,7 +20,7 @@ export const ChallengeModal: React.FC<ChallengeModalProps> = ({ challenge, onClo
         if (!response) return;
         setLoading(true);
         try {
-            const res = await fetch('http://localhost:3001/api/challenges/submit', {
+            const res = await fetch(`${API_BASE_URL}/api/challenges/submit`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

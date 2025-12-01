@@ -5,6 +5,7 @@ import { Terminal, Cpu, Activity, LogOut, Plus, Trash2, Sparkles } from 'lucide-
 import { ChallengeCard } from '../components/ChallengeCard';
 import { ChallengeModal } from '../components/ChallengeModal';
 import { GoalSetter } from '../components/GoalSetter';
+import { API_BASE_URL } from '../config';
 
 export const EmployeeDashboard: React.FC = () => {
     const { user, logout } = useAuth();
@@ -29,13 +30,13 @@ export const EmployeeDashboard: React.FC = () => {
     const fetchChallenges = async () => {
         try {
             // Fetch Main Challenges
-            const mainRes = await fetch('http://localhost:3001/api/challenges/main');
+            const mainRes = await fetch(`${API_BASE_URL}/api/challenges/main`);
             const mainData = await mainRes.json();
             if (mainData.success) setMainChallenges(mainData.data);
 
             // Fetch Personalized Challenges
             if (user?.id) {
-                const persRes = await fetch(`http://localhost:3001/api/challenges/personalized/${user.id}`);
+                const persRes = await fetch(`${API_BASE_URL}/api/challenges/personalized/${user.id}`);
                 const persData = await persRes.json();
                 if (persData.success) setPersonalizedChallenges(persData.data);
             }
@@ -53,7 +54,7 @@ export const EmployeeDashboard: React.FC = () => {
         if (!keyword) return;
         setGenerating(true);
         try {
-            const res = await fetch('http://localhost:3001/api/challenges/generate', {
+            const res = await fetch(`${API_BASE_URL}/api/challenges/generate`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -78,7 +79,7 @@ export const EmployeeDashboard: React.FC = () => {
     const deletePersonalized = async (id: string, e: React.MouseEvent) => {
         e.stopPropagation();
         try {
-            await fetch(`http://localhost:3001/api/challenges/${id}`, { method: 'DELETE' });
+            await fetch(`${API_BASE_URL}/api/challenges/${id}`, { method: 'DELETE' });
             setPersonalizedChallenges(personalizedChallenges.filter(c => c.id !== id));
         } catch (err) {
             console.error(err);

@@ -108,6 +108,14 @@ app.get('*', (req: Request, res: Response) => {
 // Error handling middleware
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
     console.error('Server error:', err);
+    const fs = require('fs');
+    const path = require('path');
+    const logPath = path.join(__dirname, '../../error_log.txt');
+    try {
+        fs.appendFileSync(logPath, `${new Date().toISOString()} - ERROR: ${err.message}\n${err.stack}\n\n`);
+    } catch (e) {
+        console.error('Failed to write error log:', e);
+    }
     res.status(500).json({
         success: false,
         message: 'Internal server error',

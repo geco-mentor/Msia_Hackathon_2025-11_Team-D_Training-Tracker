@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Terminal, Send, CheckCircle, XCircle, AlertCircle, Loader } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { API_BASE_URL } from '../config';
 
 interface Challenge {
     id: string;
@@ -36,7 +37,7 @@ export const CTFChallenge: React.FC = () => {
         setShowHint(false);
 
         try {
-            const res = await fetch('http://localhost:3001/api/challenges/generate', {
+            const res = await fetch(`${API_BASE_URL}/api/challenges/generate`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -63,7 +64,7 @@ export const CTFChallenge: React.FC = () => {
         setError('');
 
         try {
-            const res = await fetch('http://localhost:3001/api/challenges/submit', {
+            const res = await fetch(`${API_BASE_URL}/api/challenges/submit`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
