@@ -13,7 +13,8 @@ const MODELS = {
     EVALUATION: [
         "amazon.titan-text-express-v1",
         "amazon.titan-text-lite-v1",
-        "qwen.qwen3-32b-v1:0"
+        "qwen.qwen3-32b-v1:0",
+        "anthropic.claude-3-sonnet-20240229-v1:0"
     ]
 };
 

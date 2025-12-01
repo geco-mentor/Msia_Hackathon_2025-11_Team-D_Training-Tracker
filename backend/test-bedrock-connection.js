@@ -20,48 +20,50 @@ console.log(`Access Key ID: ${process.env.AWS_ACCESS_KEY_ID ? 'Set (starts with 
 async function testConnection() {
     console.log(`\n--- Testing Bedrock Connectivity ---`);
     const client = new BedrockRuntimeClient({ region });
-    const modelId = "amazon.titan-text-express-v1";
 
-    console.log(`Attempting to invoke model: ${modelId}`);
-
-    const conversation = [
-        {
-            role: "user",
-            content: [{ text: "Hello, are you working?" }],
-        },
+    const modelsToTest = [
+        "amazon.titan-text-express-v1",
+        "anthropic.claude-3-sonnet-20240229-v1:0"
     ];
 
-    try {
-        const command = new ConverseCommand({
-            modelId,
-            messages: conversation,
-            inferenceConfig: { maxTokens: 512, temperature: 0.5 },
-        });
+    for (const modelId of modelsToTest) {
+        console.log(`\n----------------------------------------`);
+        console.log(`Attempting to invoke model: ${modelId}`);
 
-        const response = await client.send(command);
-        const responseText = response.output.message.content[0].text;
+        const conversation = [
+            {
+                role: "user",
+                content: [{ text: "Hello, are you working?" }],
+            },
+        ];
 
-        console.log(`\n✅ SUCCESS! Model responded:`);
-        console.log(responseText);
-        console.log(`\nYour AWS credentials and region configuration are correct.`);
+        try {
+            const command = new ConverseCommand({
+                modelId,
+                messages: conversation,
+                inferenceConfig: { maxTokens: 512, temperature: 0.5 },
+            });
 
-    } catch (error) {
-        console.error(`\n❌ FAILED to invoke model.`);
-        console.error(`Error Name: ${error.name}`);
-        console.error(`Error Message: ${error.message}`);
+            const response = await client.send(command);
+            const responseText = response.output.message.content[0].text;
 
-        if (error.name === 'UnrecognizedClientException' || error.name === 'InvalidSignatureException') {
-            console.error(`\nDiagnosis: Invalid Credentials. The server cannot authenticate with AWS.`);
-            console.error(`Fix: Ensure an IAM Role is attached to this EC2 instance OR set AWS_ACCESS_KEY_ID/SECRET in .env.`);
-        } else if (error.name === 'AccessDeniedException') {
-            console.error(`\nDiagnosis: Permission Denied. The credentials are valid but lack permission to invoke Bedrock.`);
-            console.error(`Fix: Add 'bedrock:InvokeModel' permission to your IAM Role/User.`);
-        } else if (error.name === 'ResourceNotFoundException') {
-            console.error(`\nDiagnosis: Model or Region issue.`);
-            console.error(`Fix: Check if '${modelId}' is enabled in region '${region}'.`);
-        } else if (error.message.includes('Could not load credentials')) {
-            console.error(`\nDiagnosis: No Credentials Found.`);
-            console.error(`Fix: You removed AWS_PROFILE but didn't attach an IAM Role or set keys. The SDK has no way to login.`);
+            console.log(`\n✅ SUCCESS! Model responded:`);
+            console.log(responseText);
+
+        } catch (error) {
+            console.error(`\n❌ FAILED to invoke model: ${modelId}`);
+            console.error(`Error Name: ${error.name}`);
+            console.error(`Error Message: ${error.message}`);
+
+            if (error.name === 'AccessDeniedException') {
+                console.error(`\nDiagnosis: Model Access Denied.`);
+                console.error(`Fix: Go to AWS Bedrock Console -> Model access -> Enable '${modelId}'.`);
+            } else if (error.name === 'UnrecognizedClientException' || error.name === 'InvalidSignatureException') {
+                console.error(`\nDiagnosis: Invalid Credentials.`);
+            } else if (error.name === 'ResourceNotFoundException') {
+                console.error(`\nDiagnosis: Model or Region issue.`);
+                console.error(`Fix: Check if '${modelId}' is enabled in region '${region}'.`);
+            }
         }
     }
 }
