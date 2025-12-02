@@ -8,6 +8,8 @@ on:
   discussion:
     types: [created]
 
+# This ensures that if two people post at once, the actions queue up 
+# instead of overwriting each other.
 concurrency:
   group: leaderboard-update
   cancel-in-progress: false
@@ -27,17 +29,22 @@ jobs:
         with:
           script: |
             const fs = require('fs');
+            
+            // 1. Define Points System
             const POINTS = {
               issue: 5,
               pull_request: 10,
               discussion: 5
             };
-
-            const type = context.eventName;
+            
+            // 2. Determine Event Type and User
+            const type = context.eventName; // 'issues', 'pull_request', 'discussion'
             const user = context.actor;
-
+            
+            // Skip if it's a bot
             if (user.includes('[bot]')) return;
 
+            // Calculate points based on event
             let pointsToAdd = 0;
             if (type === 'issues') pointsToAdd = POINTS.issue;
             if (type === 'pull_request') pointsToAdd = POINTS.pull_request;
@@ -45,9 +52,10 @@ jobs:
 
             console.log(`Processing: ${user} gained ${pointsToAdd} points for ${type}`);
 
+            // 3. Read existing data (or create new)
             let data = {};
             const dataFile = '.github/leaderboard_data.json';
-
+            
             try {
               if (fs.existsSync(dataFile)) {
                 data = JSON.parse(fs.readFileSync(dataFile, 'utf8'));
@@ -56,37 +64,45 @@ jobs:
               console.log("Creating new data file...");
             }
 
+            // 4. Update Score
             if (!data[user]) {
               data[user] = { score: 0, contributions: 0 };
             }
             data[user].score += pointsToAdd;
             data[user].contributions += 1;
 
+            // 5. Save JSON Data (Source of Truth)
             fs.writeFileSync(dataFile, JSON.stringify(data, null, 2));
 
+            // 6. Generate Markdown Leaderboard (Visual)
+            // Sort users by score (highest first)
             const sortedUsers = Object.entries(data).sort((a, b) => b[1].score - a[1].score);
+
             let mdContent = "# 🏆 Community Leaderboard\n\n";
             mdContent += "| Rank | User | Contributions | Score |\n";
             mdContent += "|---|---|---|---|\n";
+
             sortedUsers.forEach(([username, stats], index) => {
               const rank = index + 1;
               let medal = "";
               if (rank === 1) medal = "🥇 ";
               if (rank === 2) medal = "🥈 ";
               if (rank === 3) medal = "🥉 ";
-
+              
               mdContent += `| ${rank} | ${medal}@${username} | ${stats.contributions} | **${stats.score}** |\n`;
             });
-            mdContent += "\n\n*Updated automatically by GitHub Actions*";
 
+            mdContent += "\n\n*Updated automatically by GitHub Actions*";
+            
             fs.writeFileSync('LEADERBOARD.md', mdContent);
 
       - name: Commit and Push Changes
         env:
-          BRANCH_NAME: ${{ github.head_ref || github.ref_name || 'main' }}
+          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
         run: |
           git config --global user.name "GitHub Action"
           git config --global user.email "action@github.com"
           git add .github/leaderboard_data.json LEADERBOARD.md
           git commit -m "🏆 Update Leaderboard for ${{ github.actor }}" || exit 0
+          git pull --rebase origin $BRANCH_NAME
           git push origin HEAD:$BRANCH_NAME
