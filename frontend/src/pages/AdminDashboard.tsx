@@ -31,7 +31,7 @@ export const AdminDashboard: React.FC = () => {
 
                 // Fetch Analytics
                 if (token) {
-                    const analyticsResponse = await fetch('http://localhost:3001/api/analytics/overview', {
+                    const analyticsResponse = await fetch('/api/analytics/overview', {
                         headers: { 'Authorization': `Bearer ${token}` }
                     });
                     const analyticsData = await analyticsResponse.json();
@@ -49,7 +49,7 @@ export const AdminDashboard: React.FC = () => {
     const handleViewEmployee = async (id: string) => {
         try {
             // Fetch detailed stats
-            const response = await fetch(`http://localhost:3001/api/employees/${id}/details`, {
+            const response = await fetch(`/api/employees/${id}/details`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }

@@ -29,7 +29,7 @@ export const JobAnalysisModal: React.FC<JobAnalysisModalProps> = ({ isOpen, onCl
         setResult(null);
 
         try {
-            const response = await fetch('http://localhost:3001/api/jobs/analyze', {
+            const response = await fetch('/api/jobs/analyze', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
