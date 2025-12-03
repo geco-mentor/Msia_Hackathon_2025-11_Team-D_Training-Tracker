@@ -20,6 +20,7 @@ export interface Employee {
     win_rate: number;
     streak: number;
     total_points: number;
+    elo_rating: number;
     level: number;
     created_at: string;
 }
@@ -62,6 +63,7 @@ export interface AuthResponse {
         win_rate?: number;
         streak?: number;
         total_points?: number;
+        elo_rating?: number;
         level?: number;
     };
 }

@@ -16,7 +16,7 @@ if (result.error) {
 
 async function runMigration() {
     console.log('Loading migration file...');
-    const migrationPath = path.join(__dirname, '../migration_jobs_and_departments.sql');
+    const migrationPath = path.join(__dirname, '../migration_elo.sql');
     const migrationSql = fs.readFileSync(migrationPath, 'utf8');
 
     console.log('Connecting to database...');

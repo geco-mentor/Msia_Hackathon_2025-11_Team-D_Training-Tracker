@@ -21,7 +21,7 @@ export const getDashboardStats = async (req: AuthRequest, res: Response): Promis
         // Fetch employee details
         const { data: employee, error } = await supabase
             .from('employees')
-            .select('ranking, win_rate, streak')
+            .select('ranking, win_rate, streak, elo_rating')
             .eq('id', id)
             .single();
 
@@ -33,16 +33,30 @@ export const getDashboardStats = async (req: AuthRequest, res: Response): Promis
             return;
         }
 
+        // Fetch dynamic ranking from leaderboard view
+        const { data: leaderboardData } = await supabase
+            .from('leaderboard')
+            .select('rank')
+            .eq('user_id', id)
+            .single();
+
+        const currentRank = leaderboardData?.rank || employee.ranking || 0;
+
         // Mock data for total assessments (replace with real count when assessments table exists)
-        const totalAssessments = 12;
+        // Actually we can fetch real count now
+        const { count: totalAssessments } = await supabase
+            .from('assessments')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', id);
 
         res.status(200).json({
             success: true,
             stats: {
-                ranking: employee.ranking,
+                ranking: currentRank,
                 win_rate: employee.win_rate,
                 streak: employee.streak,
-                total_assessments: totalAssessments
+                elo_rating: employee.elo_rating || 1200,
+                total_assessments: totalAssessments || 0
             }
         });
     } catch (error) {
@@ -125,7 +139,7 @@ export const getEmployeeDetails = async (req: AuthRequest, res: Response): Promi
         // Fetch employee basic info
         const { data: employee, error: empError } = await supabase
             .from('employees')
-            .select('id, name, job_title, department, ranking, win_rate, streak')
+            .select('id, name, job_title, department, ranking, win_rate, streak, elo_rating')
             .eq('id', id)
             .single();
 
@@ -133,6 +147,18 @@ export const getEmployeeDetails = async (req: AuthRequest, res: Response): Promi
             res.status(404).json({ success: false, message: 'Employee not found' });
             return;
         }
+
+        // Fetch dynamic ranking from leaderboard view
+        const { data: leaderboardData } = await supabase
+            .from('leaderboard')
+            .select('rank')
+            .eq('user_id', id)
+            .single();
+
+        const currentRank = leaderboardData?.rank || employee.ranking || 0;
+
+        // Update employee object with dynamic rank
+        employee.ranking = currentRank;
 
         // Fetch all assessments for analytics
         const { data: assessments, error: assessError } = await supabase

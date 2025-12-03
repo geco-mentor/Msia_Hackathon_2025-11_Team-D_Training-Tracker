@@ -186,6 +186,123 @@ export const evaluateResponse = async (scenarioId: string, userResponse: string,
             }
         }
 
+        // --- UPDATE EMPLOYEE STATS ---
+        // 1. Fetch current stats
+        const { data: employee, error: empError } = await supabase
+            .from('employees')
+            .select('total_points, win_rate, streak, elo_rating, id')
+            .eq('id', userId)
+            .single();
+
+        if (employee) {
+            // Calculate new Total Points
+            const newPoints = (employee.total_points || 0) + averageScore;
+
+            // Calculate new Win Rate
+            // Fetch total assessments count for this user
+            const { count: totalAssessments } = await supabase
+                .from('assessments')
+                .select('*', { count: 'exact', head: true })
+                .eq('user_id', userId);
+
+            // Fetch total wins (score >= 70)
+            const { count: totalWins } = await supabase
+                .from('assessments')
+                .select('*', { count: 'exact', head: true })
+                .eq('user_id', userId)
+                .gte('score', 70);
+
+            // Note: The current assessment is already inserted, so totalAssessments includes it.
+            // totalWins also includes it if score >= 70 because we just inserted it.
+
+            const currentTotalAssessments = totalAssessments || 0;
+            const currentTotalWins = totalWins || 0;
+
+            const newWinRate = currentTotalAssessments > 0
+                ? Math.round((currentTotalWins / currentTotalAssessments) * 100)
+                : 0;
+
+            // Calculate Streak
+            // We need to check the date of the LAST assessment before this one.
+            // Actually, a simpler way is to check if there was an assessment yesterday.
+            // But we just inserted the current assessment, so we need to be careful.
+
+            const today = new Date();
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
+            const yesterdayStr = yesterday.toISOString().split('T')[0];
+            const todayStr = today.toISOString().split('T')[0];
+
+            // Check if there is ANY assessment from yesterday
+            const { data: yesterdayActivity } = await supabase
+                .from('assessments')
+                .select('created_at')
+                .eq('user_id', userId)
+                .gte('created_at', yesterdayStr + 'T00:00:00')
+                .lt('created_at', todayStr + 'T00:00:00')
+                .limit(1);
+
+            // Check if there is ANY assessment from today (excluding the one we just made? No, streak is daily activity)
+            // If we already have a streak, and we did something today, the streak shouldn't increment AGAIN if it already incremented today.
+            // But we don't store "last_streak_update_date".
+            // Logic:
+            // If (activity yesterday) -> streak = streak + 1 (unless already incremented today?)
+            // To avoid double incrementing on the same day, we can check if this is the FIRST activity of today.
+
+            const { count: todayActivityCount } = await supabase
+                .from('assessments')
+                .select('*', { count: 'exact', head: true })
+                .eq('user_id', userId)
+                .gte('created_at', todayStr + 'T00:00:00');
+
+            let newStreak = employee.streak || 0;
+
+            // If this is the FIRST activity today (count === 1 because we just inserted one)
+            if (todayActivityCount === 1) {
+                if (yesterdayActivity && yesterdayActivity.length > 0) {
+                    // Continued streak
+                    newStreak += 1;
+                } else {
+                    // Broken streak or new streak
+                    // Check if it's a brand new streak (0) or reset
+                    // If no activity yesterday, streak resets to 1 (for today)
+                    newStreak = 1;
+                }
+            }
+            // If todayActivityCount > 1, we've already done something today, so streak is already up to date for today.
+            // We don't increment it again.
+
+            // Update Employee
+            // --- ELO RATING CALCULATION ---
+            const K_FACTOR = 32;
+            const DIFFICULTY_RATINGS: Record<string, number> = {
+                'Easy': 1000,
+                'Medium': 1200,
+                'Hard': 1500
+            };
+
+            const currentElo = employee.elo_rating || 1200;
+            const opponentElo = DIFFICULTY_RATINGS[scenario.difficulty] || 1200;
+
+            // Expected score: 1 / (1 + 10^((Rb - Ra) / 400))
+            const expectedScore = 1 / (1 + Math.pow(10, (opponentElo - currentElo) / 400));
+
+            // Actual score: 1 if passed (>= 70), 0 if failed
+            const actualScore = averageScore >= 70 ? 1 : 0;
+
+            const newElo = Math.round(currentElo + K_FACTOR * (actualScore - expectedScore));
+
+            await supabase
+                .from('employees')
+                .update({
+                    total_points: newPoints,
+                    win_rate: newWinRate,
+                    streak: newStreak,
+                    elo_rating: newElo
+                })
+                .eq('id', userId);
+        }
+
         return data;
 
     } catch (error) {

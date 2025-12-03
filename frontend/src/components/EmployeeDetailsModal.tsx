@@ -22,6 +22,7 @@ interface EmployeeDetails {
     ranking: number;
     win_rate: number;
     streak: number;
+    elo_rating?: number;
     assessments: Assessment[];
     analytics?: {
         skillStats: { subject: string; A: number; fullMark: number }[];
@@ -64,7 +65,7 @@ export const EmployeeDetailsModal: React.FC<EmployeeDetailsModalProps> = ({ isOp
 
                 <div className="overflow-y-auto flex-1 p-6 space-y-8">
                     {/* Stats Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div className="bg-black/40 border border-purple-500/20 p-4 rounded-lg">
                             <div className="flex items-center gap-3 mb-2">
                                 <Trophy className="text-purple-400" size={20} />
@@ -85,6 +86,13 @@ export const EmployeeDetailsModal: React.FC<EmployeeDetailsModalProps> = ({ isOp
                                 <span className="text-sm text-white/60">Current Streak</span>
                             </div>
                             <div className="text-2xl font-bold text-white">{employee.streak} Days</div>
+                        </div>
+                        <div className="bg-black/40 border border-yellow-500/20 p-4 rounded-lg">
+                            <div className="flex items-center gap-3 mb-2">
+                                <TrendingUp className="text-yellow-400" size={20} />
+                                <span className="text-sm text-white/60">Elo Rating</span>
+                            </div>
+                            <div className="text-2xl font-bold text-white">{employee.elo_rating || 1200}</div>
                         </div>
                     </div>
 
