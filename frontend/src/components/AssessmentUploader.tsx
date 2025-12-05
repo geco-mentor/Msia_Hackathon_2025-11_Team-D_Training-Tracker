@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Upload, FileText, AlertCircle, Loader2, Calendar, Building, ChevronRight, ChevronDown, Check, BookOpen, Target, Shield } from 'lucide-react';
+import { Upload, FileText, AlertCircle, Loader2, Calendar, Building, ChevronRight, ChevronDown, Check } from 'lucide-react';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
 import { useAuth } from '../contexts/AuthContext';
