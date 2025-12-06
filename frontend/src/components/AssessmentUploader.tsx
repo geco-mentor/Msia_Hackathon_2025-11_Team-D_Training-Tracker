@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Upload, FileText, AlertCircle, Loader2, Calendar, Building, ChevronRight, ChevronDown, Check, BookOpen, Target, Shield } from 'lucide-react';
+import { Upload, FileText, AlertCircle, Loader2, Calendar, Building, ChevronRight, ChevronDown, Check } from 'lucide-react';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
 import { useAuth } from '../contexts/AuthContext';
@@ -94,10 +94,16 @@ const AssessmentUploader: React.FC<AssessmentUploaderProps> = ({ onUploadComplet
 
             setProgress(40);
 
-            // 2. Upload to S3
-            await axios.put(uploadUrl, file, {
-                headers: { 'Content-Type': file.type }
+            // 2. Upload to S3 (using fetch to avoid axios default headers interfering)
+            const s3Response = await fetch(uploadUrl, {
+                method: 'PUT',
+                headers: { 'Content-Type': file.type },
+                body: file
             });
+
+            if (!s3Response.ok) {
+                throw new Error(`S3 upload failed: ${s3Response.status} ${s3Response.statusText}`);
+            }
 
             setProgress(70);
             setUploading(false);

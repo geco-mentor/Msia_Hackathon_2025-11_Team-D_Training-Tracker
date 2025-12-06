@@ -1,0 +1,27 @@
+{
+    "name": "aws-connectivity-tests",
+    "version": "1.0.0",
+    "description": "Scripts to test AWS service connectivity",
+    "main": "test_all.ts",
+    "scripts": {
+        "test": "tsc -p tsconfig.json && node dist/test_all.js",
+        "test:s3": "tsc -p tsconfig.json && node dist/test_s3.js",
+        "test:bedrock": "tsc -p tsconfig.json && node dist/test_bedrock.js",
+        "test:comprehend": "tsc -p tsconfig.json && node dist/test_comprehend.js",
+        "test:textract": "tsc -p tsconfig.json && node dist/test_textract.js",
+        "debug:identity": "tsc -p tsconfig.json && node dist/debug_identity.js"
+    },
+    "dependencies": {
+        "@aws-sdk/client-bedrock-runtime": "^3.941.0",
+        "@aws-sdk/client-comprehend": "^3.943.0",
+        "@aws-sdk/client-s3": "^3.943.0",
+        "@aws-sdk/client-sts": "^3.943.0",
+        "@aws-sdk/client-textract": "^3.943.0",
+        "dotenv": "^16.3.1"
+    },
+    "devDependencies": {
+        "@types/node": "^20.10.6",
+        "ts-node": "^10.9.2",
+        "typescript": "^5.3.3"
+    }
+}
