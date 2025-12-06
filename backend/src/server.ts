@@ -146,6 +146,8 @@ const startServer = async () => {
             console.log('='.repeat(50));
             console.log(`📍 Server running on: http://localhost:${PORT}`);
             console.log(`🌐 Frontend URL: ${FRONTEND_URL}`);
+            console.log(`📦 S3 Bucket: ${process.env.AWS_S3_BUCKET_NAME || '❌ NOT SET'}`);
+            console.log(`Bn S3 Region: ${process.env.AWS_S3_REGION || '❌ NOT SET'}`);
             console.log(`📊 Health check: http://localhost:${PORT}/health`);
             console.log('='.repeat(50));
         });

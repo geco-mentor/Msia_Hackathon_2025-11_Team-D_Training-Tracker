@@ -3,12 +3,46 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { TextractClient, StartDocumentTextDetectionCommand, GetDocumentTextDetectionCommand } from '@aws-sdk/client-textract';
 import { ComprehendClient, DetectKeyPhrasesCommand, DetectEntitiesCommand } from '@aws-sdk/client-comprehend';
 import { BedrockRuntimeClient, ConverseCommand } from '@aws-sdk/client-bedrock-runtime';
+import { supabase } from '../config/database';
 
-const region = process.env.AWS_S3_REGION || 'us-east-1';
-const s3Client = new S3Client({ region });
-const textractClient = new TextractClient({ region: process.env.AWS_REGION });
-const comprehendClient = new ComprehendClient({ region: process.env.AWS_REGION });
-const bedrockClient = new BedrockRuntimeClient({ region: process.env.AWS_REGION });
+// Lazy initialization of AWS clients to ensure dotenv has loaded
+let _s3Client: S3Client | null = null;
+let _textractClient: TextractClient | null = null;
+let _comprehendClient: ComprehendClient | null = null;
+let _bedrockClient: BedrockRuntimeClient | null = null;
+
+const getS3Client = () => {
+    if (!_s3Client) {
+        const region = process.env.AWS_S3_REGION || 'us-east-1';
+        console.log('Initializing S3Client with region:', region);
+        _s3Client = new S3Client({ region });
+    }
+    return _s3Client;
+};
+
+const getTextractClient = () => {
+    if (!_textractClient) {
+        const region = process.env.AWS_REGION || 'us-east-1';
+        _textractClient = new TextractClient({ region });
+    }
+    return _textractClient;
+};
+
+const getComprehendClient = () => {
+    if (!_comprehendClient) {
+        const region = process.env.AWS_REGION || 'us-east-1';
+        _comprehendClient = new ComprehendClient({ region });
+    }
+    return _comprehendClient;
+};
+
+const getBedrockClient = () => {
+    if (!_bedrockClient) {
+        const region = process.env.AWS_REGION || 'us-east-1';
+        _bedrockClient = new BedrockRuntimeClient({ region });
+    }
+    return _bedrockClient;
+};
 
 export const generateUploadUrl = async (bucket: string, key: string, contentType: string) => {
     const command = new PutObjectCommand({
@@ -16,7 +50,7 @@ export const generateUploadUrl = async (bucket: string, key: string, contentType
         Key: key,
         ContentType: contentType
     });
-    return await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+    return await getSignedUrl(getS3Client(), command, { expiresIn: 3600 });
 };
 
 export const readTextFile = async (bucket: string, key: string): Promise<string> => {
@@ -24,7 +58,7 @@ export const readTextFile = async (bucket: string, key: string): Promise<string>
         Bucket: bucket,
         Key: key
     });
-    const response = await s3Client.send(command);
+    const response = await getS3Client().send(command);
     return await response.Body?.transformToString() || '';
 };
 
@@ -39,7 +73,7 @@ const extractWithTextract = async (bucket: string, key: string): Promise<string>
         }
     });
 
-    const startResponse = await textractClient.send(startCommand);
+    const startResponse = await getTextractClient().send(startCommand);
     const jobId = startResponse.JobId;
 
     if (!jobId) {
@@ -52,7 +86,7 @@ const extractWithTextract = async (bucket: string, key: string): Promise<string>
     while (jobStatus === 'IN_PROGRESS') {
         await new Promise(resolve => setTimeout(resolve, 2000));
         const getCommand = new GetDocumentTextDetectionCommand({ JobId: jobId });
-        const getResponse = await textractClient.send(getCommand);
+        const getResponse = await getTextractClient().send(getCommand);
         jobStatus = getResponse.JobStatus || 'FAILED';
 
         if (jobStatus === 'SUCCEEDED' && getResponse.Blocks) {
@@ -71,14 +105,14 @@ const extractWithTextract = async (bucket: string, key: string): Promise<string>
     return pagesText.join('\n');
 };
 
-// Helper function: Extract text using pdf-parse (local fallback)
-const extractWithPdfParse = async (bucket: string, key: string): Promise<string> => {
+// Helper function: Extract text using unpdf (local fallback)
+const extractWithUnpdf = async (bucket: string, key: string): Promise<string> => {
     // Download the PDF from S3
     const command = new GetObjectCommand({
         Bucket: bucket,
         Key: key
     });
-    const response = await s3Client.send(command);
+    const response = await getS3Client().send(command);
 
     if (!response.Body) {
         throw new Error('Failed to download PDF from S3');
@@ -88,17 +122,23 @@ const extractWithPdfParse = async (bucket: string, key: string): Promise<string>
     const byteArray = await response.Body.transformToByteArray();
     const uint8Array = new Uint8Array(byteArray);
 
-    // Extract text using pdf-parse
-    // pdf-parse v2.4.5 exports PDFParse as a class
-    const pdfModule = await import('pdf-parse');
-    const pdf = pdfModule.default || pdfModule;
+    // Use unpdf to extract text (correct API)
+    const { extractText, getDocumentProxy } = await import('unpdf');
 
-    // Create parser instance and extract text
-    const parser = new (pdf as any).PDFParse(uint8Array);
-    const result = await parser.getText();
+    // Step 1: Get document proxy
+    const pdf = await getDocumentProxy(uint8Array);
 
-    // Result should be a TextResult object with text property
-    return result.text || result;
+    // Step 2: Extract text with merged pages
+    const { text, totalPages } = await extractText(pdf, { mergePages: true });
+
+    // Handle empty text gracefully - some PDFs may be scanned images
+    if (!text || text.trim().length === 0) {
+        console.warn(`unpdf extracted no text from ${totalPages} pages - PDF may contain only images`);
+        return `[PDF Document with ${totalPages} page(s) - Text could not be extracted. This may be a scanned document or image-based PDF.]`;
+    }
+
+    console.log(`unpdf extracted ${text.length} characters from ${totalPages} pages`);
+    return text;
 };
 
 // Main extraction function with Textract-first fallback strategy
@@ -110,25 +150,23 @@ export const extractTextFromPdf = async (bucket: string, key: string): Promise<s
         console.log(`✓ Textract extraction successful for ${key}`);
         return text;
     } catch (textractError: any) {
-        // Log Textract failure and fall back to pdf-parse
+        // Log Textract failure and fall back to unpdf
         console.warn(`Textract extraction failed for ${key}: ${textractError.message}`);
-        console.log(`Falling back to pdf-parse for ${key}...`);
+        console.log(`Falling back to unpdf for ${key}...`);
 
         try {
-            const text = await extractWithPdfParse(bucket, key);
-            console.log(`✓ pdf-parse extraction successful for ${key}`);
+            const text = await extractWithUnpdf(bucket, key);
+            console.log(`✓ unpdf extraction successful for ${key}`);
             return text;
-        } catch (pdfParseError: any) {
+        } catch (unpdfError: any) {
             // Both methods failed
-            console.error(`Both Textract and pdf-parse failed for ${key}`);
-            throw new Error(`Failed to extract text from PDF: Textract error: ${textractError.message}, pdf-parse error: ${pdfParseError.message}`);
+            console.error(`Both Textract and unpdf failed for ${key}`);
+            throw new Error(`Failed to extract text from PDF: Textract error: ${textractError.message}, unpdf error: ${unpdfError.message}`);
         }
     }
 };
 
 export const analyzeText = async (text: string) => {
-    // Truncate text to 5000 bytes (Comprehend limit for single batch item is 5000 bytes)
-    // For simplicity, we just take the first 4500 characters
     const truncatedText = text.substring(0, 4500);
 
     const keyPhrasesCommand = new DetectKeyPhrasesCommand({
@@ -141,8 +179,8 @@ export const analyzeText = async (text: string) => {
     });
 
     const [keyPhrasesResponse, entitiesResponse] = await Promise.all([
-        comprehendClient.send(keyPhrasesCommand),
-        comprehendClient.send(entitiesCommand)
+        getComprehendClient().send(keyPhrasesCommand),
+        getComprehendClient().send(entitiesCommand)
     ]);
 
     return {
@@ -151,83 +189,137 @@ export const analyzeText = async (text: string) => {
     };
 };
 
-export const generateScenarioFromText = async (text: string) => {
-    const prompt = `
-    You are an expert training content analyzer.
-    
-    Training Material:
-    ${text.substring(0, 10000)} ... (truncated)
+// ============================================
+// RUBRIC GENERATION - Admin Assessment Upload
+// ============================================
 
-    Task:
-    1. Analyze the text and provide a concise "Context" or summary of the material (2-3 sentences).
-    2. Identify the "Module Name" (e.g., "Cybersecurity Basics", "Phishing Awareness").
-    3. Generate a 3x3 Rubric (9 criteria total) for evaluating understanding of this material.
-       CRITICAL: All 9 criteria must be UNIQUE and DISTINCT. Do not repeat the same phrase.
-       - 3 "Generic" criteria (e.g., Clarity, Accuracy, Critical Thinking).
-       - 3 "Department" criteria (relevant to the general domain, e.g., Risk Assessment, Policy Adherence, Compliance).
-       - 3 "Module" criteria (specific concepts from the text, e.g., "Phishing Indicators", "Password Strength", "Reporting Procedures").
-       
-       DO NOT just repeat the Module Name. Each "Module" criterion must be a specific concept or key takeaway from the text.
+// Fetch generic rubrics from database
+export const fetchGenericRubrics = async (): Promise<string[]> => {
+    try {
+        const { data, error } = await supabase
+            .from('general_rubrics')
+            .select('name')
+            .order('display_order');
 
-    Generate a JSON response with the following structure:
-    {
-        "title": "Module Name",
-        "scenario_text": "The Context/Summary of the material...",
-        "task": "Review the training material and answer the assessment questions.",
-        "difficulty": "Normal",
-        "category": "Module Name",
-        "rubric": {
-            "generic": ["Unique Criterion 1", "Unique Criterion 2", "Unique Criterion 3"],
-            "department": ["Unique Dept Criterion 1", "Unique Dept Criterion 2", "Unique Dept Criterion 3"],
-            "module": ["Specific Concept 1", "Specific Concept 2", "Specific Concept 3"]
-        },
-        "hint": "Focus on the key concepts."
+        if (error) {
+            console.warn('Error fetching generic rubrics:', error.message);
+            // Return default rubrics if table doesn't exist or is empty
+            return ['Communication', 'Critical Thinking', 'Problem Solving'];
+        }
+
+        if (!data || data.length === 0) {
+            console.warn('No generic rubrics found in database, using defaults');
+            return ['Communication', 'Critical Thinking', 'Problem Solving'];
+        }
+
+        return data.map((r: { name: string }) => r.name);
+    } catch (err: any) {
+        console.warn('Failed to fetch generic rubrics:', err.message);
+        return ['Communication', 'Critical Thinking', 'Problem Solving'];
     }
-    
-    IMPORTANT: 
-    1. "rubric" must contain exactly 3 keys: "generic", "department", "module".
-    2. Each key in "rubric" must be an array of exactly 3 strings.
-    3. All 9 strings must be different.
-    4. Return ONLY the valid JSON object.
+};
+
+// Fetch department rubrics from database
+export const fetchDepartmentRubrics = async (departmentId: string): Promise<string[]> => {
+    try {
+        const { data, error } = await supabase
+            .from('departments')
+            .select('rubrics')
+            .eq('id', departmentId)
+            .single();
+
+        if (error) {
+            console.warn('Error fetching department rubrics:', error.message);
+            return ['Department Knowledge', 'Process Compliance', 'Best Practices'];
+        }
+
+        return data?.rubrics || ['Department Knowledge', 'Process Compliance', 'Best Practices'];
+    } catch (err: any) {
+        console.warn('Failed to fetch department rubrics:', err.message);
+        return ['Department Knowledge', 'Process Compliance', 'Best Practices'];
+    }
+};
+
+// AI generates ONLY the 3 module-specific rubrics from the uploaded content
+export const generateModuleRubrics = async (text: string): Promise<string[]> => {
+    const prompt = `
+    Analyze this training material and extract exactly 3 key topics/concepts that should be evaluated.
+
+    Training Material:
+    ${text.substring(0, 6000)}
+
+    Return ONLY a JSON array of exactly 3 strings, each being a specific concept from the text.
+    Example: ["Password Security", "Phishing Recognition", "Data Encryption"]
+
+    Rules:
+    - Extract actual topics mentioned in the text
+    - Each must be different
+    - Keep them concise (2-4 words each)
+    - Return ONLY the JSON array, nothing else
     `;
 
-    const modelId = "amazon.titan-text-express-v1";
-
     const command = new ConverseCommand({
-        modelId,
-        messages: [{
-            role: "user",
-            content: [{ text: prompt }]
-        }],
-        inferenceConfig: {
-            maxTokens: 2000,
-            temperature: 0,
-        }
+        modelId: "amazon.titan-text-express-v1",
+        messages: [{ role: "user", content: [{ text: prompt }] }],
+        inferenceConfig: { maxTokens: 200, temperature: 0 }
     });
 
-    const response = await bedrockClient.send(command);
+    console.log('DEBUG: Calling Bedrock for module rubrics...');
+    const response = await getBedrockClient().send(command);
 
-    try {
-        const content = response.output?.message?.content?.[0]?.text || "{}";
-        console.log("DEBUG: Raw AI Response:", content);
+    const content = response.output?.message?.content?.[0]?.text || "[]";
+    console.log("DEBUG: Raw AI Module Rubrics Response:", content);
 
-        // Find the first '{' and the last '}'
-        const firstOpen = content.indexOf('{');
-        const lastClose = content.lastIndexOf('}');
+    const firstOpen = content.indexOf('[');
+    const lastClose = content.lastIndexOf(']');
 
-        if (firstOpen !== -1 && lastClose !== -1 && lastClose > firstOpen) {
-            const jsonString = content.substring(firstOpen, lastClose + 1);
-            return JSON.parse(jsonString);
-        } else {
-            // Fallback to cleaning markdown if braces not found (unlikely for valid JSON)
-            const cleanContent = content.replace(/```json/g, '').replace(/```/g, '').trim();
-            return JSON.parse(cleanContent);
-        }
-    } catch (e) {
-        console.error("Failed to parse AI response", e);
-        const content = response.output?.message?.content?.[0]?.text || "{}";
-        throw new Error(`Failed to generate scenario from AI response. Content: ${content.substring(0, 200)}... Error: ${(e as any).message}`);
+    if (firstOpen === -1 || lastClose === -1 || lastClose <= firstOpen) {
+        throw new Error(`AI did not return valid array. Response: ${content}`);
     }
+
+    const jsonString = content.substring(firstOpen, lastClose + 1);
+    const rubrics = JSON.parse(jsonString);
+
+    if (!Array.isArray(rubrics) || rubrics.length !== 3) {
+        throw new Error(`AI returned invalid rubrics array. Expected 3 items, got: ${JSON.stringify(rubrics)}`);
+    }
+
+    console.log('DEBUG: Module rubrics generated:', rubrics);
+    return rubrics;
+};
+
+// Main function called by assessmentController
+export const generateScenarioFromText = async (text: string, departmentName: string = 'General', departmentId?: string) => {
+    const firstLine = text.split('\n')[0].substring(0, 100).trim() || 'Training Module';
+    const moduleName = firstLine.replace(/[^a-zA-Z0-9\s]/g, '').trim() || 'Training Module';
+
+    console.log('DEBUG: Fetching rubrics from database...');
+    const genericRubrics = await fetchGenericRubrics();
+
+    let departmentRubrics: string[] = [];
+    if (departmentId) {
+        departmentRubrics = await fetchDepartmentRubrics(departmentId);
+    }
+
+    const moduleRubrics = await generateModuleRubrics(text);
+
+    const rubric = {
+        generic: genericRubrics,
+        department: departmentRubrics,
+        module: moduleRubrics
+    };
+
+    console.log('DEBUG: Final rubric structure:', JSON.stringify(rubric, null, 2));
+
+    return {
+        title: moduleName,
+        scenario_text: text.substring(0, 500) + '...',
+        task: "Review the training material and complete the assessment.",
+        difficulty: "Normal",
+        category: moduleName,
+        rubric: rubric,
+        hint: "Focus on the key concepts covered in the material."
+    };
 };
 
 // --- Employee Flow AI Functions ---
@@ -260,16 +352,13 @@ export const generateAdaptiveQuestion = async (contextText: string, history: { q
         inferenceConfig: { maxTokens: 500, temperature: 0.7 }
     });
 
-    const response = await bedrockClient.send(command);
+    const response = await getBedrockClient().send(command);
     let text = response.output?.message?.content?.[0]?.text || "Error generating question.";
 
-    // Aggressive cleaning
-    // Look for "Question:", "Here is the question:", "The question is:", or "[Question]"
     const match = text.match(/(?:Question:|Here is the question:|The question is:|\[Question\])\s*(.*)/is);
     if (match && match[1]) {
         text = match[1].trim();
     }
-    // Remove any trailing "Answer:" or similar if AI generates it
     text = text.split(/Answer:/i)[0].trim();
 
     return text;
@@ -302,7 +391,7 @@ export const generatePostAssessmentQuestions = async (contextText: string) => {
         inferenceConfig: { maxTokens: 2000, temperature: 0 }
     });
 
-    const response = await bedrockClient.send(command);
+    const response = await getBedrockClient().send(command);
     const content = response.output?.message?.content?.[0]?.text || "[]";
 
     try {
@@ -311,28 +400,10 @@ export const generatePostAssessmentQuestions = async (contextText: string) => {
         if (firstOpen !== -1 && lastClose !== -1) {
             return JSON.parse(content.substring(firstOpen, lastClose + 1));
         }
-
-        const lines = content.split('\n');
-        const questions = [];
-        let currentQ = null;
-
-        for (const line of lines) {
-            const qMatch = line.match(/^\s*\d+\.\s*(.*)/);
-            if (qMatch) {
-                if (currentQ) questions.push(currentQ);
-                currentQ = { id: questions.length + 1, question: qMatch[1].trim(), type: "short_answer" };
-            } else if (currentQ) {
-                // currentQ.question += " " + line.trim();
-            }
-        }
-        if (currentQ) questions.push(currentQ);
-
-        if (questions.length > 0) return questions;
-
         return JSON.parse(content.replace(/```json/g, '').replace(/```/g, '').trim());
     } catch (e) {
         console.error("Failed to parse Post-Assessment questions. Raw content:", content);
-        return [];
+        throw new Error("Failed to parse Post-Assessment questions from AI");
     }
 };
 
@@ -382,7 +453,7 @@ export const evaluateAssessment = async (
         inferenceConfig: { maxTokens: 1500, temperature: 0 }
     });
 
-    const response = await bedrockClient.send(command);
+    const response = await getBedrockClient().send(command);
     const content = response.output?.message?.content?.[0]?.text || "{}";
 
     try {
@@ -394,6 +465,6 @@ export const evaluateAssessment = async (
         return JSON.parse(content.replace(/```json/g, '').replace(/```/g, '').trim());
     } catch (e) {
         console.error("Failed to parse Evaluation", e);
-        return { total_score: 0, feedback: "Error parsing evaluation." };
+        throw new Error("Failed to parse evaluation from AI");
     }
 };
