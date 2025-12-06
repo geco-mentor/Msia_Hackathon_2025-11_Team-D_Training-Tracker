@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { supabase } from '../config/database';
-import { generateUploadUrl, extractTextFromPdf, readTextFile, generateScenarioFromText } from '../services/awsService';
+import { generateUploadUrl, extractTextFromPdf, readTextFile, saveTextToS3, generateRubricsFromText } from '../services/awsService';
 
 export const getUploadUrl = async (req: Request, res: Response) => {
     try {
@@ -76,39 +76,33 @@ export const processFile = async (req: Request, res: Response) => {
         }
         console.log('DEBUG: Step 1 COMPLETE - Extracted', text.length, 'characters');
 
-        // Step 2: Fetch department
-        console.log('DEBUG: Step 2 - Fetching department:', departmentId);
-        const { data: deptData, error: deptError } = await supabase
-            .from('departments')
-            .select('name')
-            .eq('id', departmentId)
-            .single();
+        // Step 2: Save extracted text to S3
+        const originalFileName = key.split('/').pop()?.replace(/\.[^/.]+$/, '') || 'document';
+        const extractedTextKey = `extracted-text/${userId}/${Date.now()}-${originalFileName}.txt`;
+        console.log('DEBUG: Step 2 - Saving extracted text to S3:', extractedTextKey);
+        await saveTextToS3(bucket, extractedTextKey, text);
+        console.log('DEBUG: Step 2 COMPLETE - Saved extracted text to S3');
 
-        if (deptError) {
-            console.error('DEBUG: Department fetch error:', deptError);
-        }
-        const departmentName = deptData?.name || 'General';
-        console.log('DEBUG: Step 2 COMPLETE - Department:', departmentName);
-
-        // Step 3: Generate rubrics with AI (only module rubrics are AI-generated)
+        // Step 3: Generate rubrics ONLY (no full scenario)
         console.log('DEBUG: Step 3 - Generating rubrics with AI...');
-        const generatedScenario = await generateScenarioFromText(text, departmentName, departmentId);
-        console.log('DEBUG: Step 3 COMPLETE - Generated scenario:', JSON.stringify(generatedScenario, null, 2));
+        const rubric = await generateRubricsFromText(text, departmentId);
+        console.log('DEBUG: Step 3 COMPLETE - Generated rubrics:', JSON.stringify(rubric, null, 2));
 
-        // Step 4: Insert into database
+        // Step 4: Insert into database with minimal fields
         console.log('DEBUG: Step 4 - Inserting into database...');
         const insertData = {
-            title: generatedScenario.title,
-            scenario_text: generatedScenario.scenario_text,
-            task: generatedScenario.task,
-            difficulty: generatedScenario.difficulty,
-            rubric: generatedScenario.rubric,
-            hint: generatedScenario.hint,
+            title: '',  // Empty - will be set later when assessment is generated
+            scenario_text: '',  // Empty - will be set later when assessment is generated
+            task: '',  // Empty - will be set later when assessment is generated
+            difficulty: 'Normal',
+            rubric: rubric,
+            hint: '',  // Empty - will be set later when assessment is generated
             creator_id: userId,
             source_file: key,
+            extracted_text_file: extractedTextKey,  // New field: S3 key for extracted text
             status: 'draft',
             type: 'text',
-            category: generatedScenario.category || 'Training',
+            category: 'Training',  // Default category
             skill: 'General',
             department_id: departmentId,
             post_assessment_date: postAssessmentDate
@@ -130,8 +124,15 @@ export const processFile = async (req: Request, res: Response) => {
         console.log('=== PROCESS FILE SUCCESS ===');
 
         res.json({
-            message: 'File processed and scenario created successfully',
-            scenario: data
+            message: 'File processed and rubrics generated successfully',
+            scenario: {
+                id: data.id,
+                rubric: data.rubric,
+                extracted_text_file: data.extracted_text_file,
+                source_file: data.source_file,
+                department_id: data.department_id,
+                post_assessment_date: data.post_assessment_date
+            }
         });
 
     } catch (error: any) {

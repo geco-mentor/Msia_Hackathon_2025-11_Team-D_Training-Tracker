@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import AssessmentUploader from '../components/AssessmentUploader';
-import { ArrowLeft, Save, Check, BookOpen, Target, Shield, Layers } from 'lucide-react';
+import { ArrowLeft, Save, Check, Shield } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const CreateAssessment: React.FC = () => {
@@ -45,45 +45,12 @@ const CreateAssessment: React.FC = () => {
                         <div className="bg-green-500/10 border border-green-500/20 p-4 rounded-lg flex items-center gap-3 text-green-400">
                             <Check className="w-6 h-6" />
                             <div>
-                                <h3 className="font-bold tracking-wider">ASSESSMENT GENERATED SUCCESSFULLY</h3>
-                                <p className="text-xs opacity-80 font-mono">A draft has been created based on your uploaded file.</p>
+                                <h3 className="font-bold tracking-wider">RUBRICS GENERATED SUCCESSFULLY</h3>
+                                <p className="text-xs opacity-80 font-mono">Extracted text saved to S3. Assessment rubrics are ready.</p>
                             </div>
                         </div>
 
                         <div className="bg-[#111] rounded-xl border border-white/5 p-6 space-y-8">
-
-                            {/* Header Info */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider flex items-center gap-2">
-                                        <Layers className="w-3 h-3" />
-                                        Module Name
-                                    </label>
-                                    <div className="bg-black/50 border border-white/10 rounded px-4 py-3 text-pink-400 font-bold text-lg">
-                                        {generatedScenario.category}
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider flex items-center gap-2">
-                                        <BookOpen className="w-3 h-3" />
-                                        Title
-                                    </label>
-                                    <div className="bg-black/50 border border-white/10 rounded px-4 py-3 text-white font-bold text-lg">
-                                        {generatedScenario.title}
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Context / Summary */}
-                            <div>
-                                <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider flex items-center gap-2">
-                                    <Target className="w-3 h-3" />
-                                    Context / Summary
-                                </label>
-                                <div className="bg-black/50 border border-white/10 rounded px-4 py-4 text-gray-300 leading-relaxed">
-                                    {generatedScenario.scenario_text}
-                                </div>
-                            </div>
 
                             {/* 9 Rubrics Grid */}
                             <div>

@@ -34,7 +34,7 @@
     
     Could review the challenges and the answers
     
-- Could create assessment modules
+- Could create assessment modules [It only create the module but not the contents[questions] yet]
     - Upload a PDF file/Files related to the training, it will generate rubrics based on the content of the PDF file and the admin will approve the rubrics is good or not 
 
 Not sure its plausible or not

@@ -74,6 +74,11 @@ create table if not exists public.scenarios (
   hint text,
   is_personalized boolean default false,
   creator_id uuid references public.employees(id) on delete set null,
+  source_file text, -- S3 key of the original uploaded file
+  extracted_text_file text, -- S3 key of the extracted text file
+  department_id uuid references public.departments(id) on delete set null,
+  post_assessment_date timestamp with time zone,
+  status text default 'draft', -- 'draft', 'published', etc.
   solves int default 0,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );

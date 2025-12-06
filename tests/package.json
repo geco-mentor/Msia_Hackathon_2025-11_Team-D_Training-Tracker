@@ -17,6 +17,7 @@
         "@aws-sdk/client-s3": "^3.943.0",
         "@aws-sdk/client-sts": "^3.943.0",
         "@aws-sdk/client-textract": "^3.943.0",
+        "@aws-sdk/credential-providers": "^3.946.0",
         "dotenv": "^16.3.1"
     },
     "devDependencies": {

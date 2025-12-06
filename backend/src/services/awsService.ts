@@ -62,6 +62,19 @@ export const readTextFile = async (bucket: string, key: string): Promise<string>
     return await response.Body?.transformToString() || '';
 };
 
+// Save extracted text to S3
+export const saveTextToS3 = async (bucket: string, key: string, text: string): Promise<string> => {
+    const command = new PutObjectCommand({
+        Bucket: bucket,
+        Key: key,
+        Body: text,
+        ContentType: 'text/plain'
+    });
+    await getS3Client().send(command);
+    console.log(`DEBUG: Saved extracted text to S3: ${key}`);
+    return key;
+};
+
 // Helper function: Extract text using AWS Textract
 const extractWithTextract = async (bucket: string, key: string): Promise<string> => {
     const startCommand = new StartDocumentTextDetectionCommand({
@@ -288,12 +301,9 @@ export const generateModuleRubrics = async (text: string): Promise<string[]> => 
     return rubrics;
 };
 
-// Main function called by assessmentController
-export const generateScenarioFromText = async (text: string, departmentName: string = 'General', departmentId?: string) => {
-    const firstLine = text.split('\n')[0].substring(0, 100).trim() || 'Training Module';
-    const moduleName = firstLine.replace(/[^a-zA-Z0-9\s]/g, '').trim() || 'Training Module';
-
-    console.log('DEBUG: Fetching rubrics from database...');
+// Main function called by assessmentController - generates ONLY rubrics, not full scenario
+export const generateRubricsFromText = async (text: string, departmentId?: string) => {
+    console.log('DEBUG: Generating rubrics from text...');
     const genericRubrics = await fetchGenericRubrics();
 
     let departmentRubrics: string[] = [];
@@ -310,16 +320,7 @@ export const generateScenarioFromText = async (text: string, departmentName: str
     };
 
     console.log('DEBUG: Final rubric structure:', JSON.stringify(rubric, null, 2));
-
-    return {
-        title: moduleName,
-        scenario_text: text.substring(0, 500) + '...',
-        task: "Review the training material and complete the assessment.",
-        difficulty: "Normal",
-        category: moduleName,
-        rubric: rubric,
-        hint: "Focus on the key concepts covered in the material."
-    };
+    return rubric;
 };
 
 // --- Employee Flow AI Functions ---
