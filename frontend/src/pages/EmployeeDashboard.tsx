@@ -37,9 +37,10 @@ export const EmployeeDashboard: React.FC = () => {
 
     const fetchChallenges = async () => {
         try {
-            // Fetch Main Challenges
-            const mainRes = await fetch(`${API_BASE_URL}/api/challenges/main`);
+            // Fetch Main Challenges - now filtered by department via userId
+            const mainRes = await fetch(`${API_BASE_URL}/api/challenges/main${user?.id ? `?userId=${user.id}` : ''}`);
             const mainData = await mainRes.json();
+            console.log('DEBUG: fetchChallenges - received', mainData.data?.length, 'main challenges');
             if (mainData.success) setMainChallenges(mainData.data);
 
             // Fetch Personalized Challenges
