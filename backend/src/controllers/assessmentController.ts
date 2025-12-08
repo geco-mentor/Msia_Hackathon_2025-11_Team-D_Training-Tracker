@@ -88,21 +88,32 @@ export const processFile = async (req: Request, res: Response) => {
         const rubric = await generateRubricsFromText(text, departmentId);
         console.log('DEBUG: Step 3 COMPLETE - Generated rubrics:', JSON.stringify(rubric, null, 2));
 
-        // Step 4: Insert into database with minimal fields
-        console.log('DEBUG: Step 4 - Inserting into database...');
+        // Step 4: Check if userId is an employee (creator_id FK references employees)
+        console.log('DEBUG: Step 4 - Checking if userId is an employee...');
+        const { data: employeeCheck } = await supabase
+            .from('employees')
+            .select('id')
+            .eq('id', userId)
+            .single();
+
+        const creatorId = employeeCheck?.id || null;  // Only set if user is employee
+        console.log('DEBUG: Creator ID resolved to:', creatorId, '(null means admin upload)');
+
+        // Step 5: Insert into database
+        console.log('DEBUG: Step 5 - Inserting into database...');
         const insertData = {
-            title: '',  // Empty - will be set later when assessment is generated
-            scenario_text: '',  // Empty - will be set later when assessment is generated
-            task: '',  // Empty - will be set later when assessment is generated
+            title: originalFileName.replace(/_/g, ' ').replace(/\d+\s*/, '').trim() || 'Training Module',  // Use filename as title
+            scenario_text: text.substring(0, 5000),  // Store first 5000 chars of extracted text
+            task: '',
             difficulty: 'Normal',
             rubric: rubric,
-            hint: '',  // Empty - will be set later when assessment is generated
-            creator_id: userId,
+            hint: '',
+            creator_id: creatorId,  // null for admin, employee ID for employees
             source_file: key,
-            extracted_text_file: extractedTextKey,  // New field: S3 key for extracted text
-            status: 'draft',
+            extracted_text_file: extractedTextKey,
+            status: 'published',  // Published immediately so employees can see it
             type: 'text',
-            category: 'Training',  // Default category
+            category: 'Training',
             skill: 'General',
             department_id: departmentId,
             post_assessment_date: postAssessmentDate
@@ -120,7 +131,7 @@ export const processFile = async (req: Request, res: Response) => {
             throw error;
         }
 
-        console.log('DEBUG: Step 4 COMPLETE - Inserted scenario ID:', data.id);
+        console.log('DEBUG: Step 5 COMPLETE - Inserted scenario ID:', data.id);
         console.log('=== PROCESS FILE SUCCESS ===');
 
         res.json({

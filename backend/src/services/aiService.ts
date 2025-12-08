@@ -15,9 +15,9 @@ console.log(`[aiService] AWS_ACCESS_KEY_ID: ${process.env.AWS_ACCESS_KEY_ID ? 'S
 const client = new BedrockRuntimeClient({ region });
 
 const MODELS = {
-    GENERATION: "amazon.titan-text-express-v1",
+    GENERATION: "qwen.qwen3-235b-a22b-2507-v1:0",
     EVALUATION: [
-        "amazon.titan-text-express-v1",
+        "qwen.qwen3-235b-a22b-2507-v1:0",
         "amazon.titan-text-lite-v1",
         "qwen.qwen3-32b-v1:0"
     ]

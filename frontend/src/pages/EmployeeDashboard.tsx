@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { Terminal, Cpu, Activity, LogOut, Plus, Trash2, Sparkles } from 'lucide-react';
 import { ChallengeCard } from '../components/ChallengeCard';
 import { ChallengeModal } from '../components/ChallengeModal';
+import { PreAssessmentModal } from '../components/PreAssessmentModal';
+import { PostAssessmentModal } from '../components/PostAssessmentModal';
 import { GoalSetter } from '../components/GoalSetter';
 import { API_BASE_URL } from '../config';
 
@@ -13,6 +15,12 @@ export const EmployeeDashboard: React.FC = () => {
     const [mainChallenges, setMainChallenges] = useState<any[]>([]);
     const [personalizedChallenges, setPersonalizedChallenges] = useState<any[]>([]);
     const [selectedChallenge, setSelectedChallenge] = useState<any | null>(null);
+    const [showPreAssessment, setShowPreAssessment] = useState(false);
+    const [showPostAssessment, setShowPostAssessment] = useState(false);
+    const [preAssessmentScenario, setPreAssessmentScenario] = useState<any | null>(null);
+    const [postAssessmentScenario, setPostAssessmentScenario] = useState<any | null>(null);
+    const [preAssessmentStatuses, setPreAssessmentStatuses] = useState<Record<string, boolean>>({});
+    const [postAssessmentStatuses, setPostAssessmentStatuses] = useState<Record<string, boolean>>({});
     const [generating, setGenerating] = useState(false);
     const [keyword, setKeyword] = useState('');
     const [stats] = useState({
@@ -45,10 +53,101 @@ export const EmployeeDashboard: React.FC = () => {
         }
     };
 
+    // Check pre-assessment status for a challenge
+    const checkPreAssessmentStatus = async (scenarioId: string): Promise<boolean> => {
+        if (preAssessmentStatuses[scenarioId] !== undefined) {
+            return preAssessmentStatuses[scenarioId];
+        }
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/assessments/pre-assessment/status/${user?.id}/${scenarioId}`);
+            const data = await res.json();
+            setPreAssessmentStatuses(prev => ({ ...prev, [scenarioId]: data.completed || false }));
+            return data.completed || false;
+        } catch (error) {
+            console.error('Failed to check pre-assessment status', error);
+            return false;
+        }
+    };
+
+    // Handle challenge card click - check pre-assessment first
+    const handleChallengeClick = async (challenge: any) => {
+        console.log('Challenge clicked:', challenge.id);
+        const isCompleted = await checkPreAssessmentStatus(challenge.id);
+
+        if (isCompleted) {
+            // Pre-assessment completed, open POST-assessment modal
+            setPostAssessmentScenario(challenge);
+            setShowPostAssessment(true);
+        } else {
+            // Need to complete pre-assessment first
+            setPreAssessmentScenario(challenge);
+            setShowPreAssessment(true);
+        }
+    };
+
+    // Handle pre-assessment completion
+    const handlePreAssessmentComplete = (baselineScore: number) => {
+        console.log('Pre-assessment completed with score:', baselineScore);
+        if (preAssessmentScenario) {
+            setPreAssessmentStatuses(prev => ({ ...prev, [preAssessmentScenario.id]: true }));
+            setShowPreAssessment(false);
+            setPreAssessmentScenario(null);
+            // Don't open post-assessment automatically - user will click card again
+        }
+    };
+
+    // Handle post-assessment completion
+    const handlePostAssessmentComplete = (score: number) => {
+        console.log('Post-assessment completed with score:', score);
+        setShowPostAssessment(false);
+        setPostAssessmentScenario(null);
+        // Could update challenge card to show "COMPLETED" status
+        fetchChallenges(); // Refresh to update UI
+    };
+
+    // Fetch all assessment statuses for all challenges
+    const fetchAllAssessmentStatuses = async (challenges: any[]) => {
+        if (!user?.id || challenges.length === 0) return;
+
+        const preStatuses: Record<string, boolean> = {};
+        const postStatuses: Record<string, boolean> = {};
+
+        for (const challenge of challenges) {
+            try {
+                // Check pre-assessment status
+                const preRes = await fetch(`${API_BASE_URL}/api/assessments/pre-assessment/status/${user.id}/${challenge.id}`);
+                const preData = await preRes.json();
+                preStatuses[challenge.id] = preData.completed || false;
+
+                // Check post-assessment status (completed post-assessments)
+                const postRes = await fetch(`${API_BASE_URL}/api/assessments/post-assessment/status/${user.id}/${challenge.id}`);
+                const postData = await postRes.json();
+                postStatuses[challenge.id] = postData.completed || false;
+            } catch (error) {
+                console.error('Failed to check status for challenge', challenge.id, error);
+                preStatuses[challenge.id] = false;
+                postStatuses[challenge.id] = false;
+            }
+        }
+
+        setPreAssessmentStatuses(preStatuses);
+        setPostAssessmentStatuses(postStatuses);
+    };
+
     useEffect(() => {
-        fetchChallenges();
-        // Fetch stats (mock for now or existing endpoint)
+        const loadData = async () => {
+            await fetchChallenges();
+        };
+        loadData();
     }, [user?.id]);
+
+    // Fetch statuses when challenges are loaded
+    useEffect(() => {
+        const allChallenges = [...mainChallenges, ...personalizedChallenges];
+        if (allChallenges.length > 0 && user?.id) {
+            fetchAllAssessmentStatuses(allChallenges);
+        }
+    }, [mainChallenges, personalizedChallenges, user?.id]);
 
     const generatePersonalized = async () => {
         if (!keyword) return;
@@ -138,7 +237,9 @@ export const EmployeeDashboard: React.FC = () => {
                                     <ChallengeCard
                                         key={challenge.id}
                                         challenge={challenge}
-                                        onClick={() => setSelectedChallenge(challenge)}
+                                        onClick={() => handleChallengeClick(challenge)}
+                                        preAssessmentCompleted={preAssessmentStatuses[challenge.id]}
+                                        postAssessmentCompleted={postAssessmentStatuses[challenge.id]}
                                     />
                                 ))}
                                 {mainChallenges.length === 0 && (
@@ -181,7 +282,9 @@ export const EmployeeDashboard: React.FC = () => {
                                     <div key={challenge.id} className="relative group">
                                         <ChallengeCard
                                             challenge={challenge}
-                                            onClick={() => setSelectedChallenge(challenge)}
+                                            onClick={() => handleChallengeClick(challenge)}
+                                            preAssessmentCompleted={preAssessmentStatuses[challenge.id]}
+                                            postAssessmentCompleted={postAssessmentStatuses[challenge.id]}
                                         />
                                         <button
                                             onClick={(e) => deletePersonalized(challenge.id, e)}
@@ -248,6 +351,28 @@ export const EmployeeDashboard: React.FC = () => {
                     </div>
                 </div>
             </div>
+
+            {showPreAssessment && preAssessmentScenario && (
+                <PreAssessmentModal
+                    scenario={preAssessmentScenario}
+                    onClose={() => {
+                        setShowPreAssessment(false);
+                        setPreAssessmentScenario(null);
+                    }}
+                    onComplete={handlePreAssessmentComplete}
+                />
+            )}
+
+            {showPostAssessment && postAssessmentScenario && (
+                <PostAssessmentModal
+                    scenario={postAssessmentScenario}
+                    onClose={() => {
+                        setShowPostAssessment(false);
+                        setPostAssessmentScenario(null);
+                    }}
+                    onComplete={handlePostAssessmentComplete}
+                />
+            )}
 
             {selectedChallenge && (
                 <ChallengeModal

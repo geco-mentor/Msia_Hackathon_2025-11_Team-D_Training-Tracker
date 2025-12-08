@@ -13,6 +13,7 @@ export interface Employee {
     employee_id: string;
     password_hash?: string; // Not exposed in API responses
     job_title: string;
+    job_description?: string;
     job_id?: string;
     department?: string;
     skills_profile: Record<string, number>;
@@ -40,6 +41,7 @@ export interface RegisterRequestBody {
     password: string;
     job_title: string;
     department?: string;
+    job_description?: string;
 }
 
 export interface LoginRequestBody {
@@ -58,6 +60,7 @@ export interface AuthResponse {
         role: 'employee' | 'admin';
         employee_id?: string;
         job_title?: string;
+        job_description?: string;
         department?: string;
         ranking?: number;
         win_rate?: number;

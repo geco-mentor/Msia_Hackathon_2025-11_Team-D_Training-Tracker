@@ -255,50 +255,66 @@ export const fetchDepartmentRubrics = async (departmentId: string): Promise<stri
 
 // AI generates ONLY the 3 module-specific rubrics from the uploaded content
 export const generateModuleRubrics = async (text: string): Promise<string[]> => {
-    const prompt = `
-    Analyze this training material and extract exactly 3 key topics/concepts that should be evaluated.
+    const maxRetries = 5;
+    let lastError = '';
 
-    Training Material:
-    ${text.substring(0, 6000)}
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        const temperature = Math.min(1.0, 0.5 + (attempt * 0.1));
 
-    Return ONLY a JSON array of exactly 3 strings, each being a specific concept from the text.
-    Example: ["Password Security", "Phishing Recognition", "Data Encryption"]
+        const prompt = `Extract exactly 3 key topics from this training material.
 
-    Rules:
-    - Extract actual topics mentioned in the text
-    - Each must be different
-    - Keep them concise (2-4 words each)
-    - Return ONLY the JSON array, nothing else
-    `;
+Training Material:
+${text.substring(0, 6000)}
 
-    const command = new ConverseCommand({
-        modelId: "amazon.titan-text-express-v1",
-        messages: [{ role: "user", content: [{ text: prompt }] }],
-        inferenceConfig: { maxTokens: 200, temperature: 0 }
-    });
+Return ONLY a JSON array of 3 strings.
+Example: ["Password Security", "Phishing Recognition", "Data Encryption"]`;
 
-    console.log('DEBUG: Calling Bedrock for module rubrics...');
-    const response = await getBedrockClient().send(command);
+        const command = new ConverseCommand({
+            modelId: "qwen.qwen3-235b-a22b-2507-v1:0",
+            messages: [{ role: "user", content: [{ text: prompt }] }],
+            inferenceConfig: { maxTokens: 200, temperature }
+        });
 
-    const content = response.output?.message?.content?.[0]?.text || "[]";
-    console.log("DEBUG: Raw AI Module Rubrics Response:", content);
+        try {
+            console.log(`DEBUG: Generating module rubrics, attempt ${attempt}/${maxRetries}`);
+            const response = await getBedrockClient().send(command);
+            const content = response.output?.message?.content?.[0]?.text || "[]";
+            console.log("DEBUG: Raw AI Module Rubrics Response:", content.substring(0, 200));
 
-    const firstOpen = content.indexOf('[');
-    const lastClose = content.lastIndexOf(']');
+            // Try to parse JSON array
+            const firstOpen = content.indexOf('[');
+            const lastClose = content.lastIndexOf(']');
 
-    if (firstOpen === -1 || lastClose === -1 || lastClose <= firstOpen) {
-        throw new Error(`AI did not return valid array. Response: ${content}`);
+            if (firstOpen !== -1 && lastClose > firstOpen) {
+                const jsonString = content.substring(firstOpen, lastClose + 1);
+                const rubrics = JSON.parse(jsonString);
+
+                if (Array.isArray(rubrics) && rubrics.length >= 3) {
+                    console.log('DEBUG: Module rubrics generated:', rubrics.slice(0, 3));
+                    return rubrics.slice(0, 3).map((r: any) => String(r));
+                }
+            }
+
+            // Try extracting items from text
+            const itemMatches = content.match(/["']([^"']+)["']/g);
+            if (itemMatches && itemMatches.length >= 3) {
+                const rubrics = itemMatches.slice(0, 3).map(m => m.replace(/["']/g, ''));
+                console.log('DEBUG: Extracted rubrics from text:', rubrics);
+                return rubrics;
+            }
+
+            lastError = 'Could not parse rubrics from response';
+        } catch (e: any) {
+            console.log(`DEBUG: Attempt ${attempt} failed:`, e.message);
+            lastError = e.message;
+        }
+
+        if (attempt < maxRetries) {
+            await new Promise(r => setTimeout(r, 500));
+        }
     }
 
-    const jsonString = content.substring(firstOpen, lastClose + 1);
-    const rubrics = JSON.parse(jsonString);
-
-    if (!Array.isArray(rubrics) || rubrics.length !== 3) {
-        throw new Error(`AI returned invalid rubrics array. Expected 3 items, got: ${JSON.stringify(rubrics)}`);
-    }
-
-    console.log('DEBUG: Module rubrics generated:', rubrics);
-    return rubrics;
+    throw new Error(`Failed to generate module rubrics after ${maxRetries} attempts: ${lastError}`);
 };
 
 // Main function called by assessmentController - generates ONLY rubrics, not full scenario
@@ -348,7 +364,7 @@ export const generateAdaptiveQuestion = async (contextText: string, history: { q
     `;
 
     const command = new ConverseCommand({
-        modelId: "amazon.titan-text-express-v1",
+        modelId: "qwen.qwen3-235b-a22b-2507-v1:0",
         messages: [{ role: "user", content: [{ text: prompt }] }],
         inferenceConfig: { maxTokens: 500, temperature: 0.7 }
     });
@@ -387,7 +403,7 @@ export const generatePostAssessmentQuestions = async (contextText: string) => {
     `;
 
     const command = new ConverseCommand({
-        modelId: "amazon.titan-text-express-v1",
+        modelId: "qwen.qwen3-235b-a22b-2507-v1:0",
         messages: [{ role: "user", content: [{ text: prompt }] }],
         inferenceConfig: { maxTokens: 2000, temperature: 0 }
     });
@@ -449,7 +465,7 @@ export const evaluateAssessment = async (
     `;
 
     const command = new ConverseCommand({
-        modelId: "amazon.titan-text-express-v1",
+        modelId: "qwen.qwen3-235b-a22b-2507-v1:0",
         messages: [{ role: "user", content: [{ text: prompt }] }],
         inferenceConfig: { maxTokens: 1500, temperature: 0 }
     });
@@ -468,4 +484,513 @@ export const evaluateAssessment = async (
         console.error("Failed to parse Evaluation", e);
         throw new Error("Failed to parse evaluation from AI");
     }
+};
+
+// ============================================
+// PRE-ASSESSMENT - Familiarity Check & Baseline
+// ============================================
+
+/**
+ * Generate a pre-assessment question based on the user's job description and topic context.
+ * Questions should help determine the employee's baseline knowledge.
+ */
+export const generatePreAssessmentQuestion = async (
+    jobDescription: string,
+    topicContext: string,
+    history: { question: string, answer: string }[]
+): Promise<string> => {
+    const historyText = history.length > 0
+        ? history.map((h, i) => `Q${i + 1}: ${h.question}\nA${i + 1}: ${h.answer}`).join('\n\n')
+        : "No previous questions asked yet.";
+
+    const prompt = `
+    You are an expert assessor determining an employee's baseline knowledge.
+
+    EMPLOYEE'S JOB:
+    ${jobDescription.substring(0, 1500)}
+
+    TRAINING TOPIC:
+    ${topicContext.substring(0, 3000)}
+
+    PREVIOUS Q&A:
+    ${historyText}
+
+    TASK:
+    Generate ONE question to assess the employee's existing knowledge of the training topic.
+    - Question should be relevant to BOTH their job role AND the training topic
+    - Question should be clear and answerable in 1-3 sentences
+    - If there's previous Q&A, ask something different that builds on or explores a different aspect
+    - Difficulty should be appropriate for determining baseline (not too easy, not too advanced)
+
+    IMPORTANT: Return ONLY the question text. No labels, no explanations.
+    `;
+
+    const command = new ConverseCommand({
+        modelId: "qwen.qwen3-235b-a22b-2507-v1:0",
+        messages: [{ role: "user", content: [{ text: prompt }] }],
+        inferenceConfig: { maxTokens: 300, temperature: 0.5 }
+    });
+
+    console.log('DEBUG: Generating pre-assessment question...');
+    const response = await getBedrockClient().send(command);
+    let text = response.output?.message?.content?.[0]?.text || "Error generating question.";
+
+    // Clean up any prefixes the AI might add
+    const match = text.match(/(?:Question:|Here is the question:|The question is:|\[Question\])\s*(.*)/is);
+    if (match && match[1]) {
+        text = match[1].trim();
+    }
+    text = text.split(/Answer:/i)[0].trim();
+
+    console.log('DEBUG: Generated pre-assessment question:', text);
+    return text;
+};
+
+/**
+ * Evaluate a pre-assessment answer and determine if more questions are needed.
+ * Returns score and whether the baseline has been determined with confidence.
+ */
+export const evaluatePreAssessmentAnswer = async (
+    question: string,
+    answer: string,
+    topicContext: string,
+    currentQuestionCount: number
+): Promise<{
+    score: number;
+    feedback: string;
+    needsMoreQuestions: boolean;
+    confidence: 'low' | 'medium' | 'high';
+}> => {
+    const prompt = `
+    You are evaluating an employee's pre-assessment answer to determine their baseline knowledge.
+
+    TRAINING TOPIC:
+    ${topicContext.substring(0, 2000)}
+
+    QUESTION:
+    ${question}
+
+    EMPLOYEE'S ANSWER:
+    ${answer}
+
+    CURRENT QUESTION NUMBER: ${currentQuestionCount} of max 4
+
+    TASK:
+    1. Score the answer from 0-100 based on accuracy and understanding
+    2. Provide brief feedback (1-2 sentences)
+    3. Determine if more questions are needed to confidently assess baseline
+       - If score is very low (<30) or very high (>80), fewer questions needed
+       - If score is in middle range, more questions help clarify baseline
+       - Max 4 questions total
+    4. Rate your confidence in determining baseline: low, medium, or high
+
+    Return JSON:
+    {
+        "score": 75,
+        "feedback": "Good understanding of basics, but missed some nuances.",
+        "needsMoreQuestions": true,
+        "confidence": "medium"
+    }
+
+    IMPORTANT: Return ONLY the valid JSON object.
+    `;
+
+    const command = new ConverseCommand({
+        modelId: "qwen.qwen3-235b-a22b-2507-v1:0",
+        messages: [{ role: "user", content: [{ text: prompt }] }],
+        inferenceConfig: { maxTokens: 500, temperature: 0 }
+    });
+
+    console.log('DEBUG: Evaluating pre-assessment answer...');
+    const response = await getBedrockClient().send(command);
+    const content = response.output?.message?.content?.[0]?.text || "{}";
+
+    try {
+        const firstOpen = content.indexOf('{');
+        const lastClose = content.lastIndexOf('}');
+        if (firstOpen !== -1 && lastClose !== -1) {
+            const parsed = JSON.parse(content.substring(firstOpen, lastClose + 1));
+            console.log('DEBUG: Pre-assessment evaluation result:', parsed);
+
+            // Force completion after 4 questions
+            if (currentQuestionCount >= 4) {
+                parsed.needsMoreQuestions = false;
+                parsed.confidence = 'high';
+            }
+
+            return parsed;
+        }
+        return JSON.parse(content.replace(/```json/g, '').replace(/```/g, '').trim());
+    } catch (e) {
+        console.error("Failed to parse pre-assessment evaluation. Raw content:", content);
+        // Return default response on parse error
+        return {
+            score: 50,
+            feedback: "Unable to evaluate answer.",
+            needsMoreQuestions: currentQuestionCount < 2,
+            confidence: 'low'
+        };
+    }
+};
+
+// ============================================
+// ENHANCED ASSESSMENT - Micro-Scenarios & Adaptive
+// ============================================
+
+/**
+ * Generate a micro-scenario (1-3 sentences) for assessment.
+ * Personalizes based on job description and uses curriculum content.
+ * Returns scenario, question, type (text/mcq), options if MCQ, and hint.
+ */
+export const generateMicroScenario = async (
+    curriculum: string,
+    jobDescription: string,
+    difficulty: 'Easy' | 'Normal' | 'Hard',
+    rubrics: { generic?: string[], department?: string[], module?: string[] },
+    history: { scenario: string, question: string, answer: string }[] = []
+): Promise<{
+    scenario: string;
+    question: string;
+    type: 'text';
+    hint: string;
+}> => {
+    const previousQuestions = history.map(h => h.question.toLowerCase());
+
+    // Check if question is too similar to previous ones
+    const isSimilar = (newQuestion: string): boolean => {
+        const newLower = newQuestion.toLowerCase();
+        for (const prev of previousQuestions) {
+            // Check for exact match or high word overlap
+            if (newLower === prev) return true;
+            const newWords = new Set(newLower.split(/\s+/).filter(w => w.length > 3));
+            const prevWords = new Set(prev.split(/\s+/).filter(w => w.length > 3));
+            const overlap = [...newWords].filter(w => prevWords.has(w)).length;
+            if (overlap >= Math.min(newWords.size, prevWords.size) * 0.7) return true;
+        }
+        return false;
+    };
+
+    const maxRetries = 5;
+    let lastFailureReason: 'duplicate' | 'parse_failed' = 'parse_failed';
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        const temperature = Math.min(1.0, 0.5 + (attempt * 0.1)); // 0.6, 0.7, 0.8, 0.9, 1.0
+
+        const historyText = history.length > 0
+            ? history.map((h) => `- "${h.question}"`).join('\n')
+            : "None yet";
+
+        const prompt = `Create a workplace scenario question for training assessment.
+
+JOB: ${jobDescription.substring(0, 200)}
+TRAINING CONTENT: ${curriculum.substring(0, 2000)}
+DIFFICULTY: ${difficulty}
+QUESTION NUMBER: ${history.length + 1}
+
+ALREADY ASKED (DO NOT REPEAT OR ASK SIMILAR):
+${historyText}
+
+IMPORTANT: Create a completely DIFFERENT question. Focus on a NEW aspect of the training material not covered above.
+
+Output ONLY valid JSON:
+{"scenario":"brief workplace situation","question":"your unique question","hint":"helpful hint"}`;
+
+        const command = new ConverseCommand({
+            modelId: "qwen.qwen3-235b-a22b-2507-v1:0",
+            messages: [{ role: "user", content: [{ text: prompt }] }],
+            inferenceConfig: { maxTokens: 500, temperature }
+        });
+
+        console.log(`DEBUG: Generating scenario, attempt ${attempt}/${maxRetries}, temp=${temperature}`);
+        const response = await getBedrockClient().send(command);
+        const content = response.output?.message?.content?.[0]?.text || "{}";
+        console.log('DEBUG: Raw AI response:', content.substring(0, 150));
+
+        try {
+            // Try JSON parsing
+            const firstOpen = content.indexOf('{');
+            const lastClose = content.lastIndexOf('}');
+            if (firstOpen !== -1 && lastClose !== -1) {
+                const parsed = JSON.parse(content.substring(firstOpen, lastClose + 1));
+                if (parsed.scenario && parsed.question) {
+                    // Check for duplicates
+                    if (history.length > 0 && isSimilar(parsed.question)) {
+                        console.log('DEBUG: Question too similar, retrying...');
+                        continue;
+                    }
+                    console.log('DEBUG: Unique question generated:', parsed.question.substring(0, 50));
+                    return {
+                        scenario: parsed.scenario,
+                        question: parsed.question,
+                        type: 'text',
+                        hint: parsed.hint || 'Think about how this applies to your daily work.'
+                    }
+                }
+            }
+        } catch (e) {
+            console.log('DEBUG: JSON parse failed, trying regex extraction');
+        }
+
+        // Text extraction with multiple patterns
+        let scenario = '';
+        let question = '';
+        let hint = '';
+
+        // Pattern 1: labeled fields
+        const scenarioMatch = content.match(/scenario[:\s\-]*["']?([^"'\n]+)/i) ||
+            content.match(/situation[:\s\-]*["']?([^"'\n]+)/i) ||
+            content.match(/\*\*scenario\*\*[:\s]*([^\n]+)/i);
+        const questionMatch = content.match(/question[:\s\-]*["']?([^"']+?)(?:\n|$|")/i) ||
+            content.match(/\*\*question\*\*[:\s]*([^\n]+)/i);
+        const hintMatch = content.match(/hint[:\s\-]*["']?([^"'\n]+)/i);
+
+        if (scenarioMatch) scenario = scenarioMatch[1].trim().replace(/["\*]/g, '');
+        if (questionMatch) question = questionMatch[1].trim().replace(/["\*]/g, '');
+        if (hintMatch) hint = hintMatch[1].trim();
+
+        // Pattern 2: If no labeled fields, try to find any question-like sentence (ends with ?)
+        if (!question) {
+            const questionSentence = content.match(/([A-Z][^.!?]*\?)/);
+            if (questionSentence) {
+                question = questionSentence[1].trim();
+            }
+        }
+
+        // Pattern 3: If we have a question but no scenario, use the first sentence
+        if (question && !scenario) {
+            const firstSentence = content.match(/^[^.!?]+[.!?]/m);
+            if (firstSentence && firstSentence[0] !== question) {
+                scenario = firstSentence[0].trim();
+            }
+        }
+
+        // Pattern 4: Split content into lines and try to find scenario/question
+        if (!scenario || !question) {
+            const lines = content.split('\n').filter(l => l.trim().length > 10);
+            if (lines.length >= 2) {
+                if (!scenario) scenario = lines[0].replace(/^[\d\.\-\*\s]+/, '').trim();
+                if (!question) {
+                    // Find a line with a question mark or use second line
+                    const questionLine = lines.find(l => l.includes('?')) || lines[1];
+                    question = questionLine.replace(/^[\d\.\-\*\s]+/, '').trim();
+                }
+            }
+        }
+
+        if (scenario && question && scenario.length > 5 && question.length > 10) {
+            if (history.length > 0 && isSimilar(question)) {
+                console.log('DEBUG: Extracted question too similar, retrying...');
+                lastFailureReason = 'duplicate';
+                continue;
+            }
+            console.log('DEBUG: Successfully extracted scenario and question');
+            return {
+                scenario: scenario.substring(0, 200),
+                question: question.substring(0, 300),
+                type: 'text',
+                hint: hint || 'Consider applying what you learned in the training.'
+            };
+        }
+
+        // Neither JSON nor regex worked
+        lastFailureReason = 'parse_failed';
+        console.log('DEBUG: Could not extract scenario/question from response. Content:', content.substring(0, 200));
+    }
+
+    // No fallback - throw error with actual reason
+    const errorMsg = lastFailureReason === 'duplicate'
+        ? `Failed to generate unique question after ${maxRetries} attempts. All generated questions were too similar to previous ones.`
+        : `Failed to generate question after ${maxRetries} attempts. AI responses could not be parsed.`;
+    throw new Error(errorMsg);
+};
+
+/**
+ * Evaluate an answer using the provided rubrics.
+ * Returns score, feedback, and whether answer is correct.
+ */
+export const evaluateWithRubrics = async (
+    scenario: string,
+    question: string,
+    answer: string,
+    correctAnswer: string | number | undefined,
+    rubrics: { generic?: string[], department?: string[], module?: string[] },
+    curriculum: string,
+    questionType: 'text' | 'mcq'
+): Promise<{
+    score: number;
+    isCorrect: boolean;
+    feedback: string;
+    rubricScores: { generic: number, department: number, module: number };
+}> => {
+    // Ultra-simple prompt - just ask for a score
+    const prompt = `Rate this answer 0-100 and give brief feedback.
+
+Q: ${question.substring(0, 100)}
+A: ${answer.substring(0, 200)}
+
+Reply ONLY with: {"score":NUMBER,"feedback":"TEXT"}`;
+
+    const maxRetries = 3;
+    let lastContent = '';
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            console.log(`DEBUG: Evaluating answer, attempt ${attempt}/${maxRetries}`);
+
+            const command = new ConverseCommand({
+                modelId: "qwen.qwen3-235b-a22b-2507-v1:0",
+                messages: [{ role: "user", content: [{ text: prompt }] }],
+                inferenceConfig: { maxTokens: 200, temperature: 0 }
+            });
+
+            const response = await getBedrockClient().send(command);
+            lastContent = response.output?.message?.content?.[0]?.text || "";
+            console.log('DEBUG: Raw evaluation response:', lastContent.substring(0, 150));
+
+            // Try to extract score from various formats
+            let score = 50; // Default
+            let feedback = 'Answer received.';
+
+            // Try JSON parsing first
+            const jsonMatch = lastContent.match(/\{[^}]+\}/);
+            if (jsonMatch) {
+                try {
+                    const parsed = JSON.parse(jsonMatch[0]);
+                    if (parsed.score !== undefined) {
+                        score = Number(parsed.score) || 50;
+                    }
+                    if (parsed.feedback) {
+                        feedback = String(parsed.feedback);
+                    }
+                } catch (e) {
+                    // JSON parse failed, try regex
+                }
+            }
+
+            // Try regex extraction if JSON failed
+            if (score === 50) {
+                const scoreMatch = lastContent.match(/score["\s:]+(\d+)/i) ||
+                    lastContent.match(/(\d+)\s*(?:out of|\/)\s*100/i) ||
+                    lastContent.match(/(\d+)%/);
+                if (scoreMatch) {
+                    score = parseInt(scoreMatch[1], 10);
+                }
+            }
+
+            // Extract feedback if not found
+            if (feedback === 'Answer received.') {
+                const feedbackMatch = lastContent.match(/feedback["\s:]+["']?([^"'\n]+)/i);
+                if (feedbackMatch) {
+                    feedback = feedbackMatch[1].trim();
+                } else if (lastContent.length > 20) {
+                    // Use part of the response as feedback
+                    feedback = lastContent.replace(/[{}"]/g, '').substring(0, 150).trim();
+                }
+            }
+
+            // Ensure score is in valid range
+            score = Math.max(0, Math.min(100, score));
+            const isCorrect = score >= 60;
+
+            console.log('DEBUG: Evaluation result - Score:', score);
+            return {
+                score,
+                isCorrect,
+                feedback: feedback || 'Thank you for your answer.',
+                rubricScores: { generic: score, department: score, module: score }
+            };
+
+        } catch (e: any) {
+            console.log(`DEBUG: Attempt ${attempt} failed:`, e.message);
+        }
+
+        // Wait before retry
+        if (attempt < maxRetries) {
+            await new Promise(r => setTimeout(r, 300));
+        }
+    }
+
+    // No fallback - throw error if all retries fail
+    throw new Error(`Failed to evaluate answer after ${maxRetries} attempts`);
+};
+
+/**
+ * Generate personalized feedback after completing an assessment.
+ * Summarizes performance, identifies strengths/weaknesses, and provides recommendations.
+ */
+export const generatePersonalizedFeedback = async (
+    jobDescription: string,
+    answers: { scenario: string, question: string, answer: string, score: number, feedback: string }[],
+    rubrics: { generic?: string[], department?: string[], module?: string[] },
+    overallScore: number
+): Promise<{
+    summary: string;
+    strengths: string[];
+    weaknesses: string[];
+    recommendations: string[];
+}> => {
+    const avgScore = answers.reduce((s, a) => s + a.score, 0) / answers.length;
+    const goodAnswers = answers.filter(a => a.score >= 70);
+    const weakAnswers = answers.filter(a => a.score < 50);
+
+    // Simplified prompt - much more direct
+    const prompt = `Generate assessment feedback as JSON.
+
+Job: ${jobDescription.substring(0, 200)}
+Score: ${overallScore}%
+Good answers: ${goodAnswers.length}/${answers.length}
+Topics done well: ${goodAnswers.slice(0, 2).map(a => a.question.substring(0, 50)).join('; ')}
+Topics to improve: ${weakAnswers.slice(0, 2).map(a => a.question.substring(0, 50)).join('; ')}
+
+Output ONLY this JSON:
+{"summary":"2 sentence performance summary","strengths":["strength1","strength2"],"weaknesses":["weakness1"],"recommendations":["recommendation1","recommendation2"]}`;
+
+    const maxRetries = 3;
+    let lastError = '';
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            console.log(`DEBUG: Generating feedback, attempt ${attempt}/${maxRetries}`);
+
+            const command = new ConverseCommand({
+                modelId: "qwen.qwen3-235b-a22b-2507-v1:0",
+                messages: [{ role: "user", content: [{ text: prompt }] }],
+                inferenceConfig: { maxTokens: 400, temperature: 0.4 }
+            });
+
+            const response = await getBedrockClient().send(command);
+            const content = response.output?.message?.content?.[0]?.text || "";
+            console.log('DEBUG: Raw feedback response:', content.substring(0, 150));
+
+            // Extract JSON
+            const firstOpen = content.indexOf('{');
+            const lastClose = content.lastIndexOf('}');
+            if (firstOpen !== -1 && lastClose !== -1) {
+                const jsonStr = content.substring(firstOpen, lastClose + 1);
+                const parsed = JSON.parse(jsonStr);
+
+                // Validate required fields
+                if (parsed.summary && Array.isArray(parsed.strengths) && Array.isArray(parsed.recommendations)) {
+                    console.log('DEBUG: Successfully generated feedback');
+                    return {
+                        summary: parsed.summary,
+                        strengths: parsed.strengths || [],
+                        weaknesses: parsed.weaknesses || [],
+                        recommendations: parsed.recommendations || []
+                    };
+                }
+            }
+            lastError = 'Invalid JSON structure';
+        } catch (e: any) {
+            lastError = e.message;
+            console.log(`DEBUG: Attempt ${attempt} failed:`, lastError);
+        }
+
+        // Wait before retry
+        if (attempt < maxRetries) {
+            await new Promise(r => setTimeout(r, 500));
+        }
+    }
+
+    throw new Error(`Failed to generate feedback after ${maxRetries} attempts: ${lastError}`);
 };

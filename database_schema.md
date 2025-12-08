@@ -14,6 +14,7 @@ We use 7 main tables to map your data:
 6.  **goals**: Stores employee learning goals.
 7.  **departments**: Stores department info including department-specific rubrics.
 8.  **general_rubrics**: Stores static generic rubrics (same for all assessments).
+9.  **pre_assessments**: Tracks employee pre-assessment completion (familiarity check + baseline questions).
 
 ## SQL Setup
 
@@ -41,6 +42,7 @@ create table if not exists public.employees (
   password_hash text not null,
   job_id uuid references public.jobs(id) on delete set null,
   job_title text, -- Denormalized or fallback
+  job_description text, -- AI-generated or user-provided
   department text,
   ranking int default 0,
   win_rate float default 0.0,
@@ -123,6 +125,23 @@ begin
   where id = row_id;
 end;
 $$ language plpgsql;
+
+-- 9. Pre-Assessments Table (tracks employee familiarity check and baseline)
+create table if not exists public.pre_assessments (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid references public.employees(id) on delete cascade not null,
+  scenario_id uuid references public.scenarios(id) on delete cascade not null,
+  is_familiar boolean default false,
+  questions_asked jsonb default '[]'::jsonb,  -- Array of micro-scenarios with question, type, options, hint
+  answers_given jsonb default '[]'::jsonb,    -- Array of answers with score, feedback
+  baseline_score int default 0,
+  current_difficulty text default 'Easy',      -- Adaptive: Easy, Normal, Hard
+  personalized_feedback jsonb,                 -- AI-generated feedback at completion
+  completed boolean default false,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  completed_at timestamp with time zone,
+  unique(user_id, scenario_id)
+);
 ```
 
 ## Typescript Interface Mapping

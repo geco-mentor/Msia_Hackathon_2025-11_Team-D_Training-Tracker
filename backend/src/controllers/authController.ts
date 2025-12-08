@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { supabase } from '../config/database';
 import { RegisterRequestBody, LoginRequestBody, AuthResponse } from '../types';
 import { AuthRequest } from '../middleware/auth';
+import { model } from '../services/aiService';
 import fs from 'fs';
 import path from 'path';
 
@@ -16,13 +17,13 @@ const SALT_ROUNDS = 10;
  */
 export const register = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { name, username, employee_id, password, job_title }: RegisterRequestBody = req.body;
+        const { name, username, employee_id, password, job_title, department, job_description }: RegisterRequestBody = req.body;
 
         // Validate required fields
-        if (!name || !username || !employee_id || !password || !job_title) {
+        if (!name || !username || !employee_id || !password || !job_title || !department) {
             res.status(400).json({
                 success: false,
-                message: 'All fields are required: name, username, employee_id, password, job_title'
+                message: 'All fields are required: name, username, employee_id, password, job_title, department'
             });
             return;
         }
@@ -69,6 +70,28 @@ export const register = async (req: Request, res: Response): Promise<void> => {
         // Hash password
         const password_hash = await bcrypt.hash(password, SALT_ROUNDS);
 
+        // Generate job description if not provided
+        let finalJobDescription = job_description;
+        if (!finalJobDescription || finalJobDescription.trim() === '') {
+            console.log('[Register] Generating job description for:', job_title);
+            try {
+                const prompt = `Generate a professional job description (2-3 sentences) for the role: ${job_title}. Focus on typical responsibilities and required skills. Be concise and professional.`;
+                console.log('[Register] Calling model.generateContent...');
+                const result = await model.generateContent(prompt);
+                console.log('[Register] model.generateContent returned');
+                finalJobDescription = result.response.text();
+                console.log('[Register] Generated job description:', finalJobDescription);
+            } catch (aiError: any) {
+                console.error('[Register] Failed to generate job description');
+                console.error('[Register] Error name:', aiError?.name);
+                console.error('[Register] Error message:', aiError?.message);
+                console.error('[Register] Error stack:', aiError?.stack);
+                // Use fallback description
+                finalJobDescription = `Responsible for duties related to ${job_title} role.`;
+                console.log('[Register] Using fallback job description:', finalJobDescription);
+            }
+        }
+
         // Create employee record
         const { data: newEmployee, error } = await supabase
             .from('employees')
@@ -78,6 +101,8 @@ export const register = async (req: Request, res: Response): Promise<void> => {
                 employee_id,
                 password_hash,
                 job_title,
+                department,
+                job_description: finalJobDescription,
                 skills_profile: {},
                 ranking: 0,
                 win_rate: 0.0,
@@ -119,6 +144,8 @@ export const register = async (req: Request, res: Response): Promise<void> => {
                 role: 'employee',
                 employee_id: newEmployee.employee_id,
                 job_title: newEmployee.job_title,
+                job_description: newEmployee.job_description,
+                department: newEmployee.department,
                 ranking: newEmployee.ranking,
                 win_rate: newEmployee.win_rate,
                 streak: newEmployee.streak

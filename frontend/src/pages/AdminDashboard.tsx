@@ -1,10 +1,9 @@
 import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Users, Activity, Trophy, Search, Filter, LogOut, Shield, Terminal, AlertCircle, Target, Briefcase } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import { Users, Activity, Trophy, Search, Filter, LogOut, Shield, Terminal, AlertCircle, Target, Briefcase, TrendingUp, Award, BarChart3 } from 'lucide-react';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 import { EmployeeDetailsModal } from '../components/EmployeeDetailsModal';
-import { JobAnalysisModal } from '../components/JobAnalysisModal';
 
 export const AdminDashboard: React.FC = () => {
     const { logout, token } = useAuth();
@@ -13,7 +12,6 @@ export const AdminDashboard: React.FC = () => {
     const [analytics, setAnalytics] = React.useState<any>(null);
     const [selectedEmployee, setSelectedEmployee] = React.useState<any>(null);
     const [isDetailsModalOpen, setIsDetailsModalOpen] = React.useState(false);
-    const [isJobModalOpen, setIsJobModalOpen] = React.useState(false);
 
     const handleLogout = () => {
         logout();
@@ -103,13 +101,6 @@ export const AdminDashboard: React.FC = () => {
                         </p>
                     </div>
                     <div className="flex gap-3">
-                        <button
-                            onClick={() => setIsJobModalOpen(true)}
-                            className="flex items-center gap-2 px-4 py-2 bg-[#111] border border-white/10 hover:border-purple-500/50 text-purple-400 text-sm rounded transition-all"
-                        >
-                            <Briefcase size={16} />
-                            JOB_ANALYSIS
-                        </button>
                         <button
                             onClick={() => navigate('/admin/create-assessment')}
                             className="flex items-center gap-2 px-4 py-2 bg-[#111] border border-white/10 hover:border-blue-500/50 text-blue-400 text-sm rounded transition-all"
@@ -222,6 +213,134 @@ export const AdminDashboard: React.FC = () => {
                     </div>
                 </div>
 
+                {/* Second Row of Charts */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* Department Performance */}
+                    <div className="bg-[#111] border border-white/10 p-6 rounded-lg">
+                        <h3 className="text-sm font-bold text-white mb-6 flex items-center gap-2">
+                            <BarChart3 size={16} className="text-green-400" />
+                            DEPARTMENT_PERFORMANCE
+                        </h3>
+                        <div className="h-64 w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={analytics?.departmentPerformance || []}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
+                                    <XAxis dataKey="department" stroke="#666" tick={{ fontSize: 10 }} />
+                                    <YAxis stroke="#666" tick={{ fontSize: 10 }} />
+                                    <Tooltip
+                                        cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+                                        contentStyle={{ backgroundColor: '#000', border: '1px solid #333', borderRadius: '4px' }}
+                                        itemStyle={{ color: '#fff' }}
+                                    />
+                                    <Bar dataKey="avgScore" fill="#22c55e" radius={[4, 4, 0, 0]} barSize={30} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+
+                    {/* Difficulty Breakdown */}
+                    <div className="bg-[#111] border border-white/10 p-6 rounded-lg">
+                        <h3 className="text-sm font-bold text-white mb-6 flex items-center gap-2">
+                            <Target size={16} className="text-orange-400" />
+                            DIFFICULTY_BREAKDOWN
+                        </h3>
+                        <div className="h-64 w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie
+                                        data={analytics?.difficultyBreakdown || []}
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={40}
+                                        outerRadius={80}
+                                        paddingAngle={5}
+                                        dataKey="count"
+                                        nameKey="difficulty"
+                                        label={({ name, percent }) => name && percent !== undefined ? `${name} ${(percent * 100).toFixed(0)}%` : ''}
+                                        labelLine={false}
+                                    >
+                                        {(analytics?.difficultyBreakdown || []).map((_: any, index: number) => (
+                                            <Cell key={`cell-${index}`} fill={['#22c55e', '#eab308', '#ef4444', '#8b5cf6'][index % 4]} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip
+                                        contentStyle={{ backgroundColor: '#000', border: '1px solid #333', borderRadius: '4px' }}
+                                        itemStyle={{ color: '#fff' }}
+                                    />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+
+                    {/* Monthly Trends */}
+                    <div className="bg-[#111] border border-white/10 p-6 rounded-lg">
+                        <h3 className="text-sm font-bold text-white mb-6 flex items-center gap-2">
+                            <TrendingUp size={16} className="text-blue-400" />
+                            MONTHLY_TRENDS
+                        </h3>
+                        <div className="h-64 w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={analytics?.monthlyTrends || []}>
+                                    <defs>
+                                        <linearGradient id="colorMonthly" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
+                                    <XAxis dataKey="month" stroke="#666" tick={{ fontSize: 10 }} />
+                                    <YAxis stroke="#666" tick={{ fontSize: 10 }} />
+                                    <Tooltip
+                                        contentStyle={{ backgroundColor: '#000', border: '1px solid #333', borderRadius: '4px' }}
+                                        itemStyle={{ color: '#fff' }}
+                                    />
+                                    <Area type="monotone" dataKey="assessments" stroke="#3b82f6" fillOpacity={1} fill="url(#colorMonthly)" />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Top Performers Section */}
+                <div className="bg-[#111] border border-white/10 rounded-lg overflow-hidden">
+                    <div className="p-4 border-b border-white/10 bg-white/5">
+                        <h2 className="text-sm font-bold text-white flex items-center gap-2">
+                            <Award size={16} className="text-yellow-400" />
+                            TOP_PERFORMERS
+                        </h2>
+                    </div>
+                    <div className="p-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                            {(analytics?.topPerformers || []).slice(0, 5).map((performer: any, index: number) => (
+                                <div
+                                    key={performer.id}
+                                    className={`p-4 rounded-lg border transition-all hover:scale-105 ${index === 0 ? 'bg-yellow-500/10 border-yellow-500/30' :
+                                        index === 1 ? 'bg-gray-300/10 border-gray-300/30' :
+                                            index === 2 ? 'bg-orange-500/10 border-orange-500/30' :
+                                                'bg-white/5 border-white/10'
+                                        }`}
+                                >
+                                    <div className="flex items-center gap-3 mb-2">
+                                        <span className={`text-2xl font-bold ${index === 0 ? 'text-yellow-400' :
+                                            index === 1 ? 'text-gray-300' :
+                                                index === 2 ? 'text-orange-400' :
+                                                    'text-white/60'
+                                            }`}>#{index + 1}</span>
+                                        <div>
+                                            <p className="font-bold text-white truncate">{performer.name}</p>
+                                            <p className="text-xs text-white/40">{performer.department}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex justify-between items-center text-xs">
+                                        <span className="text-white/60">Points</span>
+                                        <span className="text-cyan-400 font-bold">{performer.total_points}</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
                 {/* Users Table Section */}
                 <div className="bg-[#111] border border-white/10 rounded-lg overflow-hidden">
                     <div className="p-4 border-b border-white/10 flex items-center justify-between bg-white/5">
@@ -302,11 +421,6 @@ export const AdminDashboard: React.FC = () => {
                 isOpen={isDetailsModalOpen}
                 onClose={() => setIsDetailsModalOpen(false)}
                 employee={selectedEmployee}
-            />
-
-            <JobAnalysisModal
-                isOpen={isJobModalOpen}
-                onClose={() => setIsJobModalOpen(false)}
             />
         </div>
     );

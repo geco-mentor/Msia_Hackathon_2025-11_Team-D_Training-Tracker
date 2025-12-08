@@ -12,12 +12,14 @@ export const Register: React.FC = () => {
         employee_id: '',
         password: '',
         job_title: '',
+        department: '',
+        job_description: '',
     });
 
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         setFormData({
             ...formData,
             [e.target.name]: e.target.value,
@@ -116,15 +118,37 @@ export const Register: React.FC = () => {
 
                             <div>
                                 <label className="input-label" htmlFor="department">Department</label>
-                                <input
-                                    type="text"
+                                <select
                                     id="department"
                                     name="department"
-                                    value={(formData as any).department || ''}
+                                    value={formData.department}
                                     onChange={handleChange}
                                     className="input-field mt-1"
-                                    placeholder="Engineering"
+                                    required
+                                >
+                                    <option value="">Select Department</option>
+                                    <option value="Engineering">Engineering</option>
+                                    <option value="Finance">Finance</option>
+                                    <option value="HR">HR</option>
+                                    <option value="Marketing">Marketing</option>
+                                    <option value="Sales">Sales</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="input-label" htmlFor="job_description">
+                                    Job Description <span className="text-slate-400 font-normal">(Optional)</span>
+                                </label>
+                                <textarea
+                                    id="job_description"
+                                    name="job_description"
+                                    value={formData.job_description}
+                                    onChange={handleChange}
+                                    className="input-field mt-1 resize-none"
+                                    placeholder="Describe your role and responsibilities..."
+                                    rows={3}
                                 />
+                                <p className="mt-1 text-xs text-slate-500">Leave blank to auto-generate from job title</p>
                             </div>
 
                             <div>

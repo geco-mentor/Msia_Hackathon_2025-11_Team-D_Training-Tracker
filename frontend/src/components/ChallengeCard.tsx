@@ -1,13 +1,19 @@
 import React from 'react';
-import { CheckCircle, Play } from 'lucide-react';
+import { CheckCircle, Play, Brain } from 'lucide-react';
 
 interface ChallengeCardProps {
     challenge: any;
     onClick: () => void;
-    status?: 'solved' | 'unsolved';
+    preAssessmentCompleted?: boolean;
+    postAssessmentCompleted?: boolean;
 }
 
-export const ChallengeCard: React.FC<ChallengeCardProps> = ({ challenge, onClick, status = 'unsolved' }) => {
+export const ChallengeCard: React.FC<ChallengeCardProps> = ({
+    challenge,
+    onClick,
+    preAssessmentCompleted,
+    postAssessmentCompleted
+}) => {
     return (
         <div
             onClick={onClick}
@@ -30,23 +36,25 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({ challenge, onClick
             <div className="flex justify-between items-end mt-2">
                 <span className="text-xs text-gray-600 font-mono">{challenge.solves || 0} solves</span>
 
-                <div className={`px-3 py-1 rounded text-xs font-bold flex items-center gap-1 ${status === 'solved'
-                    ? 'bg-green-500/10 text-green-400 border border-green-500/20'
-                    : 'bg-white/5 text-gray-400 border border-white/10 group-hover:bg-cyan-500/10 group-hover:text-cyan-400 group-hover:border-cyan-500/30'
-                    }`}>
-                    {status === 'solved' ? (
-                        <>
-                            <CheckCircle size={12} />
-                            SOLVED
-                        </>
-                    ) : (
-                        <>
-                            <Play size={12} />
-                            START
-                        </>
-                    )}
-                </div>
+                {/* Show status: PRE-TEST → POST-TEST → COMPLETED */}
+                {preAssessmentCompleted === false ? (
+                    <div className="px-3 py-1 rounded text-xs font-bold flex items-center gap-1 bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                        <Brain size={12} />
+                        PRE-TEST
+                    </div>
+                ) : postAssessmentCompleted === true ? (
+                    <div className="px-3 py-1 rounded text-xs font-bold flex items-center gap-1 bg-green-500/10 text-green-400 border border-green-500/20">
+                        <CheckCircle size={12} />
+                        COMPLETED
+                    </div>
+                ) : (
+                    <div className="px-3 py-1 rounded text-xs font-bold flex items-center gap-1 bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
+                        <Play size={12} />
+                        POST-TEST
+                    </div>
+                )}
             </div>
         </div>
     );
 };
+
