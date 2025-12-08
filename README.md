@@ -1,121 +1,142 @@
-# AI Training Effectiveness Tracker
+# 🚀 AI Training Effectiveness Tracker
 
-A full-stack application for measuring the effectiveness of GenAI training programs through AI-powered assessments and skill tracking.
+> **Measure, Analyze, and Improve GenAI Proficiency with AI-Powered Assessments.**
 
-## 🚀 Quick Start
+## 📖 Executive Summary
 
-### Prerequisites
-- Node.js v18+
-- Supabase account with PostgreSQL database
-- `.env` file configured (see below)
-- (Optional) Python for AWS token refresh
+In the age of Generative AI, traditional training metrics (completion rates) are insufficient. **AI Training Effectiveness Tracker** solves the "Skill Gap" problem by using **AI to evaluate AI proficiency**. 
 
-### Setup
+We turn static training materials (PDFs, docs) into dynamic, interactive scenarios where employees demonstrate their skills in real-time. Our system assesses their answers using advanced Large Language Models (LLMs) to provide instant, personalized feedback and rigorous scoring.
 
-1. **Install dependencies**
-   ```bash
-   npm install
-   npm run install:all
-   ```
+**Why this project?**
+*   **Proof of Competence:** Goes beyond "I watched the video" to "I can do the job".
+*   **Automated Evaluation:** Scales personal feedback to thousands of employees instantly.
+*   **Data-Driven:** Rubrics and Analytics provide actionable insights for HR and Team Leads.
 
-2. **Configure environment**
-   
-   Add to your `.env` file:
-   ```env
-   # Supabase
-   SUPABASE_URL=your_supabase_url
-   SUPABASE_KEY=your_supabase_key
-   
-   # Backend
-   PORT=3001
-   FRONTEND_URL=http://localhost:5173
-   JWT_SECRET=your-secret-key-here
-   NODE_ENV=development
-   ```
+---
 
-3. **Seed admin user**
-   
-   Run database schema SQL in Supabase SQL Editor (see `database_schema.md`)
+## ✅ Key Features
 
-4. **Start the application** 🎉
-   ```bash
-   npm run dev
-   ```
-   
-   **This enhanced startup script will:**
-   - ✅ Check and refresh AWS tokens (if `refToken.py` exists)
-   - ✅ Test database connectivity
-   - ✅ Start both backend and frontend servers
-   - ✅ Automatically open browser to http://localhost:5173
-   
-   Everything starts automatically with one command!
+### 🏢 For Administrators (HR / Team Leads)
+*   **Smart Content Ingestion:** Upload any training PDF or text file. We use **AWS Textract** to digitize it.
+*   **Auto-Rubric Generation:** **AWS Bedrock** analyzes your content to automatically generate grading rubrics (Generic, Departmental, and Module-specific).
+*   **Analytics Dashboard:** 
+    *   **Skill Heatmaps**: See which departments are excelling.
+    *   **Performance Trends**: Track improvement over time.
+    *   **Elo Rating System**: Understand true employee strength relative to peers.
+    *   **Leaderboards**: Identify top talent.
 
-5. **Or run servers individually**
-   ```bash
-   npm run dev:backend  # Backend only
-   npm run dev:frontend # Frontend only
-   ```
+### 🧑‍💻 For Employees
+*   **Interactive Challenges:** Solve real-world micro-scenarios based on your actual job description.
+*   **Instant AI Feedback:** Get immediate critique on your answers—not just a score, but *how* to improve.
+*   **Adaptive Difficulty:** The system learns with you, offering harder challenges as your Elo rating improves.
+*   **Profile Tracking:** Visualize your win rate, streaks, and skill growth.
 
-## 🔐 Default Credentials
+---
 
-**Admin Account:**
-- Username: `admin`
-- Password: `admin123`
+## 🛠️ Tech Stack
 
-⚠️ Change the admin password after first login!
+*   **Frontend:** React, TypeScript, Vite, Tailwind CSS, Recharts (Analytics)
+*   **Backend:** Node.js, Express, TypeScript
+*   **Database:** Supabase (PostgreSQL)
+*   **AI & Cloud:** 
+    *   **AWS Bedrock** (LLM for Rubric Generation & Grading)
+    *   **AWS Textract** (PDF/Document Parsing)
+    *   **AWS Comprehend** (Text Analysis)
 
-## ✅ Current Features
+---
 
-- ✅ Employee registration and login
-- ✅ Admin login (no registration)
-- ✅ JWT-based authentication
-- ✅ Role-based dashboards
-- ✅ Profile management
-- ✅ Statistics tracking (ranking, win rate, streak)
+## 🚀 Getting Started (Zero-Config)
 
-## 🚧 Upcoming Features
+Follow these instructions to get the application running on your local machine.
 
-- AI-generated quiz system
-- Goal setting and tracking
-- Admin analytics dashboard
-- Skill heatmaps
-- Trend analysis
+### 1. Prerequisites
+Before you start, ensure you have **Node.js** installed.
+*   [Download Node.js (LTS Version)](https://nodejs.org/) - Install the standard version.
 
-## 📁 Project Structure
+### 2. Setup (First Time Only)
+Open your terminal (Command Prompt or PowerShell) in the project folder and run:
 
+```bash
+npm install
+npm run install:all
 ```
-ai-hackathon/
-├── backend/          # Express + TypeScript API
-├── frontend/         # React + TypeScript + Vite
-├── database/         # SQL scripts
-├── package.json      # Root scripts
-└── .env             # Environment configuration
+*(This installs all the "batteries" needed for the app to work.)*
+
+### 3. Running the App
+To start everything (Backend, Frontend, Database checks), simply run:
+
+```bash
+npm run dev
 ```
 
-## 🛠️ Available Scripts
+**What happens next?**
+1.  The system checks your AWS connection.
+2.  It connects to the Database.
+3.  It launches the Backend API (Port 3001).
+4.  It launches the Frontend Interface.
+5.  **A browser window automatically opens** at `http://localhost:5173`.
 
-- `npm run dev` - **Enhanced startup**: Check AWS tokens, test DB, start servers, open browser
-- `npm run dev:backend` - Start only backend server
-- `npm run dev:frontend` - Start only frontend server
-- `npm run install:all` - Install all dependencies (root, backend, frontend)
-- `npm run build` - Build both projects for production
-- `npm run test:db` - Test database connectivity
-- `npm run test:aws` - Test AWS Bedrock connectivity
+---
 
-## 📚 Documentation
+## �️ Usage Guide
 
-- [SETUP.md](SETUP.md) - Detailed setup instructions
-- [QUICKSTART.md](QUICKSTART.md) - Testing guide
-- [FEATURES.md](FEATURES.md) - Feature specifications
-- [database_schema.md](database_schema.md) - Database schema
+### Logging In
+*   **Admin Access:**
+    *   *(Note: Change this password immediately after first login!)*
+*   **Employee Access:**
+    *   Register a new account or log in with existing credentials.
 
-## 🎨 Tech Stack
+### 🅰️ Admin Workflow (Creating Assessments)
+1.  **Login** as Admin.
+2.  Navigate to **"Assessment Modules"**.
+3.  Click **"Create Assessment"**.
+4.  **Upload** your training material (PDF/Text). 
+    *   *The system will essentially "read" the book for you.*
+5.  Review the **AI-Generated Rubrics**. You can edit them if needed.
+6.  **Publish**. The assessment is now live for employees!
 
-- **Backend:** Node.js, Express, TypeScript, bcrypt, JWT
-- **Frontend:** React, TypeScript, Vite, Tailwind CSS, React Router
-- **Database:** Supabase (PostgreSQL)
-- **Authentication:** JWT with bcrypt password hashing
+### 🅱️ Employee Workflow (Taking Tests)
+1.  **Register/Login** as an Employee.
+2.  Select your **Department** (Engineering, HR, Sales, etc.).
+3.  On the Dashboard, click **"Start Challenge"**.
+4.  You will be presented with a customized scenario based on your role.
+5.  **Type your answer**. Be professional and thorough!
+6.  Click **Submit** and wait for the **AI Analysis**.
+7.  Review your **Score** and **Feedback**.
 
-## 📝 License
+---
 
-MIT
+## 🤝 Collaboration & Github Workflow
+
+**IMPORTANT:** Follow these rules to ensure a smooth hackathon/client presentation.
+
+1.  **Development Workspace:**
+    *   Do **ALL** Alpha/Beta/Main development work on your **assigned Github account**.
+    *   This is your sandbox. Break things here, fix things here.
+
+2.  **Stable Releases:**
+    *   Commit and push **ONLY** your **stable, deployable, working version** to the `Geco` repository.
+    *   **Rule of Thumb:** If it crashes during a demo, it shouldn't be on the Geco repo.
+
+3.  **Collaborator Access:**
+    *   Access remains open for necessary tweaks/refinements.
+    *   **Post-Hackathon:** Continue to polish for client presentations ("at the drop of a hat").
+
+---
+
+## � Available Scripts
+
+| Command | Description |
+| :--- | :--- |
+| `npm run dev` | **Start Everything** (Recommended) |
+| `npm run dev:backend` | Start only Backend server |
+| `npm run dev:frontend` | Start only Frontend server |
+| `npm run test:aws` | Test connection to Amazon Bedrock |
+| `npm run test:db` | Test connection to Supabase |
+
+---
+
+## 📄 License & Credits
+MIT License.
+Built for the AI Hackathon.
