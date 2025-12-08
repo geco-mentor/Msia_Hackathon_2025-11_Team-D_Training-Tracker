@@ -2,7 +2,7 @@ import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Users, Activity, Trophy, Search, Filter, LogOut, Shield, Terminal, AlertCircle, Target, Briefcase, TrendingUp, Award, BarChart3 } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell, Legend } from 'recharts';
 import { EmployeeDetailsModal } from '../components/EmployeeDetailsModal';
 
 export const AdminDashboard: React.FC = () => {
@@ -12,6 +12,8 @@ export const AdminDashboard: React.FC = () => {
     const [analytics, setAnalytics] = React.useState<any>(null);
     const [selectedEmployee, setSelectedEmployee] = React.useState<any>(null);
     const [isDetailsModalOpen, setIsDetailsModalOpen] = React.useState(false);
+    const [selectedDepartment, setSelectedDepartment] = React.useState('all');
+    const [selectedCurriculum, setSelectedCurriculum] = React.useState('all');
 
     const handleLogout = () => {
         logout();
@@ -27,9 +29,13 @@ export const AdminDashboard: React.FC = () => {
                     setEmployees(empResponse.employees);
                 }
 
-                // Fetch Analytics
+                // Fetch Analytics with filters
                 if (token) {
-                    const analyticsResponse = await fetch('/api/analytics/overview', {
+                    const params = new URLSearchParams();
+                    if (selectedDepartment !== 'all') params.append('department', selectedDepartment);
+                    if (selectedCurriculum !== 'all') params.append('curriculum', selectedCurriculum);
+
+                    const analyticsResponse = await fetch(`/api/analytics/overview?${params.toString()}`, {
                         headers: { 'Authorization': `Bearer ${token}` }
                     });
                     const analyticsData = await analyticsResponse.json();
@@ -42,7 +48,7 @@ export const AdminDashboard: React.FC = () => {
             }
         };
         fetchData();
-    }, [token]);
+    }, [token, selectedDepartment, selectedCurriculum]);
 
     const handleViewEmployee = async (id: string) => {
         try {
@@ -189,26 +195,67 @@ export const AdminDashboard: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Skill Distribution */}
+                    {/* Pre vs Post Assessment */}
                     <div className="bg-[#111] border border-white/10 p-6 rounded-lg">
-                        <h3 className="text-sm font-bold text-white mb-6 flex items-center gap-2">
-                            <Target size={16} className="text-purple-400" />
-                            SKILL_DISTRIBUTION
-                        </h3>
+                        <div className="mb-4">
+                            <h3 className="text-sm font-bold text-white flex items-center gap-2 mb-3">
+                                <Target size={16} className="text-purple-400" />
+                                PRE_VS_POST_ASSESSMENT
+                            </h3>
+                            <div className="flex flex-wrap gap-2">
+                                {/* Department Filter */}
+                                <select
+                                    value={selectedDepartment}
+                                    onChange={(e) => setSelectedDepartment(e.target.value)}
+                                    className="bg-black/50 border border-white/10 rounded px-3 py-1.5 text-xs text-white focus:outline-none focus:border-purple-500/50 min-w-[140px]"
+                                >
+                                    <option value="all">All Departments</option>
+                                    {(analytics?.departments || []).map((dept: any) => (
+                                        <option key={dept.id} value={dept.name}>{dept.name}</option>
+                                    ))}
+                                </select>
+                                {/* Curriculum Filter */}
+                                <select
+                                    value={selectedCurriculum}
+                                    onChange={(e) => setSelectedCurriculum(e.target.value)}
+                                    className="bg-black/50 border border-white/10 rounded px-3 py-1.5 text-xs text-white focus:outline-none focus:border-purple-500/50 min-w-[140px]"
+                                >
+                                    <option value="all">All Curriculums</option>
+                                    {(analytics?.curriculums || []).map((curr: any) => (
+                                        <option key={curr.id} value={curr.id}>{curr.title}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
                         <div className="h-64 w-full">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={analytics?.skillDistribution || []} layout="vertical">
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#333" horizontal={false} />
-                                    <XAxis type="number" stroke="#666" tick={{ fontSize: 10 }} />
-                                    <YAxis dataKey="name" type="category" stroke="#666" tick={{ fontSize: 10 }} width={100} />
-                                    <Tooltip
-                                        cursor={{ fill: 'rgba(255,255,255,0.05)' }}
-                                        contentStyle={{ backgroundColor: '#000', border: '1px solid #333', borderRadius: '4px' }}
-                                        itemStyle={{ color: '#fff' }}
-                                    />
-                                    <Bar dataKey="value" fill="#a855f7" radius={[0, 4, 4, 0]} barSize={20} />
-                                </BarChart>
-                            </ResponsiveContainer>
+                            {(analytics?.preVsPostAssessment?.length || 0) > 0 ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={analytics?.preVsPostAssessment || []}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
+                                        <XAxis dataKey="curriculum" stroke="#666" tick={{ fontSize: 10 }} />
+                                        <YAxis stroke="#666" tick={{ fontSize: 10 }} domain={[0, 100]} />
+                                        <Tooltip
+                                            cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+                                            contentStyle={{ backgroundColor: '#000', border: '1px solid #333', borderRadius: '4px' }}
+                                            itemStyle={{ color: '#fff' }}
+                                            formatter={(value: number, name: string) => [
+                                                `${value}%`,
+                                                name === 'preScore' ? 'Pre Assessment' : 'Post Assessment'
+                                            ]}
+                                        />
+                                        <Legend
+                                            formatter={(value) => value === 'preScore' ? 'Pre Assessment' : 'Post Assessment'}
+                                            wrapperStyle={{ fontSize: '10px' }}
+                                        />
+                                        <Bar dataKey="preScore" fill="#a855f7" radius={[4, 4, 0, 0]} barSize={20} name="preScore" />
+                                        <Bar dataKey="postScore" fill="#06b6d4" radius={[4, 4, 0, 0]} barSize={20} name="postScore" />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div className="h-full flex items-center justify-center text-white/40 text-sm">
+                                    No assessment data available
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -238,65 +285,168 @@ export const AdminDashboard: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Difficulty Breakdown */}
+                    {/* Skills Gap Analysis */}
                     <div className="bg-[#111] border border-white/10 p-6 rounded-lg">
                         <h3 className="text-sm font-bold text-white mb-6 flex items-center gap-2">
                             <Target size={16} className="text-orange-400" />
-                            DIFFICULTY_BREAKDOWN
+                            SKILLS_GAP_ANALYSIS
                         </h3>
                         <div className="h-64 w-full">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <PieChart>
-                                    <Pie
-                                        data={analytics?.difficultyBreakdown || []}
-                                        cx="50%"
-                                        cy="50%"
-                                        innerRadius={40}
-                                        outerRadius={80}
-                                        paddingAngle={5}
-                                        dataKey="count"
-                                        nameKey="difficulty"
-                                        label={({ name, percent }) => name && percent !== undefined ? `${name} ${(percent * 100).toFixed(0)}%` : ''}
-                                        labelLine={false}
-                                    >
-                                        {(analytics?.difficultyBreakdown || []).map((_: any, index: number) => (
-                                            <Cell key={`cell-${index}`} fill={['#22c55e', '#eab308', '#ef4444', '#8b5cf6'][index % 4]} />
-                                        ))}
-                                    </Pie>
-                                    <Tooltip
-                                        contentStyle={{ backgroundColor: '#000', border: '1px solid #333', borderRadius: '4px' }}
-                                        itemStyle={{ color: '#fff' }}
-                                    />
-                                </PieChart>
-                            </ResponsiveContainer>
+                            {(analytics?.skillsGap?.length || 0) > 0 ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={analytics?.skillsGap || []} layout="vertical">
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#333" horizontal={false} />
+                                        <XAxis type="number" stroke="#666" tick={{ fontSize: 10 }} domain={[0, 100]} />
+                                        <YAxis dataKey="skill" type="category" stroke="#666" tick={{ fontSize: 10 }} width={80} />
+                                        <Tooltip
+                                            cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+                                            contentStyle={{ backgroundColor: '#000', border: '1px solid #333', borderRadius: '4px' }}
+                                            itemStyle={{ color: '#fff' }}
+                                            formatter={(value: number) => [`${value}%`, 'Avg Score']}
+                                        />
+                                        <Bar
+                                            dataKey="avgScore"
+                                            radius={[0, 4, 4, 0]}
+                                            barSize={20}
+                                        >
+                                            {(analytics?.skillsGap || []).map((_: any, index: number) => (
+                                                <Cell
+                                                    key={`cell-${index}`}
+                                                    fill={
+                                                        (analytics?.skillsGap[index]?.avgScore || 0) < 40 ? '#ef4444' :
+                                                            (analytics?.skillsGap[index]?.avgScore || 0) < 60 ? '#eab308' :
+                                                                '#22c55e'
+                                                    }
+                                                />
+                                            ))}
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div className="h-full flex items-center justify-center text-white/40 text-sm">
+                                    No skills data available
+                                </div>
+                            )}
                         </div>
                     </div>
 
-                    {/* Monthly Trends */}
+                    {/* Module Effectiveness */}
                     <div className="bg-[#111] border border-white/10 p-6 rounded-lg">
                         <h3 className="text-sm font-bold text-white mb-6 flex items-center gap-2">
                             <TrendingUp size={16} className="text-blue-400" />
-                            MONTHLY_TRENDS
+                            MODULE_EFFECTIVENESS
                         </h3>
                         <div className="h-64 w-full">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={analytics?.monthlyTrends || []}>
-                                    <defs>
-                                        <linearGradient id="colorMonthly" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                                        </linearGradient>
-                                    </defs>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
-                                    <XAxis dataKey="month" stroke="#666" tick={{ fontSize: 10 }} />
-                                    <YAxis stroke="#666" tick={{ fontSize: 10 }} />
-                                    <Tooltip
-                                        contentStyle={{ backgroundColor: '#000', border: '1px solid #333', borderRadius: '4px' }}
-                                        itemStyle={{ color: '#fff' }}
-                                    />
-                                    <Area type="monotone" dataKey="assessments" stroke="#3b82f6" fillOpacity={1} fill="url(#colorMonthly)" />
-                                </AreaChart>
-                            </ResponsiveContainer>
+                            {(analytics?.moduleEffectiveness?.length || 0) > 0 ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={analytics?.moduleEffectiveness || []} layout="vertical">
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#333" horizontal={false} />
+                                        <XAxis type="number" stroke="#666" tick={{ fontSize: 10 }} />
+                                        <YAxis dataKey="curriculum" type="category" stroke="#666" tick={{ fontSize: 9 }} width={100} />
+                                        <Tooltip
+                                            cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+                                            contentStyle={{ backgroundColor: '#000', border: '1px solid #333', borderRadius: '4px' }}
+                                            itemStyle={{ color: '#fff' }}
+                                            formatter={(value: number, name: string) => [
+                                                name === 'improvement' ? `${value >= 0 ? '+' : ''}${value}%` : `${value}%`,
+                                                name === 'improvement' ? 'Improvement' : name === 'preScore' ? 'Pre' : 'Post'
+                                            ]}
+                                        />
+                                        <Bar dataKey="improvement" radius={[0, 4, 4, 0]} barSize={16}>
+                                            {(analytics?.moduleEffectiveness || []).map((_: any, index: number) => (
+                                                <Cell
+                                                    key={`cell-${index}`}
+                                                    fill={(analytics?.moduleEffectiveness[index]?.improvement || 0) >= 0 ? '#22c55e' : '#ef4444'}
+                                                />
+                                            ))}
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div className="h-full flex items-center justify-center text-white/40 text-sm">
+                                    No module effectiveness data
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Third Row: Improvement Trend + At-Risk Employees */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Improvement Trend */}
+                    <div className="bg-[#111] border border-white/10 p-6 rounded-lg">
+                        <h3 className="text-sm font-bold text-white mb-6 flex items-center gap-2">
+                            <TrendingUp size={16} className="text-cyan-400" />
+                            IMPROVEMENT_TREND
+                        </h3>
+                        <div className="h-64 w-full">
+                            {(analytics?.improvementTrend?.length || 0) > 0 ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <AreaChart data={analytics?.improvementTrend || []}>
+                                        <defs>
+                                            <linearGradient id="colorImprovement" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.3} />
+                                                <stop offset="95%" stopColor="#06b6d4" stopOpacity={0} />
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
+                                        <XAxis dataKey="month" stroke="#666" tick={{ fontSize: 10 }} />
+                                        <YAxis stroke="#666" tick={{ fontSize: 10 }} domain={[0, 100]} />
+                                        <Tooltip
+                                            contentStyle={{ backgroundColor: '#000', border: '1px solid #333', borderRadius: '4px' }}
+                                            itemStyle={{ color: '#fff' }}
+                                            formatter={(value: number) => [`${value}%`, 'Avg Score']}
+                                        />
+                                        <Area type="monotone" dataKey="avgScore" stroke="#06b6d4" fillOpacity={1} fill="url(#colorImprovement)" />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div className="h-full flex items-center justify-center text-white/40 text-sm">
+                                    No trend data available
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* At-Risk Employees */}
+                    <div className="bg-[#111] border border-red-500/30 p-6 rounded-lg">
+                        <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
+                            <AlertCircle size={16} className="text-red-400" />
+                            AT_RISK_EMPLOYEES
+                            {(analytics?.atRiskEmployees?.length || 0) > 0 && (
+                                <span className="ml-2 px-2 py-0.5 text-xs bg-red-500/20 border border-red-500/30 rounded text-red-400">
+                                    {analytics?.atRiskEmployees?.length} need attention
+                                </span>
+                            )}
+                        </h3>
+                        <div className="h-64 overflow-y-auto space-y-2">
+                            {(analytics?.atRiskEmployees?.length || 0) > 0 ? (
+                                (analytics?.atRiskEmployees || []).map((emp: any) => (
+                                    <div
+                                        key={emp.id}
+                                        className="flex items-center justify-between p-3 bg-black/30 border border-white/5 rounded hover:border-red-500/30 transition-colors"
+                                    >
+                                        <div>
+                                            <p className="text-white font-medium text-sm">{emp.name}</p>
+                                            <p className="text-white/40 text-xs">{emp.department}</p>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <span className={`text-xs px-2 py-0.5 rounded ${emp.trend === 'declining' ? 'bg-red-500/20 text-red-400' : 'bg-white/10 text-white/60'
+                                                }`}>
+                                                {emp.trend === 'declining' ? '↓ Declining' : 'Low Score'}
+                                            </span>
+                                            <span className={`text-lg font-bold ${emp.avgScore < 30 ? 'text-red-400' : emp.avgScore < 50 ? 'text-orange-400' : 'text-yellow-400'
+                                                }`}>
+                                                {emp.avgScore}%
+                                            </span>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="h-full flex items-center justify-center text-green-400 text-sm">
+                                    ✓ No at-risk employees
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
