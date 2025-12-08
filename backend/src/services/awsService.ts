@@ -255,11 +255,11 @@ export const fetchDepartmentRubrics = async (departmentId: string): Promise<stri
 
 // AI generates ONLY the 3 module-specific rubrics from the uploaded content
 export const generateModuleRubrics = async (text: string): Promise<string[]> => {
-    const maxRetries = 5;
+    const maxRetries = 10;
     let lastError = '';
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
-        const temperature = Math.min(1.0, 0.5 + (attempt * 0.1));
+        const temperature = Math.min(1.0, 0.5 + (attempt * 0.05));
 
         const prompt = `Extract exactly 3 key topics from this training material.
 
@@ -310,7 +310,9 @@ Example: ["Password Security", "Phishing Recognition", "Data Encryption"]`;
         }
 
         if (attempt < maxRetries) {
-            await new Promise(r => setTimeout(r, 500));
+            const delay = Math.min(5000, 500 * attempt); // Exponential backoff, max 5s
+            console.log(`DEBUG: Retrying in ${delay}ms...`);
+            await new Promise(r => setTimeout(r, delay));
         }
     }
 
@@ -670,11 +672,11 @@ export const generateMicroScenario = async (
         return false;
     };
 
-    const maxRetries = 5;
+    const maxRetries = 10;
     let lastFailureReason: 'duplicate' | 'parse_failed' = 'parse_failed';
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
-        const temperature = Math.min(1.0, 0.5 + (attempt * 0.1)); // 0.6, 0.7, 0.8, 0.9, 1.0
+        const temperature = Math.min(1.0, 0.5 + (attempt * 0.05)); // gradual increase
 
         const historyText = history.length > 0
             ? history.map((h) => `- "${h.question}"`).join('\n')
@@ -830,7 +832,7 @@ A: ${answer.substring(0, 200)}
 
 Reply ONLY with: {"score":NUMBER,"feedback":"TEXT"}`;
 
-    const maxRetries = 3;
+    const maxRetries = 10;
     let lastContent = '';
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -904,9 +906,11 @@ Reply ONLY with: {"score":NUMBER,"feedback":"TEXT"}`;
             console.log(`DEBUG: Attempt ${attempt} failed:`, e.message);
         }
 
-        // Wait before retry
+        // Wait before retry with exponential backoff
         if (attempt < maxRetries) {
-            await new Promise(r => setTimeout(r, 300));
+            const delay = Math.min(5000, 300 * attempt);
+            console.log(`DEBUG: Retrying evaluation in ${delay}ms...`);
+            await new Promise(r => setTimeout(r, delay));
         }
     }
 
@@ -945,7 +949,7 @@ Topics to improve: ${weakAnswers.slice(0, 2).map(a => a.question.substring(0, 50
 Output ONLY this JSON:
 {"summary":"2 sentence performance summary","strengths":["strength1","strength2"],"weaknesses":["weakness1"],"recommendations":["recommendation1","recommendation2"]}`;
 
-    const maxRetries = 3;
+    const maxRetries = 10;
     let lastError = '';
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -986,9 +990,11 @@ Output ONLY this JSON:
             console.log(`DEBUG: Attempt ${attempt} failed:`, lastError);
         }
 
-        // Wait before retry
+        // Wait before retry with exponential backoff
         if (attempt < maxRetries) {
-            await new Promise(r => setTimeout(r, 500));
+            const delay = Math.min(5000, 500 * attempt);
+            console.log(`DEBUG: Retrying feedback generation in ${delay}ms...`);
+            await new Promise(r => setTimeout(r, delay));
         }
     }
 

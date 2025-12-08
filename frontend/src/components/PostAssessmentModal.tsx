@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Loader, CheckCircle, Send, Lightbulb, Star, ArrowRight, Trophy, TrendingUp } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { API_BASE_URL } from '../config';
+import { fetchWithRetry } from '../api/apiRetry';
 
 interface PostAssessmentModalProps {
     scenario: any;
@@ -68,7 +69,7 @@ export const PostAssessmentModal: React.FC<PostAssessmentModalProps> = ({ scenar
             setError('');
             console.log('Starting post-assessment for scenario:', scenario.id);
 
-            const res = await fetch(`${API_BASE_URL}/api/assessments/post-assessment/start`, {
+            const res = await fetchWithRetry(`${API_BASE_URL}/api/assessments/post-assessment/start`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -109,7 +110,7 @@ export const PostAssessmentModal: React.FC<PostAssessmentModalProps> = ({ scenar
             setError('');
             console.log('Submitting answer:', answer);
 
-            const res = await fetch(`${API_BASE_URL}/api/assessments/post-assessment/answer`, {
+            const res = await fetchWithRetry(`${API_BASE_URL}/api/assessments/post-assessment/answer`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
