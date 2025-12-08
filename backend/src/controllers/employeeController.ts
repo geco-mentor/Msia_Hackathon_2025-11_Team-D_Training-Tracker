@@ -237,3 +237,168 @@ export const getEmployeeDetails = async (req: AuthRequest, res: Response): Promi
         res.status(500).json({ success: false, message: 'Internal server error' });
     }
 };
+
+/**
+ * Get My Profile (Current Employee)
+ * GET /api/employees/profile
+ */
+export const getMyProfile = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        if (!req.user || req.user.role !== 'employee') {
+            res.status(403).json({ success: false, message: 'Access denied' });
+            return;
+        }
+
+        const { id } = req.user;
+        console.log('Fetching profile for employee:', id);
+
+        // Fetch employee basic info
+        const { data: employee, error: empError } = await supabase
+            .from('employees')
+            .select('id, name, username, job_title, department, ranking, win_rate, streak, elo_rating, total_points, skills_profile')
+            .eq('id', id)
+            .single();
+
+        if (empError || !employee) {
+            console.error('Error fetching employee:', empError);
+            res.status(404).json({ success: false, message: 'Employee not found' });
+            return;
+        }
+
+        // Fetch dynamic ranking from leaderboard view
+        const { data: leaderboardData } = await supabase
+            .from('leaderboard')
+            .select('rank')
+            .eq('user_id', id)
+            .single();
+
+        const currentRank = leaderboardData?.rank || employee.ranking || 0;
+
+        // Fetch all assessments for analytics
+        const { data: assessments, error: assessError } = await supabase
+            .from('assessments')
+            .select('id, score, feedback, created_at, difficulty, scenario:scenarios(title, skill, category)')
+            .eq('user_id', id)
+            .order('created_at', { ascending: true });
+
+        if (assessError) {
+            console.error('Error fetching assessments:', assessError);
+        }
+
+        const allAssessments = assessments || [];
+
+        // 1. Calculate Skill Stats (for Radar Chart)
+        const skillMap = new Map<string, { total: number; count: number }>();
+        allAssessments.forEach((a: any) => {
+            const skill = a.scenario?.skill || 'General';
+            const current = skillMap.get(skill) || { total: 0, count: 0 };
+            skillMap.set(skill, {
+                total: current.total + (a.score || 0),
+                count: current.count + 1
+            });
+        });
+
+        const skillData = Array.from(skillMap.entries()).map(([subject, data]) => ({
+            subject,
+            A: Math.round(data.total / data.count),
+            fullMark: 100
+        }));
+
+        // 2. Calculate Module Progress (by category)
+        const categoryMap = new Map<string, { completed: number; total: number }>();
+        allAssessments.forEach((a: any) => {
+            const category = a.scenario?.category || 'General';
+            const current = categoryMap.get(category) || { completed: 0, total: 0 };
+            categoryMap.set(category, {
+                completed: current.completed + ((a.score || 0) >= 70 ? 1 : 0),
+                total: current.total + 1
+            });
+        });
+
+        // Also fetch all unique categories from scenarios to show modules
+        const { data: allScenarios } = await supabase
+            .from('scenarios')
+            .select('category, skill')
+            .not('category', 'is', null);
+
+        const uniqueCategories = new Set<string>();
+        allScenarios?.forEach((s: any) => {
+            if (s.category) uniqueCategories.add(s.category);
+        });
+
+        const moduleColors = [
+            'from-purple-500 to-cyan-500',
+            'from-blue-500 to-teal-500',
+            'from-indigo-500 to-purple-500',
+            'from-cyan-500 to-blue-500',
+            'from-pink-500 to-rose-500',
+            'from-green-500 to-emerald-500'
+        ];
+
+        const modules = Array.from(uniqueCategories).map((category, idx) => {
+            const stats = categoryMap.get(category) || { completed: 0, total: 0 };
+            const progress = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0;
+            return {
+                name: category,
+                progress,
+                completedCount: stats.completed,
+                totalCount: stats.total,
+                status: progress >= 100 ? 'COMPLETE' : progress > 0 ? 'IN_PROGRESS' : 'INITIALIZE',
+                color: moduleColors[idx % moduleColors.length]
+            };
+        });
+
+        // 3. Calculate stats
+        const totalAssessments = allAssessments.length;
+        const completedAssessments = allAssessments.filter((a: any) => (a.score || 0) >= 70).length;
+        const averageScore = totalAssessments > 0
+            ? Math.round(allAssessments.reduce((sum: number, a: any) => sum + (a.score || 0), 0) / totalAssessments)
+            : 0;
+
+        // Determine rank title based on elo_rating
+        const eloRating = employee.elo_rating || 1200;
+        let rankTitle = 'RECRUIT';
+        if (eloRating >= 2000) rankTitle = 'ELITE';
+        else if (eloRating >= 1800) rankTitle = 'EXPERT';
+        else if (eloRating >= 1600) rankTitle = 'HACKER';
+        else if (eloRating >= 1400) rankTitle = 'OPERATIVE';
+        else if (eloRating >= 1200) rankTitle = 'AGENT';
+
+        console.log('Profile data compiled successfully');
+
+        res.status(200).json({
+            success: true,
+            profile: {
+                id: employee.id,
+                name: employee.name,
+                username: employee.username,
+                job_title: employee.job_title,
+                department: employee.department,
+                ranking: currentRank,
+                elo_rating: eloRating,
+                total_points: employee.total_points || 0,
+                win_rate: employee.win_rate || 0,
+                streak: employee.streak || 0,
+                rankTitle,
+                stats: {
+                    totalScore: employee.total_points || 0,
+                    completedMissions: completedAssessments,
+                    totalAssessments,
+                    averageScore
+                },
+                skillData: skillData.length > 0 ? skillData : [
+                    { subject: 'Prompt Engineering', A: 0, fullMark: 100 },
+                    { subject: 'Summarization', A: 0, fullMark: 100 },
+                    { subject: 'Data Analysis', A: 0, fullMark: 100 },
+                    { subject: 'Critical Thinking', A: 0, fullMark: 100 },
+                    { subject: 'Communication', A: 0, fullMark: 100 }
+                ],
+                modules: modules.length > 0 ? modules : []
+            }
+        });
+
+    } catch (error) {
+        console.error('Get my profile error:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+};
