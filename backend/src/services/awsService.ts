@@ -651,10 +651,12 @@ export const generateMicroScenario = async (
     rubrics: { generic?: string[], department?: string[], module?: string[] },
     history: { scenario: string, question: string, answer: string }[] = []
 ): Promise<{
+    mission: string;
     scenario: string;
     question: string;
     type: 'text';
     hint: string;
+    xp: number;
 }> => {
     const previousQuestions = history.map(h => h.question.toLowerCase());
 
@@ -682,20 +684,34 @@ export const generateMicroScenario = async (
             ? history.map((h) => `- "${h.question}"`).join('\n')
             : "None yet";
 
-        const prompt = `Create a workplace scenario question for training assessment.
+        // Gamified difficulty descriptions
+        const difficultyMap = {
+            'Easy': { points: '100 XP', level: 'Rookie', style: 'straightforward' },
+            'Normal': { points: '250 XP', level: 'Pro', style: 'requires thinking' },
+            'Hard': { points: '500 XP', level: 'Expert', style: 'tricky real-world challenge' }
+        };
+        const diff = difficultyMap[difficulty];
 
-JOB: ${jobDescription.substring(0, 200)}
-TRAINING CONTENT: ${curriculum.substring(0, 2000)}
-DIFFICULTY: ${difficulty}
-QUESTION NUMBER: ${history.length + 1}
+        const prompt = `🎮 MISSION GENERATOR - Create a SHORT, FUN challenge question!
 
-ALREADY ASKED (DO NOT REPEAT OR ASK SIMILAR):
+AGENT ROLE: ${jobDescription.substring(0, 150)}
+INTEL (Training): ${curriculum.substring(0, 1500)}
+MISSION LEVEL: ${diff.level} (${diff.points}) - ${diff.style}
+CHALLENGE #${history.length + 1}
+
+PREVIOUS MISSIONS (DO NOT REPEAT):
 ${historyText}
 
-IMPORTANT: Create a completely DIFFERENT question. Focus on a NEW aspect of the training material not covered above.
+RULES:
+- Mission: Create a catchy 2-4 word mission title (e.g., "MISSION: Cloud Breach Response")
+- Scenario: MAX 1-2 sentences. Quick setup, like a video game mission briefing.
+- Question: MAX 1 sentence. Clear, direct challenge.
+- Use action words: "handle", "solve", "respond", "tackle", "navigate"
+- Make it feel like a real work challenge, but FUN
+- ${difficulty === 'Easy' ? 'Basic knowledge check' : difficulty === 'Normal' ? 'Apply the concept' : 'Complex situation requiring expertise'}
 
 Output ONLY valid JSON:
-{"scenario":"brief workplace situation","question":"your unique question","hint":"helpful hint"}`;
+{"mission":"MISSION: Topic Name","scenario":"1-2 sentence briefing","question":"direct challenge","hint":"quick tip"}`;
 
         const command = new ConverseCommand({
             modelId: "qwen.qwen3-235b-a22b-2507-v1:0",
@@ -721,11 +737,15 @@ Output ONLY valid JSON:
                         continue;
                     }
                     console.log('DEBUG: Unique question generated:', parsed.question.substring(0, 50));
+                    // Get XP based on difficulty
+                    const xpMap = { 'Easy': 100, 'Normal': 250, 'Hard': 500 };
                     return {
+                        mission: parsed.mission || `MISSION: Challenge ${history.length + 1}`,
                         scenario: parsed.scenario,
                         question: parsed.question,
                         type: 'text',
-                        hint: parsed.hint || 'Think about how this applies to your daily work.'
+                        hint: parsed.hint || 'Think about how this applies to your daily work.',
+                        xp: xpMap[difficulty]
                     }
                 }
             }
@@ -786,11 +806,14 @@ Output ONLY valid JSON:
                 continue;
             }
             console.log('DEBUG: Successfully extracted scenario and question');
+            const xpMap = { 'Easy': 100, 'Normal': 250, 'Hard': 500 };
             return {
+                mission: `MISSION: Challenge ${history.length + 1}`,
                 scenario: scenario.substring(0, 200),
                 question: question.substring(0, 300),
                 type: 'text',
-                hint: hint || 'Consider applying what you learned in the training.'
+                hint: hint || 'Consider applying what you learned in the training.',
+                xp: xpMap[difficulty]
             };
         }
 
