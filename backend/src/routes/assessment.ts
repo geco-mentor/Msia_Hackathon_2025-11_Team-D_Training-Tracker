@@ -10,7 +10,8 @@ import {
     checkPreAssessmentStatus,
     checkPostAssessmentStatus,
     startPostAssessment,
-    submitPostAssessmentAnswer
+    submitPostAssessmentAnswer,
+    generateSelfAssessment
 } from '../controllers/assessmentFlowController';
 
 const router = express.Router();
@@ -30,10 +31,14 @@ router.get('/post-assessment/status/:userId/:scenarioId', checkPostAssessmentSta
 router.post('/post-assessment/start', startPostAssessment);
 router.post('/post-assessment/answer', submitPostAssessmentAnswer);
 
+// Self-Assessment Route
+router.post('/self-assessment/generate', generateSelfAssessment);
+
 // Legacy Employee Flow Routes (keeping for backwards compatibility)
 router.post('/pre-assessment', handlePreAssessment);
 router.get('/post-assessment/:scenarioId', getPostAssessment);
 router.post('/submit', submitAssessment);
 
 export default router;
+
 

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer } from 'recharts';
-import { Terminal, Shield, Target, Cpu, MessageSquare, Database, Lock, Activity, LogOut, User, Briefcase } from 'lucide-react';
+import { Terminal, Shield, Target, Cpu, MessageSquare, Database, Lock, Activity, LogOut, User, Briefcase, CheckCircle, AlertTriangle, Lightbulb, Sparkles, X, Loader } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 
 interface SkillData {
@@ -18,6 +18,20 @@ interface Module {
     totalCount: number;
     status: string;
     color: string;
+}
+
+interface AssessmentFeedback {
+    strengths: string[];
+    weaknesses: string[];
+    recommendations: string[];
+}
+
+interface SelfAssessmentPlan {
+    title: string;
+    overview: string;
+    steps: { step: number; title: string; description: string; timeEstimate: string }[];
+    resources: string[];
+    practiceExercises: string[];
 }
 
 interface ProfileData {
@@ -40,6 +54,7 @@ interface ProfileData {
     };
     skillData: SkillData[];
     modules: Module[];
+    assessmentFeedback?: AssessmentFeedback;
 }
 
 export const Profile: React.FC = () => {
@@ -48,10 +63,38 @@ export const Profile: React.FC = () => {
     const [profile, setProfile] = useState<ProfileData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [showSelfAssessmentModal, setShowSelfAssessmentModal] = useState(false);
+    const [selectedWeakness, setSelectedWeakness] = useState<string | null>(null);
+    const [selfAssessmentPlan, setSelfAssessmentPlan] = useState<SelfAssessmentPlan | null>(null);
+    const [generatingPlan, setGeneratingPlan] = useState(false);
 
     const handleLogout = () => {
         logout();
         navigate('/login');
+    };
+
+    const handleGenerateSelfAssessment = async (weakness: string) => {
+        setSelectedWeakness(weakness);
+        setShowSelfAssessmentModal(true);
+        setGeneratingPlan(true);
+        setSelfAssessmentPlan(null);
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/assessments/self-assessment/generate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: user?.id, weakness })
+            });
+            const data = await response.json();
+            console.log('Self-assessment plan:', data);
+            if (data.success) {
+                setSelfAssessmentPlan(data.plan);
+            }
+        } catch (err) {
+            console.error('Error generating self-assessment:', err);
+        } finally {
+            setGeneratingPlan(false);
+        }
     };
 
     useEffect(() => {
@@ -225,6 +268,84 @@ export const Profile: React.FC = () => {
                     </div>
                 </div>
 
+                {/* Assessment Feedback Section */}
+                {profile?.assessmentFeedback && (profile.assessmentFeedback.strengths.length > 0 || profile.assessmentFeedback.weaknesses.length > 0 || profile.assessmentFeedback.recommendations.length > 0) && (
+                    <div className="bg-[#111] border border-white/5 rounded-lg p-6">
+                        <h2 className="text-lg font-bold text-white tracking-wider mb-6 flex items-center gap-2">
+                            <Target size={18} className="text-cyan-400" />
+                            ASSESSMENT FEEDBACK
+                        </h2>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            {/* Strengths */}
+                            <div className="bg-green-500/5 border border-green-500/20 rounded-lg p-4">
+                                <h3 className="text-sm font-bold text-green-400 flex items-center gap-2 mb-3">
+                                    <CheckCircle size={16} />
+                                    STRENGTHS
+                                </h3>
+                                <ul className="space-y-2">
+                                    {profile.assessmentFeedback.strengths.length > 0 ? (
+                                        profile.assessmentFeedback.strengths.map((strength, idx) => (
+                                            <li key={idx} className="text-sm text-gray-300 flex items-start gap-2">
+                                                <span className="text-green-400 mt-1">•</span>
+                                                {strength}
+                                            </li>
+                                        ))
+                                    ) : (
+                                        <li className="text-sm text-gray-500">Complete assessments to identify strengths</li>
+                                    )}
+                                </ul>
+                            </div>
+
+                            {/* Weaknesses */}
+                            <div className="bg-orange-500/5 border border-orange-500/20 rounded-lg p-4">
+                                <h3 className="text-sm font-bold text-orange-400 flex items-center gap-2 mb-3">
+                                    <AlertTriangle size={16} />
+                                    AREAS TO IMPROVE
+                                </h3>
+                                <ul className="space-y-2">
+                                    {profile.assessmentFeedback.weaknesses.length > 0 ? (
+                                        profile.assessmentFeedback.weaknesses.map((weakness, idx) => (
+                                            <li key={idx} className="text-sm text-gray-300 flex items-start gap-2 group">
+                                                <span className="text-orange-400 mt-1">•</span>
+                                                <span className="flex-1">{weakness}</span>
+                                                <button
+                                                    onClick={() => handleGenerateSelfAssessment(weakness)}
+                                                    className="opacity-0 group-hover:opacity-100 transition-opacity px-2 py-0.5 text-xs bg-orange-500/20 text-orange-400 rounded hover:bg-orange-500/30"
+                                                    title="Generate improvement plan"
+                                                >
+                                                    <Sparkles size={12} />
+                                                </button>
+                                            </li>
+                                        ))
+                                    ) : (
+                                        <li className="text-sm text-gray-500">No weaknesses identified yet</li>
+                                    )}
+                                </ul>
+                            </div>
+
+                            {/* Recommendations */}
+                            <div className="bg-purple-500/5 border border-purple-500/20 rounded-lg p-4">
+                                <h3 className="text-sm font-bold text-purple-400 flex items-center gap-2 mb-3">
+                                    <Lightbulb size={16} />
+                                    RECOMMENDATIONS
+                                </h3>
+                                <ul className="space-y-2">
+                                    {profile.assessmentFeedback.recommendations.length > 0 ? (
+                                        profile.assessmentFeedback.recommendations.map((rec, idx) => (
+                                            <li key={idx} className="text-sm text-gray-300 flex items-start gap-2">
+                                                <span className="text-purple-400 mt-1">•</span>
+                                                {rec}
+                                            </li>
+                                        ))
+                                    ) : (
+                                        <li className="text-sm text-gray-500">Complete assessments for recommendations</li>
+                                    )}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* Main Content Grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* Skill Matrix */}
@@ -332,6 +453,109 @@ export const Profile: React.FC = () => {
             <button className="fixed bottom-8 right-8 w-14 h-14 bg-cyan-500 rounded-full flex items-center justify-center text-black shadow-[0_0_20px_rgba(6,182,212,0.5)] hover:scale-110 transition-transform z-50">
                 <MessageSquare size={24} />
             </button>
+
+            {/* Self-Assessment Modal */}
+            {showSelfAssessmentModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+                    <div className="bg-[#111] border border-white/10 rounded-lg w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+                        {/* Modal Header */}
+                        <div className="flex items-center justify-between p-4 border-b border-white/10">
+                            <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                                <Sparkles size={18} className="text-orange-400" />
+                                Self-Improvement Plan
+                            </h2>
+                            <button
+                                onClick={() => setShowSelfAssessmentModal(false)}
+                                className="text-gray-400 hover:text-white transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Modal Content */}
+                        <div className="flex-1 overflow-y-auto p-4 space-y-6">
+                            {generatingPlan ? (
+                                <div className="flex flex-col items-center justify-center py-12">
+                                    <Loader size={32} className="text-orange-400 animate-spin mb-4" />
+                                    <p className="text-gray-400">Generating your personalized improvement plan...</p>
+                                    <p className="text-gray-500 text-sm mt-2">Analyzing: "{selectedWeakness}"</p>
+                                </div>
+                            ) : selfAssessmentPlan ? (
+                                <>
+                                    {/* Plan Title & Overview */}
+                                    <div>
+                                        <h3 className="text-xl font-bold text-white mb-2">{selfAssessmentPlan.title}</h3>
+                                        <p className="text-gray-400">{selfAssessmentPlan.overview}</p>
+                                    </div>
+
+                                    {/* Steps */}
+                                    <div>
+                                        <h4 className="text-sm font-bold text-cyan-400 uppercase tracking-wider mb-3">Action Steps</h4>
+                                        <div className="space-y-3">
+                                            {selfAssessmentPlan.steps.map((step, idx) => (
+                                                <div key={idx} className="bg-white/5 border border-white/10 rounded-lg p-4">
+                                                    <div className="flex items-center gap-3 mb-2">
+                                                        <span className="w-6 h-6 rounded-full bg-cyan-500/20 text-cyan-400 text-sm font-bold flex items-center justify-center">
+                                                            {step.step}
+                                                        </span>
+                                                        <span className="font-bold text-white flex-1">{step.title}</span>
+                                                        <span className="text-xs text-gray-500 bg-white/5 px-2 py-1 rounded">{step.timeEstimate}</span>
+                                                    </div>
+                                                    <p className="text-sm text-gray-400 ml-9">{step.description}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Resources */}
+                                    {selfAssessmentPlan.resources.length > 0 && (
+                                        <div>
+                                            <h4 className="text-sm font-bold text-green-400 uppercase tracking-wider mb-3">Learning Resources</h4>
+                                            <ul className="space-y-2">
+                                                {selfAssessmentPlan.resources.map((resource, idx) => (
+                                                    <li key={idx} className="text-sm text-gray-300 flex items-start gap-2">
+                                                        <span className="text-green-400 mt-1">→</span>
+                                                        {resource}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+
+                                    {/* Practice Exercises */}
+                                    {selfAssessmentPlan.practiceExercises.length > 0 && (
+                                        <div>
+                                            <h4 className="text-sm font-bold text-purple-400 uppercase tracking-wider mb-3">Practice Exercises</h4>
+                                            <ul className="space-y-2">
+                                                {selfAssessmentPlan.practiceExercises.map((exercise, idx) => (
+                                                    <li key={idx} className="text-sm text-gray-300 flex items-start gap-2">
+                                                        <span className="text-purple-400 mt-1">✦</span>
+                                                        {exercise}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+                                </>
+                            ) : (
+                                <div className="text-center py-12 text-gray-500">
+                                    <p>Failed to generate improvement plan. Please try again.</p>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="p-4 border-t border-white/10">
+                            <button
+                                onClick={() => setShowSelfAssessmentModal(false)}
+                                className="w-full px-4 py-2 bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-500/30 transition-colors font-bold"
+                            >
+                                GOT IT
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

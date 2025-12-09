@@ -217,6 +217,38 @@ export const getEmployeeDetails = async (req: AuthRequest, res: Response): Promi
             ? allAssessments.slice(-3).reduce((sum: number, a: any) => sum + (a.score || 0), 0) / Math.min(allAssessments.length, 3)
             : 0;
 
+        // 4. Aggregate Assessment Feedback (for admin view)
+        const { data: preAssessments } = await supabase
+            .from('pre_assessments')
+            .select('personalized_feedback')
+            .eq('user_id', id)
+            .eq('completed', true);
+
+        const allStrengths: string[] = [];
+        const allWeaknesses: string[] = [];
+        const allRecommendations: string[] = [];
+
+        preAssessments?.forEach((pa: any) => {
+            if (pa.personalized_feedback) {
+                const feedback = typeof pa.personalized_feedback === 'string'
+                    ? JSON.parse(pa.personalized_feedback)
+                    : pa.personalized_feedback;
+                if (feedback.strengths) allStrengths.push(...feedback.strengths);
+                if (feedback.weaknesses) allWeaknesses.push(...feedback.weaknesses);
+                if (feedback.recommendations) allRecommendations.push(...feedback.recommendations);
+            }
+        });
+
+        allAssessments.forEach((a: any) => {
+            if (a.feedback) {
+                try {
+                    const feedback = typeof a.feedback === 'string' ? JSON.parse(a.feedback) : a.feedback;
+                    if (feedback.strengths) allStrengths.push(...feedback.strengths);
+                    if (feedback.weaknesses) allWeaknesses.push(...feedback.weaknesses);
+                    if (feedback.recommendations) allRecommendations.push(...feedback.recommendations);
+                } catch (e) { /* skip plain text feedback */ }
+            }
+        });
 
         res.status(200).json({
             success: true,
@@ -228,6 +260,11 @@ export const getEmployeeDetails = async (req: AuthRequest, res: Response): Promi
                     progressData,
                     preTrainingAvg: Math.round(preTrainingAvg),
                     currentAvg: Math.round(currentAvg)
+                },
+                assessmentFeedback: {
+                    strengths: [...new Set(allStrengths)].slice(0, 10),
+                    weaknesses: [...new Set(allWeaknesses)].slice(0, 10),
+                    recommendations: [...new Set(allRecommendations)].slice(0, 10)
                 }
             }
         });
@@ -355,6 +392,52 @@ export const getMyProfile = async (req: AuthRequest, res: Response): Promise<voi
             ? Math.round(allAssessments.reduce((sum: number, a: any) => sum + (a.score || 0), 0) / totalAssessments)
             : 0;
 
+        // 4. Aggregate Assessment Feedback (strengths, weaknesses, recommendations)
+        // Fetch pre-assessments with personalized feedback
+        const { data: preAssessments } = await supabase
+            .from('pre_assessments')
+            .select('personalized_feedback, baseline_score, scenario:scenarios(title)')
+            .eq('user_id', id)
+            .eq('completed', true);
+
+        // Aggregate feedback from all sources
+        const allStrengths: string[] = [];
+        const allWeaknesses: string[] = [];
+        const allRecommendations: string[] = [];
+
+        // Extract from pre-assessments
+        preAssessments?.forEach((pa: any) => {
+            if (pa.personalized_feedback) {
+                const feedback = typeof pa.personalized_feedback === 'string'
+                    ? JSON.parse(pa.personalized_feedback)
+                    : pa.personalized_feedback;
+                if (feedback.strengths) allStrengths.push(...feedback.strengths);
+                if (feedback.weaknesses) allWeaknesses.push(...feedback.weaknesses);
+                if (feedback.recommendations) allRecommendations.push(...feedback.recommendations);
+            }
+        });
+
+        // Extract from post-assessments (stored in assessments.feedback as JSON string)
+        allAssessments.forEach((a: any) => {
+            if (a.feedback) {
+                try {
+                    const feedback = typeof a.feedback === 'string'
+                        ? JSON.parse(a.feedback)
+                        : a.feedback;
+                    if (feedback.strengths) allStrengths.push(...feedback.strengths);
+                    if (feedback.weaknesses) allWeaknesses.push(...feedback.weaknesses);
+                    if (feedback.recommendations) allRecommendations.push(...feedback.recommendations);
+                } catch (e) {
+                    // Feedback might be plain text, skip
+                }
+            }
+        });
+
+        // Deduplicate and limit
+        const uniqueStrengths = [...new Set(allStrengths)].slice(0, 10);
+        const uniqueWeaknesses = [...new Set(allWeaknesses)].slice(0, 10);
+        const uniqueRecommendations = [...new Set(allRecommendations)].slice(0, 10);
+
         // Determine rank title based on elo_rating
         const eloRating = employee.elo_rating || 1200;
         let rankTitle = 'RECRUIT';
@@ -393,7 +476,13 @@ export const getMyProfile = async (req: AuthRequest, res: Response): Promise<voi
                     { subject: 'Critical Thinking', A: 0, fullMark: 100 },
                     { subject: 'Communication', A: 0, fullMark: 100 }
                 ],
-                modules: modules.length > 0 ? modules : []
+                modules: modules.length > 0 ? modules : [],
+                // NEW: Assessment Feedback
+                assessmentFeedback: {
+                    strengths: uniqueStrengths,
+                    weaknesses: uniqueWeaknesses,
+                    recommendations: uniqueRecommendations
+                }
             }
         });
 

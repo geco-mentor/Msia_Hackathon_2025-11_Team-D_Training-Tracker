@@ -9,7 +9,8 @@ import {
     readTextFile,
     generateMicroScenario,
     evaluateWithRubrics,
-    generatePersonalizedFeedback
+    generatePersonalizedFeedback,
+    generateSelfAssessmentPlan
 } from '../services/awsService';
 
 // ============================================
@@ -1072,5 +1073,52 @@ export const submitAssessment = async (req: Request, res: Response) => {
     } catch (error: any) {
         console.error('Error submitting assessment:', error);
         res.status(500).json({ message: 'Failed to submit assessment', error: error.message });
+    }
+};
+
+// ============================================
+// SELF-ASSESSMENT - Improvement Plan Generation
+// ============================================
+
+/**
+ * Generate a personalized improvement plan for a specific weakness.
+ * POST /api/assessments/self-assessment/generate
+ */
+export const generateSelfAssessment = async (req: Request, res: Response) => {
+    try {
+        const { userId, weakness } = req.body;
+        console.log('DEBUG: generateSelfAssessment called with:', { userId, weakness });
+
+        if (!userId || !weakness) {
+            return res.status(400).json({ message: 'Missing required fields: userId, weakness' });
+        }
+
+        // Get employee data for context
+        const { data: employee, error: empError } = await supabase
+            .from('employees')
+            .select('job_title, job_description, department')
+            .eq('id', userId)
+            .single();
+
+        if (empError || !employee) {
+            console.error('DEBUG: Error fetching employee:', empError);
+            return res.status(404).json({ message: 'Employee not found' });
+        }
+
+        const jobDescription = employee.job_description || employee.job_title || 'General employee';
+        const additionalContext = `Department: ${employee.department || 'General'}`;
+
+        // Generate the improvement plan using AI
+        const plan = await generateSelfAssessmentPlan(weakness, jobDescription, additionalContext);
+
+        console.log('DEBUG: Self-assessment plan generated successfully');
+        res.json({
+            success: true,
+            plan
+        });
+
+    } catch (error: any) {
+        console.error('Error generating self-assessment:', error);
+        res.status(500).json({ message: 'Failed to generate self-assessment', error: error.message });
     }
 };

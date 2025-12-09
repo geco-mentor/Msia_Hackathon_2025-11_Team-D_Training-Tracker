@@ -1,19 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Terminal, Cpu, Activity, LogOut, Plus, Trash2, Sparkles, User } from 'lucide-react';
+import { Terminal, Cpu, Activity, LogOut, User } from 'lucide-react';
 import { ChallengeCard } from '../components/ChallengeCard';
 import { ChallengeModal } from '../components/ChallengeModal';
 import { PreAssessmentModal } from '../components/PreAssessmentModal';
 import { PostAssessmentModal } from '../components/PostAssessmentModal';
-import { GoalSetter } from '../components/GoalSetter';
 import { API_BASE_URL } from '../config';
 
 export const EmployeeDashboard: React.FC = () => {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
     const [mainChallenges, setMainChallenges] = useState<any[]>([]);
-    const [personalizedChallenges, setPersonalizedChallenges] = useState<any[]>([]);
     const [selectedChallenge, setSelectedChallenge] = useState<any | null>(null);
     const [showPreAssessment, setShowPreAssessment] = useState(false);
     const [showPostAssessment, setShowPostAssessment] = useState(false);
@@ -21,8 +19,6 @@ export const EmployeeDashboard: React.FC = () => {
     const [postAssessmentScenario, setPostAssessmentScenario] = useState<any | null>(null);
     const [preAssessmentStatuses, setPreAssessmentStatuses] = useState<Record<string, boolean>>({});
     const [postAssessmentStatuses, setPostAssessmentStatuses] = useState<Record<string, boolean>>({});
-    const [generating, setGenerating] = useState(false);
-    const [keyword, setKeyword] = useState('');
     const [stats] = useState({
         ranking: user?.ranking || 0,
         win_rate: user?.win_rate || 0,
@@ -42,13 +38,6 @@ export const EmployeeDashboard: React.FC = () => {
             const mainData = await mainRes.json();
             console.log('DEBUG: fetchChallenges - received', mainData.data?.length, 'main challenges');
             if (mainData.success) setMainChallenges(mainData.data);
-
-            // Fetch Personalized Challenges
-            if (user?.id) {
-                const persRes = await fetch(`${API_BASE_URL}/api/challenges/personalized/${user.id}`);
-                const persData = await persRes.json();
-                if (persData.success) setPersonalizedChallenges(persData.data);
-            }
         } catch (error) {
             console.error('Failed to fetch challenges', error);
         }
@@ -144,47 +133,10 @@ export const EmployeeDashboard: React.FC = () => {
 
     // Fetch statuses when challenges are loaded
     useEffect(() => {
-        const allChallenges = [...mainChallenges, ...personalizedChallenges];
-        if (allChallenges.length > 0 && user?.id) {
-            fetchAllAssessmentStatuses(allChallenges);
+        if (mainChallenges.length > 0 && user?.id) {
+            fetchAllAssessmentStatuses(mainChallenges);
         }
-    }, [mainChallenges, personalizedChallenges, user?.id]);
-
-    const generatePersonalized = async () => {
-        if (!keyword) return;
-        setGenerating(true);
-        try {
-            const res = await fetch(`${API_BASE_URL}/api/challenges/generate`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    jobTitle: keyword,
-                    difficulty: 'Normal',
-                    userId: user?.id,
-                    isPersonalized: true
-                })
-            });
-            const data = await res.json();
-            if (data.success) {
-                setPersonalizedChallenges([data.data, ...personalizedChallenges]);
-                setKeyword('');
-            }
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setGenerating(false);
-        }
-    };
-
-    const deletePersonalized = async (id: string, e: React.MouseEvent) => {
-        e.stopPropagation();
-        try {
-            await fetch(`${API_BASE_URL}/api/challenges/${id}`, { method: 'DELETE' });
-            setPersonalizedChallenges(personalizedChallenges.filter(c => c.id !== id));
-        } catch (err) {
-            console.error(err);
-        }
-    };
+    }, [mainChallenges, user?.id]);
 
     return (
         <div className="min-h-screen bg-[#0a0a0a] text-cyan-50 font-mono selection:bg-cyan-500/30">
@@ -257,67 +209,10 @@ export const EmployeeDashboard: React.FC = () => {
                                 )}
                             </div>
                         </div>
-
-                        {/* Personalized Quests */}
-                        <div className="bg-[#111] border border-white/5 rounded-lg p-6">
-                            <div className="flex items-center justify-between mb-6">
-                                <h2 className="text-lg font-bold text-white tracking-wider flex items-center gap-2">
-                                    <span className="text-pink-400">◎</span> PERSONALIZED QUESTS
-                                </h2>
-                            </div>
-
-                            {/* Generator Input */}
-                            <div className="flex gap-2 mb-6 max-w-md">
-                                <input
-                                    type="text"
-                                    value={keyword}
-                                    onChange={(e) => setKeyword(e.target.value)}
-                                    placeholder="E.g., AWS Cloud, React..."
-                                    className="flex-1 bg-black/50 border border-white/10 rounded px-3 py-2 text-sm text-white focus:border-pink-500/50 focus:outline-none"
-                                    onKeyDown={(e) => e.key === 'Enter' && generatePersonalized()}
-                                />
-                                <button
-                                    onClick={generatePersonalized}
-                                    disabled={generating || !keyword}
-                                    className="px-3 py-2 bg-pink-600/20 border border-pink-500/50 text-pink-400 rounded hover:bg-pink-600/30 transition-colors disabled:opacity-50"
-                                >
-                                    {generating ? <Sparkles size={18} className="animate-spin" /> : <Plus size={18} />}
-                                </button>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                {personalizedChallenges.map(challenge => (
-                                    <div key={challenge.id} className="relative group">
-                                        <ChallengeCard
-                                            challenge={challenge}
-                                            onClick={() => handleChallengeClick(challenge)}
-                                            preAssessmentCompleted={preAssessmentStatuses[challenge.id]}
-                                            postAssessmentCompleted={postAssessmentStatuses[challenge.id]}
-                                        />
-                                        <button
-                                            onClick={(e) => deletePersonalized(challenge.id, e)}
-                                            className="absolute top-2 right-2 p-1.5 bg-black/50 text-gray-500 hover:text-red-400 rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                                        >
-                                            <Trash2 size={14} />
-                                        </button>
-                                    </div>
-                                ))}
-                                {personalizedChallenges.length === 0 && (
-                                    <div className="col-span-full text-center py-8 text-gray-600 text-sm">
-                                        No personalized quests. Generate one to start!
-                                    </div>
-                                )}
-                            </div>
-                        </div>
                     </div>
 
                     {/* Right Column: Sidebar (1 col) */}
                     <div className="space-y-6 sticky top-24 self-start">
-
-                        {/* Goal Setter */}
-                        <div className="h-[400px]">
-                            <GoalSetter />
-                        </div>
 
                         {/* Recent Activity */}
                         <div className="bg-[#111] border border-white/5 rounded-lg p-6">

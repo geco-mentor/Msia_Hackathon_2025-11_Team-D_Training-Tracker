@@ -1,7 +1,7 @@
 /**
  * API Retry Utility
- * Provides consistent retry logic for fetch calls with exponential backoff.
- * Retries up to 10 times on server errors (5xx).
+ * Provides consistent retry logic for fetch calls.
+ * Retries up to 10 times on server errors (5xx) or network errors with 1.5s interval.
  */
 
 interface RetryOptions {
@@ -12,8 +12,8 @@ interface RetryOptions {
 
 const DEFAULT_OPTIONS: Required<RetryOptions> = {
     maxRetries: 10,
-    baseDelay: 1000,
-    maxDelay: 10000
+    baseDelay: 1500,  // 1.5 second interval as requested
+    maxDelay: 1500    // Fixed interval, not exponential
 };
 
 /**
@@ -25,7 +25,7 @@ export async function fetchWithRetry(
     options: RequestInit,
     retryOptions: RetryOptions = {}
 ): Promise<Response> {
-    const { maxRetries, baseDelay, maxDelay } = { ...DEFAULT_OPTIONS, ...retryOptions };
+    const { maxRetries, baseDelay } = { ...DEFAULT_OPTIONS, ...retryOptions };
 
     let lastError: Error | null = null;
 
@@ -39,10 +39,9 @@ export async function fetchWithRetry(
                 const errorText = await response.text();
                 console.warn(`Server error (${response.status}), retrying... Error: ${errorText.substring(0, 200)}`);
 
-                // Exponential backoff
-                const delay = Math.min(maxDelay, baseDelay * attempt);
-                console.log(`Waiting ${delay}ms before retry ${attempt + 1}...`);
-                await new Promise(r => setTimeout(r, delay));
+                // Fixed interval retry (1.5s)
+                console.log(`Waiting ${baseDelay}ms before retry ${attempt + 1}...`);
+                await new Promise(r => setTimeout(r, baseDelay));
                 continue;
             }
 
@@ -53,9 +52,8 @@ export async function fetchWithRetry(
             console.error(`Network error on attempt ${attempt}:`, error.message);
 
             if (attempt < maxRetries) {
-                const delay = Math.min(maxDelay, baseDelay * attempt);
-                console.log(`Waiting ${delay}ms before retry ${attempt + 1}...`);
-                await new Promise(r => setTimeout(r, delay));
+                console.log(`Waiting ${baseDelay}ms before retry ${attempt + 1}...`);
+                await new Promise(r => setTimeout(r, baseDelay));
             }
         }
     }

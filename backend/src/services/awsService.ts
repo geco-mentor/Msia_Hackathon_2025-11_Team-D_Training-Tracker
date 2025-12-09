@@ -1023,3 +1023,100 @@ Output ONLY this JSON:
 
     throw new Error(`Failed to generate feedback after ${maxRetries} attempts: ${lastError}`);
 };
+
+// ============================================
+// SELF-ASSESSMENT - Improvement Plan Generation
+// ============================================
+
+/**
+ * Generate a personalized improvement plan for a specific weakness area.
+ * Returns actionable steps, resources, and practice exercises.
+ */
+export const generateSelfAssessmentPlan = async (
+    weakness: string,
+    jobDescription: string,
+    additionalContext?: string
+): Promise<{
+    title: string;
+    overview: string;
+    steps: { step: number; title: string; description: string; timeEstimate: string }[];
+    resources: string[];
+    practiceExercises: string[];
+}> => {
+    const prompt = `Create a personalized improvement plan for an employee.
+
+EMPLOYEE ROLE: ${jobDescription.substring(0, 300)}
+WEAKNESS TO IMPROVE: ${weakness}
+${additionalContext ? `ADDITIONAL CONTEXT: ${additionalContext}` : ''}
+
+Generate a structured improvement plan with:
+1. A motivating title
+2. Brief overview (2-3 sentences)
+3. 3-5 actionable steps with time estimates
+4. 2-3 learning resources (describe generic types, not URLs)
+5. 2-3 practice exercises
+
+Output ONLY valid JSON:
+{
+    "title": "Improvement Plan: Topic Name",
+    "overview": "Brief description of the improvement journey",
+    "steps": [
+        {"step": 1, "title": "Step Title", "description": "What to do", "timeEstimate": "30 mins"},
+        {"step": 2, "title": "Step Title", "description": "What to do", "timeEstimate": "1 hour"}
+    ],
+    "resources": ["Resource type 1", "Resource type 2"],
+    "practiceExercises": ["Exercise 1", "Exercise 2"]
+}`;
+
+    const maxRetries = 5;
+    let lastError = '';
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            console.log(`DEBUG: Generating self-assessment plan, attempt ${attempt}/${maxRetries}`);
+
+            const command = new ConverseCommand({
+                modelId: "qwen.qwen3-235b-a22b-2507-v1:0",
+                messages: [{ role: "user", content: [{ text: prompt }] }],
+                inferenceConfig: { maxTokens: 1000, temperature: 0.6 }
+            });
+
+            const response = await getBedrockClient().send(command);
+            const content = response.output?.message?.content?.[0]?.text || "";
+            console.log('DEBUG: Raw self-assessment response:', content.substring(0, 150));
+
+            // Extract JSON
+            const firstOpen = content.indexOf('{');
+            const lastClose = content.lastIndexOf('}');
+            if (firstOpen !== -1 && lastClose !== -1) {
+                const jsonStr = content.substring(firstOpen, lastClose + 1);
+                const parsed = JSON.parse(jsonStr);
+
+                // Validate required fields
+                if (parsed.title && parsed.overview && Array.isArray(parsed.steps)) {
+                    console.log('DEBUG: Successfully generated self-assessment plan');
+                    return {
+                        title: parsed.title,
+                        overview: parsed.overview,
+                        steps: parsed.steps || [],
+                        resources: parsed.resources || [],
+                        practiceExercises: parsed.practiceExercises || []
+                    };
+                }
+            }
+            lastError = 'Invalid JSON structure';
+        } catch (e: any) {
+            lastError = e.message;
+            console.log(`DEBUG: Attempt ${attempt} failed:`, lastError);
+        }
+
+        // Wait before retry with exponential backoff
+        if (attempt < maxRetries) {
+            const delay = Math.min(5000, 500 * attempt);
+            console.log(`DEBUG: Retrying self-assessment plan in ${delay}ms...`);
+            await new Promise(r => setTimeout(r, delay));
+        }
+    }
+
+    throw new Error(`Failed to generate self-assessment plan after ${maxRetries} attempts: ${lastError}`);
+};
