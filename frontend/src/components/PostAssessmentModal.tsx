@@ -31,8 +31,6 @@ export const PostAssessmentModal: React.FC<PostAssessmentModalProps> = ({ scenar
     const [hint, setHint] = useState<string>('');
     const [difficulty, setDifficulty] = useState<Difficulty>('Normal');
     const [showHint, setShowHint] = useState<boolean>(false);
-    const [options, setOptions] = useState<string[]>([]);
-    const [questionType, setQuestionType] = useState<'text' | 'multiple_choice'>('text');
 
     const [questionNumber, setQuestionNumber] = useState<number>(1);
     const [totalQuestions, setTotalQuestions] = useState<number>(7);
@@ -62,8 +60,6 @@ export const PostAssessmentModal: React.FC<PostAssessmentModalProps> = ({ scenar
         setTotalQuestions(data.totalQuestions || 7);
         setShowHint(false);
         setAnswer('');
-        setOptions(data.options || []);
-        setQuestionType(data.type || 'text');
         if (data.runningScore !== undefined) setRunningScore(data.runningScore);
     };
 
@@ -250,34 +246,14 @@ export const PostAssessmentModal: React.FC<PostAssessmentModalProps> = ({ scenar
                                 <p className="text-white font-medium">{currentQuestion}</p>
                             </div>
 
-                            {/* Answer Input */}
-                            {questionType === 'multiple_choice' ? (
-                                <div className="space-y-3">
-                                    {options.map((opt, idx) => (
-                                        <button
-                                            key={idx}
-                                            onClick={() => setAnswer(opt)}
-                                            className={`w-full p-4 text-left rounded-lg border transition-all ${answer === opt
-                                                    ? 'bg-cyan-900/40 border-cyan-500 text-cyan-100'
-                                                    : 'bg-black/50 border-white/10 text-gray-300 hover:bg-white/5'
-                                                }`}
-                                        >
-                                            <span className="inline-block w-6 h-6 rounded-full border border-white/20 mr-3 text-center text-xs leading-6 text-gray-500">
-                                                {String.fromCharCode(65 + idx)}
-                                            </span>
-                                            {opt}
-                                        </button>
-                                    ))}
-                                </div>
-                            ) : (
-                                <textarea
-                                    value={answer}
-                                    onChange={e => setAnswer(e.target.value)}
-                                    placeholder="Type your answer here..."
-                                    className="w-full p-4 bg-black/50 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500 resize-none"
-                                    rows={4}
-                                />
-                            )}
+                            {/* Text Input - Always shown (text-only mode) */}
+                            <textarea
+                                value={answer}
+                                onChange={e => setAnswer(e.target.value)}
+                                placeholder="Type your answer here..."
+                                className="w-full p-4 bg-black/50 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500 resize-none"
+                                rows={4}
+                            />
 
                             {/* Hint */}
                             {hint && (
