@@ -54,7 +54,6 @@ export const startPreAssessment = async (req: Request, res: Response) => {
 
             // Determine current step based on state
             let currentStep: string;
-            let currentQuestion: string | null = null;
 
             if (existing.is_familiar === null || existing.is_familiar === undefined) {
                 // Never answered familiarity question
@@ -72,13 +71,31 @@ export const startPreAssessment = async (req: Request, res: Response) => {
                     .update({ is_familiar: null })
                     .eq('id', existing.id);
             } else if (questionsAsked.length > answersGiven.length) {
-                // There's an unanswered question
+                // There's an unanswered question - RESUME with full question data
                 currentStep = 'questions';
-                currentQuestion = questionsAsked[questionsAsked.length - 1];
+                const currentQuestionIndex = answersGiven.length;
+                const currentQ = questionsAsked[currentQuestionIndex];
+
+                console.log('DEBUG: Resuming pre-assessment at question', currentQuestionIndex + 1);
+                return res.json({
+                    preAssessmentId: existing.id,
+                    completed: false,
+                    currentStep: 'questions',
+                    questionNumber: currentQuestionIndex + 1,
+                    totalQuestions: 4,
+                    mission: currentQ.mission || `MISSION: Challenge ${currentQuestionIndex + 1}`,
+                    scenario: currentQ.scenario,
+                    question: currentQ.question,
+                    type: currentQ.type || 'text',
+                    options: currentQ.options,
+                    hint: currentQ.hint,
+                    xp: currentQ.xp || 100,
+                    difficulty: existing.current_difficulty || 'Easy',
+                    resumed: true
+                });
             } else {
                 // All questions answered, might need more or be complete
                 currentStep = 'questions';
-                currentQuestion = questionsAsked[questionsAsked.length - 1];
             }
 
             return res.json({
@@ -88,7 +105,6 @@ export const startPreAssessment = async (req: Request, res: Response) => {
                 questionsAsked: questionsAsked,
                 answersGiven: answersGiven,
                 currentStep: currentStep,
-                currentQuestion: currentQuestion,
                 message: 'Resuming pre-assessment'
             });
         }
@@ -270,12 +286,14 @@ export const submitFamiliarity = async (req: Request, res: Response) => {
             completed: false,
             currentStep: 'questions',
             questionNumber: 1,
-            totalQuestions: '1-4',
+            totalQuestions: 4,
+            mission: microScenario.mission || 'MISSION: Challenge 1',
             scenario: microScenario.scenario,
             question: microScenario.question,
             type: microScenario.type,
-
+            options: microScenario.options,
             hint: microScenario.hint,
+            xp: microScenario.xp || 100,
             difficulty: 'Easy'
         });
 
@@ -414,12 +432,14 @@ export const submitPreAssessmentAnswer = async (req: Request, res: Response) => 
                 completed: false,
                 currentStep: 'questions',
                 questionNumber: currentQuestionCount + 1,
-                totalQuestions: '1-4',
+                totalQuestions: 4,
+                mission: nextScenario.mission || `MISSION: Challenge ${currentQuestionCount + 1}`,
                 scenario: nextScenario.scenario,
                 question: nextScenario.question,
                 type: nextScenario.type,
-
+                options: nextScenario.options,
                 hint: nextScenario.hint,
+                xp: nextScenario.xp || 100,
                 difficulty: nextDifficulty,
                 previousFeedback: evaluation.feedback,
                 previousScore: evaluation.score
@@ -594,6 +614,42 @@ export const startPostAssessment = async (req: Request, res: Response) => {
             });
         }
 
+        // RESUME: If assessment exists but not completed, resume from where user left off
+        if (existing && !existing.completed) {
+            const questionsAsked = existing.questions_asked || [];
+            const answersGiven = existing.answers_given || [];
+            const currentQuestionIndex = answersGiven.length;  // Next unanswered question
+
+            if (questionsAsked.length > currentQuestionIndex) {
+                // Return the current unanswered question
+                const currentQ = questionsAsked[currentQuestionIndex];
+                const runningScore = answersGiven.length > 0
+                    ? Math.round(answersGiven.reduce((sum: number, a: any) => sum + (a.score || 0), 0) / answersGiven.length)
+                    : 0;
+
+                console.log('DEBUG: Resuming assessment at question', currentQuestionIndex + 1);
+                return res.json({
+                    assessmentId: existing.id,
+                    completed: false,
+                    currentStep: 'questions',
+                    questionNumber: currentQuestionIndex + 1,
+                    totalQuestions: existing.total_questions || 4,
+                    mission: currentQ.mission || `MISSION: Challenge ${currentQuestionIndex + 1}`,
+                    scenario: currentQ.scenario,
+                    question: currentQ.question,
+                    type: currentQ.type || 'text',
+                    options: currentQ.options,
+                    hint: currentQ.hint,
+                    xp: currentQ.xp || 250,
+                    difficulty: existing.current_difficulty || 'Normal',
+                    baselineScore: preAssessment.baseline_score || 0,
+                    runningScore,
+                    resumed: true
+                });
+            }
+        }
+
+
 
 
         // Get scenario and curriculum
@@ -656,7 +712,7 @@ export const startPostAssessment = async (req: Request, res: Response) => {
             answers_given: [],
             current_difficulty: startDifficulty,
             current_question: 1,
-            total_questions: 7,
+            total_questions: 4,  // Fixed: 4 questions
             score: 0,
             completed: false,
             // Required fields from original schema
@@ -688,13 +744,14 @@ export const startPostAssessment = async (req: Request, res: Response) => {
             completed: false,
             currentStep: 'questions',
             questionNumber: 1,
-            totalQuestions: 7,
+            totalQuestions: 4,  // Fixed: was 7
+            mission: firstScenario.mission || 'MISSION: Challenge 1',
             scenario: firstScenario.scenario,
             question: firstScenario.question,
             type: firstScenario.type,
             options: firstScenario.options,
-
             hint: firstScenario.hint,
+            xp: firstScenario.xp || 250,
             difficulty: startDifficulty,
             baselineScore: baselineScore
         });
@@ -823,12 +880,13 @@ export const submitPostAssessmentAnswer = async (req: Request, res: Response) =>
                 currentStep: 'questions',
                 questionNumber: currentQuestion + 1,
                 totalQuestions,
+                mission: nextScenario.mission || `MISSION: Challenge ${currentQuestion + 1}`,
                 scenario: nextScenario.scenario,
                 question: nextScenario.question,
                 type: nextScenario.type,
                 options: nextScenario.options,
-
                 hint: nextScenario.hint,
+                xp: nextScenario.xp || 250,
                 difficulty: nextDifficulty,
                 previousFeedback: evaluation.feedback,
                 previousScore: evaluation.score,

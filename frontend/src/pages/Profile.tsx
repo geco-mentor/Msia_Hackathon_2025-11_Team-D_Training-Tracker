@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer } from 'recharts';
-import { Terminal, Shield, Target, Cpu, MessageSquare, Database, Lock, Activity, LogOut, User, Briefcase, CheckCircle, AlertTriangle, Lightbulb, Sparkles, X, Loader } from 'lucide-react';
-import { API_BASE_URL } from '../config';
+import { Terminal, Shield, Target, Cpu, MessageSquare, Database, Lock, Activity, LogOut, User, Briefcase, CheckCircle, AlertTriangle, Lightbulb, Sparkles, X, Loader, Award, Code, Network, Brain, Ghost } from 'lucide-react';
+import { API_BASE_URL, getRankFromElo } from '../config';
 
 interface SkillData {
     subject: string;

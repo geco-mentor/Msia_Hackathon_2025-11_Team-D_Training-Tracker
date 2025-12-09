@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Loader, CheckCircle, Send, Lightbulb, Star, ArrowRight, Trophy, TrendingUp } from 'lucide-react';
+import { X, Loader, CheckCircle, Lightbulb, Star, ArrowRight, Trophy, TrendingUp, Zap, Target, Flame } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { API_BASE_URL } from '../config';
 import { fetchWithRetry } from '../api/apiRetry';
@@ -19,6 +19,13 @@ interface PersonalizedFeedback {
 
 type Difficulty = 'Easy' | 'Normal' | 'Hard';
 
+// Gamification config
+const DIFFICULTY_CONFIG: Record<Difficulty, { xp: number; label: string; color: string }> = {
+    'Easy': { xp: 100, label: '⭐ Rookie', color: 'text-green-400 bg-green-500/20 border-green-500/50' },
+    'Normal': { xp: 250, label: '⭐⭐ Pro', color: 'text-yellow-400 bg-yellow-500/20 border-yellow-500/50' },
+    'Hard': { xp: 500, label: '⭐⭐⭐ Expert', color: 'text-red-400 bg-red-500/20 border-red-500/50' }
+};
+
 export const PostAssessmentModal: React.FC<PostAssessmentModalProps> = ({ scenario, onClose, onComplete }) => {
     const { user } = useAuth();
     const [assessmentId, setAssessmentId] = useState<string | null>(null);
@@ -26,24 +33,27 @@ export const PostAssessmentModal: React.FC<PostAssessmentModalProps> = ({ scenar
     const [error, setError] = useState<string>('');
 
     // Question state
+    const [missionName, setMissionName] = useState<string>('');
     const [currentScenario, setCurrentScenario] = useState<string>('');
     const [currentQuestion, setCurrentQuestion] = useState<string>('');
     const [hint, setHint] = useState<string>('');
     const [difficulty, setDifficulty] = useState<Difficulty>('Normal');
+    const [currentXP, setCurrentXP] = useState<number>(250);
     const [showHint, setShowHint] = useState<boolean>(false);
-    const [options, setOptions] = useState<string[]>([]);
-    const [questionType, setQuestionType] = useState<'text' | 'multiple_choice'>('text');
 
     const [questionNumber, setQuestionNumber] = useState<number>(1);
-    const [totalQuestions, setTotalQuestions] = useState<number>(7);
+    const [totalQuestions, setTotalQuestions] = useState<number>(4);
     const [answer, setAnswer] = useState<string>('');
 
     const [feedback, setFeedback] = useState<string>('');
     const [runningScore, setRunningScore] = useState<number>(0);
+    const [totalXPEarned, setTotalXPEarned] = useState<number>(0);
+    const [streak, setStreak] = useState<number>(0);
     const [finalScore, setFinalScore] = useState<number>(0);
     const [personalizedFeedback, setPersonalizedFeedback] = useState<PersonalizedFeedback | null>(null);
     const [completed, setCompleted] = useState<boolean>(false);
     const [baselineScore, setBaselineScore] = useState<number>(0);
+    const [showXPAnimation, setShowXPAnimation] = useState<boolean>(false);
     const startedRef = React.useRef(false);
 
     useEffect(() => {
@@ -54,16 +64,17 @@ export const PostAssessmentModal: React.FC<PostAssessmentModalProps> = ({ scenar
     }, []);
 
     const handleQuestionData = (data: any) => {
+        setMissionName(data.mission || `MISSION: Challenge ${data.questionNumber || 1}`);
         setCurrentScenario(data.scenario || '');
         setCurrentQuestion(data.question || '');
         setHint(data.hint || '');
         setDifficulty(data.difficulty || 'Normal');
+        const diff = (data.difficulty as Difficulty) || 'Normal';
+        setCurrentXP(data.xp || DIFFICULTY_CONFIG[diff].xp);
         setQuestionNumber(data.questionNumber || 1);
-        setTotalQuestions(data.totalQuestions || 7);
+        setTotalQuestions(data.totalQuestions || 4);
         setShowHint(false);
         setAnswer('');
-        setOptions(data.options || []);
-        setQuestionType(data.type || 'text');
         if (data.runningScore !== undefined) setRunningScore(data.runningScore);
     };
 
@@ -130,6 +141,16 @@ export const PostAssessmentModal: React.FC<PostAssessmentModalProps> = ({ scenar
                 throw new Error(data.message || 'Failed to submit answer');
             }
 
+            // XP and streak logic
+            if (data.previousScore && data.previousScore >= 60) {
+                setTotalXPEarned(prev => prev + currentXP);
+                setStreak(prev => prev + 1);
+                setShowXPAnimation(true);
+                setTimeout(() => setShowXPAnimation(false), 1500);
+            } else {
+                setStreak(0);
+            }
+
             if (data.previousFeedback) {
                 setFeedback(data.previousFeedback);
             }
@@ -137,6 +158,9 @@ export const PostAssessmentModal: React.FC<PostAssessmentModalProps> = ({ scenar
             if (data.completed) {
                 setFinalScore(data.score);
                 setPersonalizedFeedback(data.personalizedFeedback || null);
+                // Final XP calculation
+                const finalXP = Math.round((data.score / 100) * totalQuestions * 250);
+                setTotalXPEarned(finalXP);
                 setCompleted(true);
             } else {
                 handleQuestionData(data);
@@ -153,13 +177,7 @@ export const PostAssessmentModal: React.FC<PostAssessmentModalProps> = ({ scenar
         onComplete(finalScore);
     };
 
-    const getDifficultyColor = (d: Difficulty) => {
-        switch (d) {
-            case 'Easy': return 'text-green-400 bg-green-500/10 border-green-500/30';
-            case 'Normal': return 'text-yellow-400 bg-yellow-500/10 border-yellow-500/30';
-            case 'Hard': return 'text-red-400 bg-red-500/10 border-red-500/30';
-        }
-    };
+    const getDifficultyDisplay = (d: Difficulty) => DIFFICULTY_CONFIG[d];
 
     const getScoreColor = (score: number) => {
         if (score >= 80) return 'text-green-400';
@@ -167,25 +185,57 @@ export const PostAssessmentModal: React.FC<PostAssessmentModalProps> = ({ scenar
         return 'text-red-400';
     };
 
+    const getImprovement = () => {
+        const diff = finalScore - baselineScore;
+        if (diff > 0) return { text: `+${diff}%`, color: 'text-green-400', icon: '📈' };
+        if (diff < 0) return { text: `${diff}%`, color: 'text-red-400', icon: '📉' };
+        return { text: '0%', color: 'text-gray-400', icon: '➡️' };
+    };
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-            <div className="bg-[#111] border border-white/10 rounded-lg w-full max-w-xl max-h-[90vh] overflow-y-auto flex flex-col relative animate-in fade-in zoom-in-95 duration-200">
+            <div className="bg-[#0a0a0a] border border-purple-500/30 rounded-lg w-full max-w-xl max-h-[90vh] overflow-y-auto flex flex-col relative animate-in fade-in zoom-in-95 duration-200 shadow-[0_0_30px_rgba(168,85,247,0.15)]">
 
-                {/* Header */}
-                <div className="p-6 border-b border-white/10 flex justify-between items-start sticky top-0 bg-[#111] z-10">
+                {/* Header - Gamified */}
+                <div className="p-6 border-b border-purple-500/20 flex justify-between items-start sticky top-0 bg-[#0a0a0a] z-10">
                     <div className="flex items-center gap-3">
-                        <div className="p-2 bg-cyan-900/30 rounded-lg">
-                            <Trophy className="text-cyan-400" size={24} />
+                        <div className="p-2 bg-gradient-to-br from-purple-600 to-pink-600 rounded-lg animate-pulse">
+                            <Trophy className="text-white" size={24} />
                         </div>
                         <div>
-                            <h2 className="text-lg font-bold text-white">Post-Assessment</h2>
+                            <h2 className="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">
+                                🏆 FINAL CHALLENGE
+                            </h2>
                             <p className="text-xs text-gray-400">{scenario.title || scenario.skill || 'Training Module'}</p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors">
-                        <X size={24} />
-                    </button>
+                    <div className="flex items-center gap-3">
+                        {streak >= 2 && (
+                            <div className="flex items-center gap-1 px-2 py-1 bg-orange-500/20 border border-orange-500/30 rounded text-orange-400 text-sm font-bold animate-pulse">
+                                <Flame size={14} />
+                                {streak}x STREAK!
+                            </div>
+                        )}
+                        {totalXPEarned > 0 && (
+                            <div className="flex items-center gap-1 px-2 py-1 bg-yellow-500/20 border border-yellow-500/30 rounded text-yellow-400 text-sm font-bold">
+                                <Zap size={14} />
+                                {totalXPEarned} XP
+                            </div>
+                        )}
+                        <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors">
+                            <X size={24} />
+                        </button>
+                    </div>
                 </div>
+
+                {/* XP Animation Overlay */}
+                {showXPAnimation && (
+                    <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
+                        <div className="text-4xl font-bold text-yellow-400 animate-bounce">
+                            +{currentXP} XP! {streak >= 2 ? '🔥' : '🎯'}
+                        </div>
+                    </div>
+                )}
 
                 {/* Content */}
                 <div className="p-6">
@@ -198,86 +248,74 @@ export const PostAssessmentModal: React.FC<PostAssessmentModalProps> = ({ scenar
                     {/* Loading State */}
                     {loading && !completed && questionNumber === 1 && (
                         <div className="flex flex-col items-center justify-center py-12">
-                            <Loader className="animate-spin text-cyan-400 mb-4" size={48} />
-                            <p className="text-gray-400">Loading post-assessment...</p>
+                            <Loader className="animate-spin text-purple-400 mb-4" size={48} />
+                            <p className="text-gray-400">Preparing final challenge...</p>
                         </div>
                     )}
 
-                    {/* Questions */}
+                    {/* Questions - Gamified */}
                     {!completed && !loading && (
-                        <div className="space-y-6">
+                        <div className="space-y-5">
+                            {/* Mission Header */}
+                            <div className="text-center mb-4">
+                                <h3 className="text-sm font-bold text-purple-400 tracking-wider">{missionName}</h3>
+                            </div>
+
                             {/* Progress and Difficulty */}
                             <div className="flex justify-between items-center">
                                 <div className="flex items-center gap-2">
-                                    <p className="text-sm text-gray-400">Question {questionNumber} of {totalQuestions}</p>
+                                    <span className="text-sm text-gray-400">Challenge {questionNumber}/{totalQuestions}</span>
                                     {runningScore > 0 && (
                                         <span className={`text-xs font-bold ${getScoreColor(runningScore)}`}>
                                             ({runningScore}%)
                                         </span>
                                     )}
+                                    {/* Progress bar */}
+                                    <div className="w-20 h-2 bg-gray-800 rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-500 shadow-[0_0_10px_rgba(168,85,247,0.5)]"
+                                            style={{ width: `${(questionNumber / totalQuestions) * 100}%` }}
+                                        />
+                                    </div>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <span className={`text-xs font-bold px-2 py-1 rounded border ${getDifficultyColor(difficulty)}`}>
-                                        {difficulty}
+                                    <span className={`text-xs font-bold px-3 py-1 rounded-full border ${getDifficultyDisplay(difficulty).color}`}>
+                                        {getDifficultyDisplay(difficulty).label}
                                     </span>
-                                    <div className="flex gap-0.5">
-                                        {Array.from({ length: totalQuestions }, (_, i) => (
-                                            <div
-                                                key={i}
-                                                className={`w-1.5 h-1.5 rounded-full ${i < questionNumber ? 'bg-cyan-400' : 'bg-gray-700'}`}
-                                            />
-                                        ))}
-                                    </div>
+                                    <span className="text-xs text-yellow-400 font-bold flex items-center gap-1">
+                                        <Zap size={12} /> {currentXP} XP
+                                    </span>
                                 </div>
                             </div>
 
                             {/* Previous Feedback */}
                             {feedback && (
-                                <div className="p-3 bg-purple-900/20 border border-purple-500/30 rounded text-purple-300 text-sm">
-                                    <strong>Previous feedback:</strong> {feedback}
+                                <div className="p-3 bg-purple-900/20 border border-purple-500/30 rounded-lg text-purple-300 text-sm">
+                                    <strong>📊 Intel:</strong> {feedback}
                                 </div>
                             )}
 
-                            {/* Scenario */}
+                            {/* Scenario - Mission Style */}
                             {currentScenario && (
-                                <div className="p-4 bg-cyan-900/20 border border-cyan-500/30 rounded-lg">
-                                    <p className="text-gray-200 italic">{currentScenario}</p>
+                                <div className="p-4 bg-gradient-to-r from-purple-900/30 to-pink-900/30 border border-purple-500/30 rounded-lg relative overflow-hidden">
+                                    <div className="absolute top-2 right-2 text-xs text-purple-400/50 font-mono">SITUATION</div>
+                                    <p className="text-gray-200">{currentScenario}</p>
                                 </div>
                             )}
 
                             {/* Question */}
-                            <div className="p-4 bg-white/5 border border-white/10 rounded-lg">
-                                <p className="text-white font-medium">{currentQuestion}</p>
+                            <div className="p-4 bg-white/5 border border-white/20 rounded-lg">
+                                <p className="text-white font-medium text-lg">❓ {currentQuestion}</p>
                             </div>
 
-                            {/* Answer Input */}
-                            {questionType === 'multiple_choice' ? (
-                                <div className="space-y-3">
-                                    {options.map((opt, idx) => (
-                                        <button
-                                            key={idx}
-                                            onClick={() => setAnswer(opt)}
-                                            className={`w-full p-4 text-left rounded-lg border transition-all ${answer === opt
-                                                    ? 'bg-cyan-900/40 border-cyan-500 text-cyan-100'
-                                                    : 'bg-black/50 border-white/10 text-gray-300 hover:bg-white/5'
-                                                }`}
-                                        >
-                                            <span className="inline-block w-6 h-6 rounded-full border border-white/20 mr-3 text-center text-xs leading-6 text-gray-500">
-                                                {String.fromCharCode(65 + idx)}
-                                            </span>
-                                            {opt}
-                                        </button>
-                                    ))}
-                                </div>
-                            ) : (
-                                <textarea
-                                    value={answer}
-                                    onChange={e => setAnswer(e.target.value)}
-                                    placeholder="Type your answer here..."
-                                    className="w-full p-4 bg-black/50 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500 resize-none"
-                                    rows={4}
-                                />
-                            )}
+                            {/* Text Input */}
+                            <textarea
+                                value={answer}
+                                onChange={e => setAnswer(e.target.value)}
+                                placeholder="Deploy your response here, Agent..."
+                                className="w-full p-4 bg-black/50 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 focus:shadow-[0_0_15px_rgba(168,85,247,0.2)] resize-none transition-all"
+                                rows={3}
+                            />
 
                             {/* Hint */}
                             {hint && (
@@ -285,13 +323,13 @@ export const PostAssessmentModal: React.FC<PostAssessmentModalProps> = ({ scenar
                                     {!showHint ? (
                                         <button
                                             onClick={() => setShowHint(true)}
-                                            className="flex items-center gap-2 text-yellow-400 hover:text-yellow-300 text-sm"
+                                            className="flex items-center gap-2 text-yellow-400 hover:text-yellow-300 text-sm transition-colors"
                                         >
                                             <Lightbulb size={16} />
-                                            Show Hint
+                                            💡 Request Intel
                                         </button>
                                     ) : (
-                                        <div className="p-3 bg-yellow-900/20 border border-yellow-500/30 rounded text-yellow-200 text-sm">
+                                        <div className="p-3 bg-yellow-900/20 border border-yellow-500/30 rounded-lg text-yellow-200 text-sm">
                                             <Lightbulb className="inline mr-2" size={14} />
                                             {hint}
                                         </div>
@@ -299,18 +337,18 @@ export const PostAssessmentModal: React.FC<PostAssessmentModalProps> = ({ scenar
                                 </div>
                             )}
 
-                            {/* Submit Button */}
+                            {/* Submit Button - Gamified */}
                             <button
                                 onClick={submitAnswer}
                                 disabled={loading || !answer.trim()}
-                                className="w-full py-3 bg-cyan-600 hover:bg-cyan-500 disabled:bg-gray-700 disabled:opacity-50 text-white font-bold rounded-lg transition-all flex items-center justify-center gap-2"
+                                className="w-full py-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 disabled:from-gray-700 disabled:to-gray-700 disabled:opacity-50 text-white font-bold rounded-lg transition-all flex items-center justify-center gap-2 shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30 hover:scale-[1.02] active:scale-[0.98]"
                             >
                                 {loading ? (
                                     <Loader className="animate-spin" size={20} />
                                 ) : (
                                     <>
-                                        <Send size={20} />
-                                        Submit Answer
+                                        <Target size={20} />
+                                        ⚔️ LOCK IN ANSWER
                                     </>
                                 )}
                             </button>
@@ -320,43 +358,54 @@ export const PostAssessmentModal: React.FC<PostAssessmentModalProps> = ({ scenar
                     {/* Loading during answer processing */}
                     {loading && questionNumber > 1 && !completed && (
                         <div className="flex items-center justify-center py-4">
-                            <Loader className="animate-spin text-cyan-400" size={24} />
+                            <Loader className="animate-spin text-purple-400" size={24} />
                         </div>
                     )}
 
-                    {/* Completion */}
+                    {/* Completion - Victory Screen */}
                     {completed && (
                         <div className="text-center py-6 space-y-6">
-                            <Trophy className="mx-auto text-cyan-400" size={64} />
+                            <div className="relative inline-block">
+                                <Trophy className="mx-auto text-yellow-400" size={80} />
+                                <div className="absolute -top-2 -right-2 text-3xl animate-bounce">🏆</div>
+                            </div>
 
                             <div>
-                                <h3 className="text-2xl font-bold text-white mb-2">
-                                    Post-Assessment Complete!
+                                <h3 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 mb-2">
+                                    🎮 CHALLENGE CONQUERED!
                                 </h3>
                                 <p className="text-gray-300 mb-4">
-                                    Your final score:
+                                    Outstanding performance, Agent!
                                 </p>
+
+                                {/* Main Score */}
                                 <div className={`text-6xl font-bold ${getScoreColor(finalScore)} mt-2`}>
                                     {finalScore}%
                                 </div>
 
+                                {/* XP Earned */}
+                                <div className="mt-4 flex items-center justify-center gap-2 text-yellow-400 font-bold text-xl">
+                                    <Zap size={24} />
+                                    +{totalXPEarned} XP EARNED
+                                </div>
+
                                 {/* Before/After comparison */}
-                                {baselineScore !== undefined && (
-                                    <div className="mt-4 flex items-center justify-center gap-4 text-sm">
+                                <div className="mt-6 p-4 bg-gradient-to-r from-purple-900/30 to-pink-900/30 rounded-lg border border-purple-500/30">
+                                    <div className="flex items-center justify-center gap-6 text-sm">
                                         <div className="text-gray-400">
-                                            <span className="block text-xs">Baseline</span>
+                                            <span className="block text-xs">📋 Baseline</span>
                                             <span className="font-bold text-lg">{baselineScore}%</span>
                                         </div>
-                                        <TrendingUp className={finalScore > baselineScore ? 'text-green-400' : 'text-red-400'} size={24} />
+                                        <TrendingUp className={finalScore > baselineScore ? 'text-green-400' : 'text-red-400'} size={28} />
                                         <div className="text-gray-400">
-                                            <span className="block text-xs">Final</span>
+                                            <span className="block text-xs">🏆 Final</span>
                                             <span className={`font-bold text-lg ${getScoreColor(finalScore)}`}>{finalScore}%</span>
                                         </div>
-                                        <div className={`text-sm font-bold ${finalScore > baselineScore ? 'text-green-400' : 'text-red-400'}`}>
-                                            {finalScore > baselineScore ? `+${finalScore - baselineScore}%` : `${finalScore - baselineScore}%`}
+                                        <div className={`text-lg font-bold ${getImprovement().color} flex items-center gap-1`}>
+                                            {getImprovement().icon} {getImprovement().text}
                                         </div>
                                     </div>
-                                )}
+                                </div>
                             </div>
 
                             {/* Personalized Feedback */}
@@ -367,7 +416,7 @@ export const PostAssessmentModal: React.FC<PostAssessmentModalProps> = ({ scenar
                                     {personalizedFeedback.strengths?.length > 0 && (
                                         <div>
                                             <p className="text-green-400 font-semibold text-sm flex items-center gap-1">
-                                                <Star size={14} /> Strengths:
+                                                <Star size={14} /> 💪 Mastered Skills:
                                             </p>
                                             <ul className="text-gray-400 text-xs ml-4 list-disc">
                                                 {personalizedFeedback.strengths.map((s, i) => <li key={i}>{s}</li>)}
@@ -377,8 +426,8 @@ export const PostAssessmentModal: React.FC<PostAssessmentModalProps> = ({ scenar
 
                                     {personalizedFeedback.recommendations?.length > 0 && (
                                         <div>
-                                            <p className="text-cyan-400 font-semibold text-sm flex items-center gap-1">
-                                                <ArrowRight size={14} /> Recommendations:
+                                            <p className="text-purple-400 font-semibold text-sm flex items-center gap-1">
+                                                <ArrowRight size={14} /> 🎯 Next Quest:
                                             </p>
                                             <ul className="text-gray-400 text-xs ml-4 list-disc">
                                                 {personalizedFeedback.recommendations.map((r, i) => <li key={i}>{r}</li>)}
@@ -391,10 +440,10 @@ export const PostAssessmentModal: React.FC<PostAssessmentModalProps> = ({ scenar
                             <div className="pt-4">
                                 <button
                                     onClick={handleComplete}
-                                    className="px-8 py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-lg transition-all flex items-center gap-2 mx-auto"
+                                    className="px-8 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold rounded-lg transition-all flex items-center gap-2 mx-auto shadow-lg shadow-purple-500/20 hover:scale-105"
                                 >
-                                    Done
                                     <CheckCircle size={20} />
+                                    Claim Victory
                                 </button>
                             </div>
                         </div>

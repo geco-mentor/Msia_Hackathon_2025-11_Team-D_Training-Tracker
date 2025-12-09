@@ -651,12 +651,14 @@ export const generateMicroScenario = async (
     rubrics: { generic?: string[], department?: string[], module?: string[] },
     history: { scenario: string, question: string, answer: string }[] = []
 ): Promise<{
+    mission: string;
     scenario: string;
     question: string;
     type: 'text' | 'multiple_choice';
     options?: string[];
     correctAnswer?: string;
     hint: string;
+    xp: number;
 }> => {
     const previousQuestions = history.map(h => h.question.toLowerCase());
 
@@ -678,6 +680,14 @@ export const generateMicroScenario = async (
     let lastFailureReason: 'duplicate' | 'parse_failed' = 'parse_failed';
 
 
+
+    // XP rewards based on difficulty
+    const difficultyXP: Record<string, number> = {
+        'Easy': 100,
+        'Normal': 250,
+        'Hard': 500
+    };
+    const xpReward = difficultyXP[difficulty] || 250;
 
     // Determine question type based on difficulty
     // Easy (Basic) -> multiple_choice
@@ -761,12 +771,14 @@ Output ONLY valid JSON:
 
                     console.log('DEBUG: Unique question generated:', parsed.question.substring(0, 50));
                     return {
+                        mission: parsed.mission || `MISSION: Challenge ${history.length + 1}`,
                         scenario: parsed.scenario,
                         question: parsed.question,
                         type: targetType,
                         options: parsed.options,
                         correctAnswer: parsed.correctAnswer,
-                        hint: parsed.hint || 'Think about how this applies to your daily work.'
+                        hint: parsed.hint || 'Think about how this applies to your daily work.',
+                        xp: xpReward
                     }
                 }
             }
@@ -830,10 +842,12 @@ Output ONLY valid JSON:
                 }
                 console.log('DEBUG: Successfully extracted scenario and question');
                 return {
+                    mission: `MISSION: Challenge ${history.length + 1}`,
                     scenario: scenario.substring(0, 200),
                     question: question.substring(0, 300),
                     type: 'text',
-                    hint: hint || 'Consider applying what you learned in the training.'
+                    hint: hint || 'Consider applying what you learned in the training.',
+                    xp: xpReward
                 };
             }
         }

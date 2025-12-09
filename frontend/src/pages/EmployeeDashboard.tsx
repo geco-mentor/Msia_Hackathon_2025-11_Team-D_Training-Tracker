@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Terminal, Cpu, Activity, LogOut, Plus, Trash2, Sparkles, User, Trophy } from 'lucide-react';
+import { Terminal, Cpu, Activity, LogOut, User, Trophy } from 'lucide-react';
 import { ChallengeCard } from '../components/ChallengeCard';
 import { ChallengeModal } from '../components/ChallengeModal';
 import { PreAssessmentModal } from '../components/PreAssessmentModal';
