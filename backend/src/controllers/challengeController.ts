@@ -19,9 +19,7 @@ export const generate = async (req: Request, res: Response) => {
 
 export const getMain = async (req: Request, res: Response) => {
     try {
-        const userId = req.query.userId as string | undefined;
-        console.log('DEBUG: getMain called with userId:', userId);
-        const challenges = await challengeService.getMainChallenges(userId);
+        const challenges = await challengeService.getMainChallenges();
         res.status(200).json({ success: true, data: challenges });
     } catch (error: any) {
         res.status(500).json({ success: false, message: error.message });

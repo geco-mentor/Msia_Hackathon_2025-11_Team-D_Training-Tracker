@@ -54,6 +54,7 @@ export const startPreAssessment = async (req: Request, res: Response) => {
 
             // Determine current step based on state
             let currentStep: string;
+            let currentQuestion: string | null = null;
 
             if (existing.is_familiar === null || existing.is_familiar === undefined) {
                 // Never answered familiarity question
@@ -71,30 +72,13 @@ export const startPreAssessment = async (req: Request, res: Response) => {
                     .update({ is_familiar: null })
                     .eq('id', existing.id);
             } else if (questionsAsked.length > answersGiven.length) {
-                // There's an unanswered question - RESUME with full question data
+                // There's an unanswered question
                 currentStep = 'questions';
-                const currentQuestionIndex = answersGiven.length;
-                const currentQ = questionsAsked[currentQuestionIndex];
-
-                console.log('DEBUG: Resuming pre-assessment at question', currentQuestionIndex + 1);
-                return res.json({
-                    preAssessmentId: existing.id,
-                    completed: false,
-                    currentStep: 'questions',
-                    questionNumber: currentQuestionIndex + 1,
-                    totalQuestions: 4,
-                    mission: currentQ.mission || `MISSION: Challenge ${currentQuestionIndex + 1}`,
-                    scenario: currentQ.scenario,
-                    question: currentQ.question,
-                    type: currentQ.type || 'text',
-                    hint: currentQ.hint,
-                    xp: currentQ.xp || 100,
-                    difficulty: existing.current_difficulty || 'Easy',
-                    resumed: true
-                });
+                currentQuestion = questionsAsked[questionsAsked.length - 1];
             } else {
                 // All questions answered, might need more or be complete
                 currentStep = 'questions';
+                currentQuestion = questionsAsked[questionsAsked.length - 1];
             }
 
             return res.json({
@@ -104,6 +88,7 @@ export const startPreAssessment = async (req: Request, res: Response) => {
                 questionsAsked: questionsAsked,
                 answersGiven: answersGiven,
                 currentStep: currentStep,
+                currentQuestion: currentQuestion,
                 message: 'Resuming pre-assessment'
             });
         }
@@ -285,13 +270,12 @@ export const submitFamiliarity = async (req: Request, res: Response) => {
             completed: false,
             currentStep: 'questions',
             questionNumber: 1,
-            totalQuestions: 4,
-            mission: microScenario.mission || 'MISSION: Challenge 1',
+            totalQuestions: '1-4',
             scenario: microScenario.scenario,
             question: microScenario.question,
             type: microScenario.type,
+
             hint: microScenario.hint,
-            xp: microScenario.xp || 100,
             difficulty: 'Easy'
         });
 
@@ -369,9 +353,11 @@ export const submitPreAssessmentAnswer = async (req: Request, res: Response) => 
         const newAnswers = [...answersGiven, answerRecord];
 
         // Determine if we need more questions (adaptive logic)
-        // Always aim for exactly 4 questions for consistency
         const avgScore = newAnswers.reduce((sum: number, a: any) => sum + (a.score || 0), 0) / newAnswers.length;
-        const needsMoreQuestions = currentQuestionCount < 4;  // Always ask 4 questions
+        const needsMoreQuestions = currentQuestionCount < 4 && (
+            (avgScore >= 30 && avgScore <= 80) ||  // Unclear baseline
+            currentQuestionCount < 2  // Minimum 2 questions
+        );
 
         // Calculate next difficulty (adaptive)
         let nextDifficulty: 'Easy' | 'Normal' | 'Hard' = currentDifficulty;
@@ -428,13 +414,12 @@ export const submitPreAssessmentAnswer = async (req: Request, res: Response) => 
                 completed: false,
                 currentStep: 'questions',
                 questionNumber: currentQuestionCount + 1,
-                totalQuestions: 4,
-                mission: nextScenario.mission || `MISSION: Challenge ${currentQuestionCount + 1}`,
+                totalQuestions: '1-4',
                 scenario: nextScenario.scenario,
                 question: nextScenario.question,
                 type: nextScenario.type,
+
                 hint: nextScenario.hint,
-                xp: nextScenario.xp || 100,
                 difficulty: nextDifficulty,
                 previousFeedback: evaluation.feedback,
                 previousScore: evaluation.score
@@ -609,45 +594,7 @@ export const startPostAssessment = async (req: Request, res: Response) => {
             });
         }
 
-        // RESUME: If assessment exists but not completed, resume from where user left off
-        if (existing && !existing.completed) {
-            const questionsAsked = existing.questions_asked || [];
-            const answersGiven = existing.answers_given || [];
-            const currentQuestionIndex = answersGiven.length;  // Next unanswered question
 
-            if (questionsAsked.length > currentQuestionIndex) {
-                // Return the current unanswered question
-                const currentQ = questionsAsked[currentQuestionIndex];
-                const runningScore = answersGiven.length > 0
-                    ? Math.round(answersGiven.reduce((sum: number, a: any) => sum + (a.score || 0), 0) / answersGiven.length)
-                    : 0;
-
-                console.log('DEBUG: Resuming assessment at question', currentQuestionIndex + 1);
-                return res.json({
-                    assessmentId: existing.id,
-                    completed: false,
-                    currentStep: 'questions',
-                    questionNumber: currentQuestionIndex + 1,
-                    totalQuestions: existing.total_questions || 4,
-                    mission: currentQ.mission || `MISSION: Challenge ${currentQuestionIndex + 1}`,
-                    scenario: currentQ.scenario,
-                    question: currentQ.question,
-                    type: currentQ.type || 'text',
-                    hint: currentQ.hint,
-                    xp: currentQ.xp || 250,
-                    difficulty: existing.current_difficulty || 'Normal',
-                    baselineScore: preAssessment.baseline_score || 0,
-                    runningScore,
-                    resumed: true
-                });
-            }
-        }
-
-        // Determine starting difficulty based on pre-assessment
-        const baselineScore = preAssessment.baseline_score || 0;
-        let startDifficulty: 'Easy' | 'Normal' | 'Hard' = 'Normal';
-        if (baselineScore < 40) startDifficulty = 'Easy';
-        else if (baselineScore > 70) startDifficulty = 'Hard';
 
         // Get scenario and curriculum
         const { data: scenario, error: scenarioError } = await supabase
@@ -670,6 +617,18 @@ export const startPostAssessment = async (req: Request, res: Response) => {
 
         const topicContext = await readTextFile(bucket, scenario.extracted_text_file);
         const rubrics = scenario.rubric || { generic: [], department: [], module: [] };
+
+        // Determine starting difficulty
+        // If personalized, use the chosen difficulty. Otherwise use adaptive baseline.
+        const baselineScore = preAssessment.baseline_score || 0;
+        let startDifficulty: 'Easy' | 'Normal' | 'Hard' = 'Normal';
+
+        if (scenario.is_personalized && scenario.difficulty) {
+            startDifficulty = scenario.difficulty as 'Easy' | 'Normal' | 'Hard';
+        } else {
+            if (baselineScore < 40) startDifficulty = 'Easy';
+            else if (baselineScore > 70) startDifficulty = 'Hard';
+        }
 
         // Get employee data
         const { data: employee } = await supabase
@@ -697,7 +656,7 @@ export const startPostAssessment = async (req: Request, res: Response) => {
             answers_given: [],
             current_difficulty: startDifficulty,
             current_question: 1,
-            total_questions: 4,  // Fixed: 4 questions
+            total_questions: 7,
             score: 0,
             completed: false,
             // Required fields from original schema
@@ -729,13 +688,13 @@ export const startPostAssessment = async (req: Request, res: Response) => {
             completed: false,
             currentStep: 'questions',
             questionNumber: 1,
-            totalQuestions: 4,  // Fixed: was 7
-            mission: firstScenario.mission || 'MISSION: Challenge 1',
+            totalQuestions: 7,
             scenario: firstScenario.scenario,
             question: firstScenario.question,
             type: firstScenario.type,
+            options: firstScenario.options,
+
             hint: firstScenario.hint,
-            xp: firstScenario.xp || 250,
             difficulty: startDifficulty,
             baselineScore: baselineScore
         });
@@ -864,12 +823,12 @@ export const submitPostAssessmentAnswer = async (req: Request, res: Response) =>
                 currentStep: 'questions',
                 questionNumber: currentQuestion + 1,
                 totalQuestions,
-                mission: nextScenario.mission || `MISSION: Challenge ${currentQuestion + 1}`,
                 scenario: nextScenario.scenario,
                 question: nextScenario.question,
                 type: nextScenario.type,
+                options: nextScenario.options,
+
                 hint: nextScenario.hint,
-                xp: nextScenario.xp || 250,
                 difficulty: nextDifficulty,
                 previousFeedback: evaluation.feedback,
                 previousScore: evaluation.score,

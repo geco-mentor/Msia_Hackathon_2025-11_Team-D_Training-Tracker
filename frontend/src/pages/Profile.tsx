@@ -57,6 +57,44 @@ interface ProfileData {
     assessmentFeedback?: AssessmentFeedback;
 }
 
+// Helper Component for Rank Badge
+const RankBadge = ({ elo }: { elo: number }) => {
+    const rank = getRankFromElo(elo);
+
+    // Map badgeId to Lucide Icons
+    const getIcon = () => {
+        switch (rank.badgeId) {
+            case 'initiate': return <Shield size={24} />;
+            case 'scout': return <Target size={24} />;
+            case 'recruit': return <Award size={24} />;
+            case 'agent': return <Briefcase size={24} />;
+            case 'operative': return <Terminal size={24} />;
+            case 'specialist': return <Cpu size={24} />;
+            case 'hacker': return <Code size={24} />;
+            case 'architect': return <Network size={24} />;
+            case 'mastermind': return <Brain size={24} />;
+            case 'ghost': return <Ghost size={24} />;
+            default: return <Shield size={24} />;
+        }
+    };
+
+    return (
+        <div className={`flex items-center gap-2 px-4 py-2 rounded-full border bg-opacity-10 ${rank.color.replace('text-', 'bg-')} ${rank.color.replace('text-', 'border-')}`}>
+            <div className={`${rank.color} ${rank.badgeId === 'ghost' ? 'animate-pulse' : ''}`}>
+                {getIcon()}
+            </div>
+            <div className="flex flex-col">
+                <span className={`text-xs font-bold uppercase tracking-wider ${rank.color}`}>
+                    {rank.title}
+                </span>
+                <span className="text-[10px] text-white/60 font-mono">
+                    {elo} ELO
+                </span>
+            </div>
+        </div>
+    );
+};
+
 export const Profile: React.FC = () => {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
@@ -217,13 +255,10 @@ export const Profile: React.FC = () => {
                                     <span>{profile?.department || 'Unassigned'}</span>
                                 </div>
                             </div>
+
+                            {/* Updated Rank Display */}
                             <div className="flex items-center gap-4 mt-3">
-                                <span className="px-3 py-1 bg-cyan-500/10 text-cyan-400 text-xs font-bold border border-cyan-500/30 rounded-full">
-                                    ELO: {profile?.elo_rating || 1200}
-                                </span>
-                                <span className="px-3 py-1 bg-purple-500/10 text-purple-400 text-xs font-bold border border-purple-500/30 rounded-full">
-                                    {profile?.rankTitle || 'RECRUIT'}
-                                </span>
+                                <RankBadge elo={profile?.elo_rating || 1200} />
                             </div>
                         </div>
                     </div>

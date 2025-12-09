@@ -152,6 +152,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
                 ranking: newEmployee.ranking,
                 win_rate: newEmployee.win_rate,
                 streak: newEmployee.streak
+
             }
         };
 
