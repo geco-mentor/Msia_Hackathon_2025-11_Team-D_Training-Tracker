@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Loader, CheckCircle, HelpCircle, Brain, Send, Lightbulb, ArrowRight, Star } from 'lucide-react';
+import { X, Loader, CheckCircle, Brain, Lightbulb, ArrowRight, Star, Zap, Target, Trophy } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { API_BASE_URL } from '../config';
 
@@ -20,6 +20,13 @@ type Step = 'loading' | 'familiarity' | 'questions' | 'complete';
 type QuestionType = 'text' | 'mcq';
 type Difficulty = 'Easy' | 'Normal' | 'Hard';
 
+// Gamification config
+const DIFFICULTY_CONFIG: Record<Difficulty, { xp: number; label: string; color: string }> = {
+    'Easy': { xp: 100, label: '⭐ Rookie', color: 'text-green-400 bg-green-500/20 border-green-500/50' },
+    'Normal': { xp: 250, label: '⭐⭐ Pro', color: 'text-yellow-400 bg-yellow-500/20 border-yellow-500/50' },
+    'Hard': { xp: 500, label: '⭐⭐⭐ Expert', color: 'text-red-400 bg-red-500/20 border-red-500/50' }
+};
+
 export const PreAssessmentModal: React.FC<PreAssessmentModalProps> = ({ scenario, onClose, onComplete }) => {
     const { user } = useAuth();
     const [step, setStep] = useState<Step>('loading');
@@ -27,12 +34,14 @@ export const PreAssessmentModal: React.FC<PreAssessmentModalProps> = ({ scenario
     const [topicName, setTopicName] = useState<string>('this topic');
 
     // Question state
+    const [missionName, setMissionName] = useState<string>('');
     const [currentScenario, setCurrentScenario] = useState<string>('');
     const [currentQuestion, setCurrentQuestion] = useState<string>('');
     const [questionType, setQuestionType] = useState<QuestionType>('text');
     const [options, setOptions] = useState<string[]>([]);
     const [hint, setHint] = useState<string>('');
     const [difficulty, setDifficulty] = useState<Difficulty>('Easy');
+    const [currentXP, setCurrentXP] = useState<number>(0);
     const [showHint, setShowHint] = useState<boolean>(false);
 
     const [questionNumber, setQuestionNumber] = useState<number>(1);
@@ -42,8 +51,10 @@ export const PreAssessmentModal: React.FC<PreAssessmentModalProps> = ({ scenario
     const [loading, setLoading] = useState<boolean>(false);
     const [feedback, setFeedback] = useState<string>('');
     const [baselineScore, setBaselineScore] = useState<number>(0);
+    const [totalXPEarned, setTotalXPEarned] = useState<number>(0);
     const [personalizedFeedback, setPersonalizedFeedback] = useState<PersonalizedFeedback | null>(null);
     const [error, setError] = useState<string>('');
+    const [showXPAnimation, setShowXPAnimation] = useState<boolean>(false);
 
     useEffect(() => {
         startPreAssessment();
@@ -92,12 +103,15 @@ export const PreAssessmentModal: React.FC<PreAssessmentModalProps> = ({ scenario
     };
 
     const handleQuestionData = (data: any) => {
+        setMissionName(data.mission || `MISSION: Challenge ${data.questionNumber || 1}`);
         setCurrentScenario(data.scenario || '');
         setCurrentQuestion(data.question || '');
         setQuestionType(data.type || 'text');
         setOptions(data.options || []);
         setHint(data.hint || '');
         setDifficulty(data.difficulty || 'Easy');
+        const diff = (data.difficulty as Difficulty) || 'Easy';
+        setCurrentXP(data.xp || DIFFICULTY_CONFIG[diff].xp);
         setQuestionNumber(data.questionNumber || 1);
         setShowHint(false);
         setAnswer('');
@@ -169,6 +183,13 @@ export const PreAssessmentModal: React.FC<PreAssessmentModalProps> = ({ scenario
                 throw new Error(data.message || 'Failed to submit answer');
             }
 
+            // Animate XP gain
+            if (data.previousScore && data.previousScore >= 60) {
+                setTotalXPEarned(prev => prev + currentXP);
+                setShowXPAnimation(true);
+                setTimeout(() => setShowXPAnimation(false), 1500);
+            }
+
             if (data.previousFeedback) {
                 setFeedback(data.previousFeedback);
             }
@@ -177,6 +198,9 @@ export const PreAssessmentModal: React.FC<PreAssessmentModalProps> = ({ scenario
                 setBaselineScore(data.baselineScore);
                 setFeedback(data.lastFeedback || '');
                 setPersonalizedFeedback(data.personalizedFeedback || null);
+                // Final XP calculation based on score
+                const finalXP = Math.round((data.baselineScore / 100) * 4 * 175); // Average XP * questions
+                setTotalXPEarned(finalXP);
                 setStep('complete');
             } else {
                 handleQuestionData(data);
@@ -193,33 +217,46 @@ export const PreAssessmentModal: React.FC<PreAssessmentModalProps> = ({ scenario
         onComplete(baselineScore);
     };
 
-    const getDifficultyColor = (d: Difficulty) => {
-        switch (d) {
-            case 'Easy': return 'text-green-400 bg-green-500/10 border-green-500/30';
-            case 'Normal': return 'text-yellow-400 bg-yellow-500/10 border-yellow-500/30';
-            case 'Hard': return 'text-red-400 bg-red-500/10 border-red-500/30';
-        }
-    };
+    const getDifficultyDisplay = (d: Difficulty) => DIFFICULTY_CONFIG[d];
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-            <div className="bg-[#111] border border-white/10 rounded-lg w-full max-w-xl max-h-[90vh] overflow-y-auto flex flex-col relative animate-in fade-in zoom-in-95 duration-200">
+            <div className="bg-[#0a0a0a] border border-cyan-500/30 rounded-lg w-full max-w-xl max-h-[90vh] overflow-y-auto flex flex-col relative animate-in fade-in zoom-in-95 duration-200 shadow-[0_0_30px_rgba(6,182,212,0.15)]">
 
-                {/* Header */}
-                <div className="p-6 border-b border-white/10 flex justify-between items-start sticky top-0 bg-[#111] z-10">
+                {/* Header - Gamified */}
+                <div className="p-6 border-b border-cyan-500/20 flex justify-between items-start sticky top-0 bg-[#0a0a0a] z-10">
                     <div className="flex items-center gap-3">
-                        <div className="p-2 bg-purple-900/30 rounded-lg">
-                            <Brain className="text-purple-400" size={24} />
+                        <div className="p-2 bg-gradient-to-br from-purple-600 to-cyan-600 rounded-lg animate-pulse">
+                            <Target className="text-white" size={24} />
                         </div>
                         <div>
-                            <h2 className="text-lg font-bold text-white">Pre-Assessment</h2>
+                            <h2 className="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400">
+                                🎮 MISSION BRIEFING
+                            </h2>
                             <p className="text-xs text-gray-400">{scenario.title || scenario.skill || 'Training Module'}</p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors">
-                        <X size={24} />
-                    </button>
+                    <div className="flex items-center gap-3">
+                        {totalXPEarned > 0 && (
+                            <div className="flex items-center gap-1 px-2 py-1 bg-yellow-500/20 border border-yellow-500/30 rounded text-yellow-400 text-sm font-bold">
+                                <Zap size={14} />
+                                {totalXPEarned} XP
+                            </div>
+                        )}
+                        <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors">
+                            <X size={24} />
+                        </button>
+                    </div>
                 </div>
+
+                {/* XP Animation Overlay */}
+                {showXPAnimation && (
+                    <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
+                        <div className="text-4xl font-bold text-yellow-400 animate-bounce">
+                            +{currentXP} XP! 🎯
+                        </div>
+                    </div>
+                )}
 
                 {/* Content */}
                 <div className="p-6">
@@ -232,20 +269,23 @@ export const PreAssessmentModal: React.FC<PreAssessmentModalProps> = ({ scenario
                     {/* Loading State */}
                     {step === 'loading' && (
                         <div className="flex flex-col items-center justify-center py-12">
-                            <Loader className="animate-spin text-purple-400 mb-4" size={48} />
-                            <p className="text-gray-400">Loading pre-assessment...</p>
+                            <Loader className="animate-spin text-cyan-400 mb-4" size={48} />
+                            <p className="text-gray-400">Initializing mission...</p>
                         </div>
                     )}
 
-                    {/* Familiarity Question */}
+                    {/* Familiarity Question - Gamified */}
                     {step === 'familiarity' && (
                         <div className="text-center py-6 space-y-8">
-                            <HelpCircle className="mx-auto text-cyan-400" size={48} />
+                            <div className="relative">
+                                <Brain className="mx-auto text-cyan-400 animate-pulse" size={64} />
+                                <div className="absolute -top-2 -right-2 text-2xl">🎮</div>
+                            </div>
 
                             <div>
-                                <h3 className="text-xl font-bold text-white mb-2">Quick Check</h3>
+                                <h3 className="text-xl font-bold text-white mb-2">⚡ INTEL CHECK</h3>
                                 <p className="text-gray-300">
-                                    Are you familiar with <span className="text-cyan-400 font-semibold">{topicName}</span>?
+                                    Agent, do you have prior knowledge of <span className="text-cyan-400 font-bold">{topicName}</span>?
                                 </p>
                             </div>
 
@@ -253,63 +293,77 @@ export const PreAssessmentModal: React.FC<PreAssessmentModalProps> = ({ scenario
                                 <button
                                     onClick={() => submitFamiliarity(false)}
                                     disabled={loading}
-                                    className="px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white font-bold rounded-lg transition-all disabled:opacity-50"
+                                    className="px-6 py-3 bg-gray-800 hover:bg-gray-700 border border-gray-600 text-white font-bold rounded-lg transition-all disabled:opacity-50 group"
                                 >
-                                    No, I'm new to this
+                                    <span className="group-hover:scale-105 inline-block transition-transform">
+                                        🆕 New Territory
+                                    </span>
                                 </button>
                                 <button
                                     onClick={() => submitFamiliarity(true)}
                                     disabled={loading}
-                                    className="px-6 py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-lg transition-all disabled:opacity-50"
+                                    className="px-6 py-3 bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 text-white font-bold rounded-lg transition-all disabled:opacity-50 group shadow-lg shadow-cyan-500/20"
                                 >
-                                    Yes, I have some knowledge
+                                    <span className="group-hover:scale-105 inline-block transition-transform">
+                                        💪 Ready for Action
+                                    </span>
                                 </button>
                             </div>
 
                             {loading && <Loader className="animate-spin mx-auto text-purple-400" size={24} />}
 
-                            <p className="text-xs text-gray-500">This helps us determine your baseline knowledge level.</p>
+                            <p className="text-xs text-gray-500">This calibrates your starting difficulty level</p>
                         </div>
                     )}
 
-                    {/* Questions */}
+                    {/* Questions - Gamified */}
                     {step === 'questions' && (
-                        <div className="space-y-6">
+                        <div className="space-y-5">
+                            {/* Mission Header */}
+                            <div className="text-center mb-4">
+                                <h3 className="text-sm font-bold text-cyan-400 tracking-wider">{missionName}</h3>
+                            </div>
+
                             {/* Progress and Difficulty */}
                             <div className="flex justify-between items-center">
-                                <p className="text-sm text-gray-400">Question {questionNumber} of up to 4</p>
                                 <div className="flex items-center gap-2">
-                                    <span className={`text-xs font-bold px-2 py-1 rounded border ${getDifficultyColor(difficulty)}`}>
-                                        {difficulty}
-                                    </span>
-                                    <div className="flex gap-1">
-                                        {[1, 2, 3, 4].map(i => (
-                                            <div
-                                                key={i}
-                                                className={`w-2 h-2 rounded-full ${i <= questionNumber ? 'bg-cyan-400' : 'bg-gray-700'}`}
-                                            />
-                                        ))}
+                                    <span className="text-sm text-gray-400">Challenge {questionNumber}/4</span>
+                                    {/* Progress bar */}
+                                    <div className="w-24 h-2 bg-gray-800 rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full bg-gradient-to-r from-cyan-500 to-purple-500 transition-all duration-500 shadow-[0_0_10px_rgba(6,182,212,0.5)]"
+                                            style={{ width: `${(questionNumber / 4) * 100}%` }}
+                                        />
                                     </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className={`text-xs font-bold px-3 py-1 rounded-full border ${getDifficultyDisplay(difficulty).color}`}>
+                                        {getDifficultyDisplay(difficulty).label}
+                                    </span>
+                                    <span className="text-xs text-yellow-400 font-bold flex items-center gap-1">
+                                        <Zap size={12} /> {currentXP} XP
+                                    </span>
                                 </div>
                             </div>
 
                             {/* Previous Feedback */}
                             {feedback && (
-                                <div className="p-3 bg-purple-900/20 border border-purple-500/30 rounded text-purple-300 text-sm">
-                                    <strong>Previous feedback:</strong> {feedback}
+                                <div className="p-3 bg-purple-900/20 border border-purple-500/30 rounded-lg text-purple-300 text-sm">
+                                    <strong>📊 Intel:</strong> {feedback}
                                 </div>
                             )}
 
-                            {/* Scenario */}
+                            {/* Scenario - Mission Style */}
                             {currentScenario && (
-                                <div className="p-4 bg-cyan-900/20 border border-cyan-500/30 rounded-lg">
-                                    <p className="text-gray-200 italic">{currentScenario}</p>
+                                <div className="p-4 bg-gradient-to-r from-cyan-900/30 to-purple-900/30 border border-cyan-500/30 rounded-lg relative overflow-hidden">
+                                    <div className="absolute top-2 right-2 text-xs text-cyan-400/50 font-mono">SITUATION</div>
+                                    <p className="text-gray-200">{currentScenario}</p>
                                 </div>
                             )}
 
                             {/* Question */}
-                            <div className="p-4 bg-white/5 border border-white/10 rounded-lg">
-                                <p className="text-white font-medium">{currentQuestion}</p>
+                            <div className="p-4 bg-white/5 border border-white/20 rounded-lg">
+                                <p className="text-white font-medium text-lg">❓ {currentQuestion}</p>
                             </div>
 
                             {/* MCQ Options */}
@@ -320,8 +374,8 @@ export const PreAssessmentModal: React.FC<PreAssessmentModalProps> = ({ scenario
                                             key={idx}
                                             onClick={() => setSelectedOption(idx)}
                                             className={`w-full p-3 text-left rounded-lg border transition-all ${selectedOption === idx
-                                                    ? 'bg-cyan-600/20 border-cyan-500 text-cyan-300'
-                                                    : 'bg-white/5 border-white/10 text-gray-300 hover:border-white/30'
+                                                ? 'bg-cyan-600/20 border-cyan-500 text-cyan-300 shadow-lg shadow-cyan-500/10'
+                                                : 'bg-white/5 border-white/10 text-gray-300 hover:border-white/30'
                                                 }`}
                                         >
                                             <span className="font-bold mr-2">{String.fromCharCode(65 + idx)}.</span>
@@ -336,9 +390,9 @@ export const PreAssessmentModal: React.FC<PreAssessmentModalProps> = ({ scenario
                                 <textarea
                                     value={answer}
                                     onChange={e => setAnswer(e.target.value)}
-                                    placeholder="Type your answer here..."
-                                    className="w-full p-4 bg-black/50 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500 resize-none"
-                                    rows={4}
+                                    placeholder="Deploy your response here, Agent..."
+                                    className="w-full p-4 bg-black/50 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500 focus:shadow-[0_0_15px_rgba(6,182,212,0.2)] resize-none transition-all"
+                                    rows={3}
                                 />
                             )}
 
@@ -348,13 +402,13 @@ export const PreAssessmentModal: React.FC<PreAssessmentModalProps> = ({ scenario
                                     {!showHint ? (
                                         <button
                                             onClick={() => setShowHint(true)}
-                                            className="flex items-center gap-2 text-yellow-400 hover:text-yellow-300 text-sm"
+                                            className="flex items-center gap-2 text-yellow-400 hover:text-yellow-300 text-sm transition-colors"
                                         >
                                             <Lightbulb size={16} />
-                                            Show Hint
+                                            💡 Request Intel
                                         </button>
                                     ) : (
-                                        <div className="p-3 bg-yellow-900/20 border border-yellow-500/30 rounded text-yellow-200 text-sm">
+                                        <div className="p-3 bg-yellow-900/20 border border-yellow-500/30 rounded-lg text-yellow-200 text-sm">
                                             <Lightbulb className="inline mr-2" size={14} />
                                             {hint}
                                         </div>
@@ -362,38 +416,49 @@ export const PreAssessmentModal: React.FC<PreAssessmentModalProps> = ({ scenario
                                 </div>
                             )}
 
-                            {/* Submit Button */}
+                            {/* Submit Button - Gamified */}
                             <button
                                 onClick={submitAnswer}
                                 disabled={loading || (questionType === 'mcq' ? selectedOption === null : !answer.trim())}
-                                className="w-full py-3 bg-cyan-600 hover:bg-cyan-500 disabled:bg-gray-700 disabled:opacity-50 text-white font-bold rounded-lg transition-all flex items-center justify-center gap-2"
+                                className="w-full py-4 bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 disabled:from-gray-700 disabled:to-gray-700 disabled:opacity-50 text-white font-bold rounded-lg transition-all flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/30 hover:scale-[1.02] active:scale-[0.98]"
                             >
                                 {loading ? (
                                     <Loader className="animate-spin" size={20} />
                                 ) : (
                                     <>
-                                        <Send size={20} />
-                                        Submit Answer
+                                        <Target size={20} />
+                                        ⚔️ LOCK IN ANSWER
                                     </>
                                 )}
                             </button>
                         </div>
                     )}
 
-                    {/* Completion */}
+                    {/* Completion - Gamified */}
                     {step === 'complete' && (
                         <div className="text-center py-6 space-y-6">
-                            <CheckCircle className="mx-auto text-green-400" size={64} />
+                            <div className="relative inline-block">
+                                <Trophy className="mx-auto text-yellow-400 animate-bounce" size={80} />
+                                <div className="absolute -top-2 -right-2 text-3xl">🎯</div>
+                            </div>
 
                             <div>
-                                <h3 className="text-2xl font-bold text-white mb-2">
-                                    Pre-Assessment Complete!
+                                <h3 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400 mb-2">
+                                    🎮 MISSION COMPLETE!
                                 </h3>
                                 <p className="text-gray-300">
-                                    Your baseline knowledge score:
+                                    Baseline knowledge calibrated, Agent.
                                 </p>
-                                <div className="text-5xl font-bold text-cyan-400 mt-2">
-                                    {baselineScore}%
+
+                                {/* Score Display */}
+                                <div className="mt-4 p-4 bg-gradient-to-r from-cyan-900/30 to-purple-900/30 rounded-lg border border-cyan-500/30">
+                                    <div className="text-5xl font-bold text-cyan-400 mb-2">
+                                        {baselineScore}%
+                                    </div>
+                                    <div className="flex items-center justify-center gap-2 text-yellow-400 font-bold text-lg">
+                                        <Zap size={20} />
+                                        +{totalXPEarned} XP EARNED
+                                    </div>
                                 </div>
                             </div>
 
@@ -411,7 +476,7 @@ export const PreAssessmentModal: React.FC<PreAssessmentModalProps> = ({ scenario
                                     {personalizedFeedback.strengths?.length > 0 && (
                                         <div>
                                             <p className="text-green-400 font-semibold text-sm flex items-center gap-1">
-                                                <Star size={14} /> Strengths:
+                                                <Star size={14} /> 💪 Strengths:
                                             </p>
                                             <ul className="text-gray-400 text-xs ml-4 list-disc">
                                                 {personalizedFeedback.strengths.map((s, i) => <li key={i}>{s}</li>)}
@@ -422,7 +487,7 @@ export const PreAssessmentModal: React.FC<PreAssessmentModalProps> = ({ scenario
                                     {personalizedFeedback.recommendations?.length > 0 && (
                                         <div>
                                             <p className="text-cyan-400 font-semibold text-sm flex items-center gap-1">
-                                                <ArrowRight size={14} /> Recommendations:
+                                                <ArrowRight size={14} /> 🎯 Next Objectives:
                                             </p>
                                             <ul className="text-gray-400 text-xs ml-4 list-disc">
                                                 {personalizedFeedback.recommendations.map((r, i) => <li key={i}>{r}</li>)}
@@ -435,15 +500,15 @@ export const PreAssessmentModal: React.FC<PreAssessmentModalProps> = ({ scenario
                             <div className="pt-4">
                                 <button
                                     onClick={handleComplete}
-                                    className="px-8 py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-lg transition-all flex items-center gap-2 mx-auto"
+                                    className="px-8 py-3 bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 text-white font-bold rounded-lg transition-all flex items-center gap-2 mx-auto shadow-lg shadow-cyan-500/20 hover:scale-105"
                                 >
-                                    Got it
-                                    <X size={20} />
+                                    <CheckCircle size={20} />
+                                    Continue to Training
                                 </button>
                             </div>
 
                             <p className="text-xs text-gray-500">
-                                Your baseline is recorded. After your training, come back to take the <span className="text-cyan-400 font-semibold">Post-Assessment</span>.
+                                Complete your training, then return for the <span className="text-cyan-400 font-semibold">Post-Assessment Challenge</span>.
                             </p>
                         </div>
                     )}
