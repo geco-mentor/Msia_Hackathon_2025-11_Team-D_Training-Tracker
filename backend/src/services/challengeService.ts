@@ -66,15 +66,73 @@ export const generateChallenge = async (jobTitle: string, difficulty: string, us
     }
 };
 
-export const getMainChallenges = async () => {
-    const { data, error } = await supabase
+export const getMainChallenges = async (userId?: string) => {
+    // First get all non-personalized scenarios
+    const { data: allScenarios, error } = await supabase
         .from('scenarios')
         .select('*')
         .eq('is_personalized', false)
         .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return data;
+
+    // If no userId provided, return all scenarios (admin view or fallback)
+    if (!userId) {
+        return allScenarios;
+    }
+
+    // Get user's department
+    const { data: employee, error: empError } = await supabase
+        .from('employees')
+        .select('department')
+        .eq('id', userId)
+        .single();
+
+    if (empError || !employee) {
+        console.warn('Could not find employee department, returning all scenarios');
+        return allScenarios;
+    }
+
+    const userDept = employee.department?.toLowerCase() || '';
+    console.log(`DEBUG: Filtering scenarios for department: ${userDept}`);
+
+    // Filter scenarios:
+    // - GENERAL category: visible to all
+    // - TRAINING category: only if matches user's department
+    // - Check both category and title for department matching
+    const filteredScenarios = (allScenarios || []).filter((scenario: any) => {
+        const category = (scenario.category || '').toLowerCase();
+        const title = (scenario.title || '').toLowerCase();
+
+        // GENERAL category is visible to everyone
+        if (category === 'general') {
+            return true;
+        }
+
+        // TRAINING category - check if it's for user's department
+        if (category.startsWith('training')) {
+            // Check if the category or title contains the user's department
+            // e.g., "TRAINING -sales" should only show for Sales department
+            const categoryDept = category.replace('training', '').replace('-', '').trim();
+            const titleDept = title.replace('training', '').replace('-', '').trim();
+
+            // Match if category contains department name or title contains department name
+            if (categoryDept && userDept.includes(categoryDept)) return true;
+            if (titleDept && userDept.includes(titleDept)) return true;
+            if (userDept && category.includes(userDept)) return true;
+            if (userDept && title.includes(userDept)) return true;
+
+            return false;
+        }
+
+        // For other categories, check department_id if available
+        // If scenario has a department_id, we could match against it
+        // For now, show all other categories
+        return true;
+    });
+
+    console.log(`DEBUG: Filtered ${allScenarios?.length || 0} scenarios to ${filteredScenarios.length} for user ${userId}`);
+    return filteredScenarios;
 };
 
 export const getPersonalizedChallenges = async (userId: string) => {

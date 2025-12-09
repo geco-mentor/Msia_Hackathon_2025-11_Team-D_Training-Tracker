@@ -9,6 +9,9 @@ export const getAnalyticsOverview = async (req: AuthRequest, res: Response): Pro
             return;
         }
 
+        // Get filter parameters
+        const { department: filterDepartment, curriculum: filterCurriculum } = req.query;
+
         // 1. Completion Rate (Win Rate)
         const { data: employees, error: empError } = await supabase
             .from('employees')
@@ -176,6 +179,220 @@ export const getAnalyticsOverview = async (req: AuthRequest, res: Response): Pro
             return { range: range.label, count };
         });
 
+        // 10. Get Departments list for filter
+        const uniqueDepartments = [...new Set((employees || []).map((emp: any) => emp.department).filter(Boolean))];
+        const departments = uniqueDepartments.map((name, idx) => ({ id: idx + 1, name }));
+
+        // 11. Get Curriculums (Scenarios) list for filter
+        const { data: scenariosData, error: scenariosError } = await supabase
+            .from('scenarios')
+            .select('id, title, category');
+
+        if (scenariosError) throw scenariosError;
+
+        const curriculums = (scenariosData || []).map((s: any) => ({
+            id: s.id,
+            title: s.title || s.category || 'Untitled Module'
+        }));
+
+        // 12. Pre vs Post Assessment comparison by curriculum
+        // Fetch pre-assessments with scores
+        const { data: preAssessmentsData, error: preError } = await supabase
+            .from('pre_assessments')
+            .select(`
+                baseline_score,
+                scenario_id,
+                user_id,
+                completed,
+                scenarios (id, title, category),
+                employees!inner (department)
+            `)
+            .eq('completed', true);
+
+        if (preError) console.error('Pre-assessment error:', preError);
+
+        // Fetch post-assessments with scores
+        const { data: postAssessmentsData, error: postError } = await supabase
+            .from('assessments')
+            .select(`
+                score,
+                scenario_id,
+                user_id,
+                completed,
+                scenarios (id, title, category),
+                employees!inner (department)
+            `)
+            .eq('completed', true);
+
+        if (postError) console.error('Post-assessment error:', postError);
+
+        // Group by curriculum/scenario
+        const preVsPostMap = new Map<string, { preTotal: number; preCount: number; postTotal: number; postCount: number; curriculum: string }>();
+
+        (preAssessmentsData || []).forEach((item: any) => {
+            const scenarioId = item.scenario_id;
+            const curriculumName = item.scenarios?.title || item.scenarios?.category || 'Unknown';
+            const dept = (item.employees as any)?.department;
+
+            // Apply filters
+            if (filterDepartment && filterDepartment !== 'all' && dept !== filterDepartment) return;
+            if (filterCurriculum && filterCurriculum !== 'all' && scenarioId !== filterCurriculum) return;
+
+            const current = preVsPostMap.get(scenarioId) || { preTotal: 0, preCount: 0, postTotal: 0, postCount: 0, curriculum: curriculumName };
+            current.preTotal += item.baseline_score || 0;
+            current.preCount += 1;
+            preVsPostMap.set(scenarioId, current);
+        });
+
+        (postAssessmentsData || []).forEach((item: any) => {
+            const scenarioId = item.scenario_id;
+            const curriculumName = item.scenarios?.title || item.scenarios?.category || 'Unknown';
+            const dept = (item.employees as any)?.department;
+
+            // Apply filters
+            if (filterDepartment && filterDepartment !== 'all' && dept !== filterDepartment) return;
+            if (filterCurriculum && filterCurriculum !== 'all' && scenarioId !== filterCurriculum) return;
+
+            const current = preVsPostMap.get(scenarioId) || { preTotal: 0, preCount: 0, postTotal: 0, postCount: 0, curriculum: curriculumName };
+            current.postTotal += item.score || 0;
+            current.postCount += 1;
+            preVsPostMap.set(scenarioId, current);
+        });
+
+        const preVsPostAssessment = Array.from(preVsPostMap.entries())
+            .filter(([_, data]) => data.preCount > 0 || data.postCount > 0)
+            .map(([_, data]) => ({
+                curriculum: data.curriculum.length > 15 ? data.curriculum.substring(0, 15) + '...' : data.curriculum,
+                preScore: data.preCount > 0 ? Math.round(data.preTotal / data.preCount) : 0,
+                postScore: data.postCount > 0 ? Math.round(data.postTotal / data.postCount) : 0
+            }))
+            .slice(0, 6);
+
+        // 13. Skills Gap Analysis - Average score per skill category
+        const skillsGapMap = new Map<string, { total: number; count: number }>();
+
+        (postAssessmentsData || []).forEach((item: any) => {
+            const skill = item.scenarios?.category || item.scenarios?.title || 'General';
+            const current = skillsGapMap.get(skill) || { total: 0, count: 0 };
+            current.total += item.score || 0;
+            current.count += 1;
+            skillsGapMap.set(skill, current);
+        });
+
+        const skillsGap = Array.from(skillsGapMap.entries())
+            .map(([skill, data]) => ({
+                skill: skill.length > 12 ? skill.substring(0, 12) + '...' : skill,
+                avgScore: data.count > 0 ? Math.round(data.total / data.count) : 0
+            }))
+            .sort((a, b) => a.avgScore - b.avgScore) // Lowest scores first (biggest gaps)
+            .slice(0, 5);
+
+        // 14. Module Effectiveness - Improvement from pre to post per curriculum
+        const moduleEffectiveness = Array.from(preVsPostMap.entries())
+            .filter(([_, data]) => data.preCount > 0 && data.postCount > 0)
+            .map(([_, data]) => {
+                const preScore = data.preCount > 0 ? Math.round(data.preTotal / data.preCount) : 0;
+                const postScore = data.postCount > 0 ? Math.round(data.postTotal / data.postCount) : 0;
+                return {
+                    curriculum: data.curriculum.length > 20 ? data.curriculum.substring(0, 20) + '...' : data.curriculum,
+                    preScore,
+                    postScore,
+                    improvement: postScore - preScore
+                };
+            })
+            .sort((a, b) => b.improvement - a.improvement)
+            .slice(0, 5);
+
+        // 15. Improvement Trend - Monthly average scores
+        const monthlyScoreMap = new Map<string, { total: number; count: number }>();
+
+        (postAssessmentsData || []).forEach((item: any) => {
+            if (!item.completed) return;
+            // We need created_at from original data
+            const createdAt = (item as any).created_at;
+            if (!createdAt) return;
+
+            const date = new Date(createdAt);
+            const monthKey = date.toLocaleString('default', { month: 'short' });
+            const current = monthlyScoreMap.get(monthKey) || { total: 0, count: 0 };
+            current.total += item.score || 0;
+            current.count += 1;
+            monthlyScoreMap.set(monthKey, current);
+        });
+
+        // Also get created_at from assessments with scores
+        const { data: assessmentTrendData, error: trendError } = await supabase
+            .from('assessments')
+            .select('score, created_at')
+            .eq('completed', true)
+            .gte('created_at', sixMonthsAgo.toISOString());
+
+        if (!trendError && assessmentTrendData) {
+            assessmentTrendData.forEach((item: any) => {
+                const date = new Date(item.created_at);
+                const monthKey = date.toLocaleString('default', { month: 'short' });
+                const current = monthlyScoreMap.get(monthKey) || { total: 0, count: 0 };
+                current.total += item.score || 0;
+                current.count += 1;
+                monthlyScoreMap.set(monthKey, current);
+            });
+        }
+
+        const improvementTrend = Array.from(monthlyScoreMap.entries())
+            .map(([month, data]) => ({
+                month,
+                avgScore: data.count > 0 ? Math.round(data.total / data.count) : 0
+            }));
+
+        // 16. At-Risk Employees - Employees with low scores or declining performance
+        const employeeScoresMap = new Map<string, { name: string; department: string; scores: number[]; id: string }>();
+
+        (employees || []).forEach((emp: any) => {
+            employeeScoresMap.set(emp.id, {
+                id: emp.id,
+                name: emp.name,
+                department: emp.department || 'Unknown',
+                scores: []
+            });
+        });
+
+        (postAssessmentsData || []).forEach((item: any) => {
+            const empData = employeeScoresMap.get(item.user_id);
+            if (empData) {
+                empData.scores.push(item.score || 0);
+            }
+        });
+
+        const atRiskEmployees = Array.from(employeeScoresMap.values())
+            .filter(emp => emp.scores.length > 0)
+            .map(emp => {
+                const avgScore = emp.scores.length > 0
+                    ? Math.round(emp.scores.reduce((a, b) => a + b, 0) / emp.scores.length)
+                    : 0;
+
+                // Check if declining (last score lower than first)
+                const isDecline = emp.scores.length >= 2 && emp.scores[emp.scores.length - 1] < emp.scores[0];
+
+                return {
+                    id: emp.id,
+                    name: emp.name,
+                    department: emp.department,
+                    avgScore,
+                    trend: isDecline ? 'declining' : 'stable'
+                };
+            })
+            .filter(emp => emp.avgScore < 60) // At-risk threshold
+            .sort((a, b) => a.avgScore - b.avgScore)
+            .slice(0, 10);
+
+        console.log('Analytics data prepared:', {
+            preVsPostAssessment: preVsPostAssessment.length,
+            skillsGap: skillsGap.length,
+            moduleEffectiveness: moduleEffectiveness.length,
+            improvementTrend: improvementTrend.length,
+            atRiskEmployees: atRiskEmployees.length
+        });
+
         res.status(200).json({
             success: true,
             data: {
@@ -187,7 +404,15 @@ export const getAnalyticsOverview = async (req: AuthRequest, res: Response): Pro
                 difficultyBreakdown,
                 monthlyTrends,
                 topPerformers,
-                eloDistribution
+                eloDistribution,
+                // New fields for missing charts
+                departments,
+                curriculums,
+                preVsPostAssessment,
+                skillsGap,
+                moduleEffectiveness,
+                improvementTrend,
+                atRiskEmployees
             }
         });
 

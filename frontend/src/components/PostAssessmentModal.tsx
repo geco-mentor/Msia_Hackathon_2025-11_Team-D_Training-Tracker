@@ -3,6 +3,7 @@ import { X, Loader, CheckCircle, Lightbulb, Star, ArrowRight, Trophy, TrendingUp
 import { useAuth } from '../contexts/AuthContext';
 import { API_BASE_URL } from '../config';
 import { fetchWithRetry } from '../api/apiRetry';
+import { ConversationPanel, ConversationMessage } from './ConversationPanel';
 
 interface PostAssessmentModalProps {
     scenario: any;
@@ -54,6 +55,7 @@ export const PostAssessmentModal: React.FC<PostAssessmentModalProps> = ({ scenar
     const [completed, setCompleted] = useState<boolean>(false);
     const [baselineScore, setBaselineScore] = useState<number>(0);
     const [showXPAnimation, setShowXPAnimation] = useState<boolean>(false);
+    const [conversationMessages, setConversationMessages] = useState<ConversationMessage[]>([]);
     const startedRef = React.useRef(false);
 
     useEffect(() => {
@@ -76,6 +78,28 @@ export const PostAssessmentModal: React.FC<PostAssessmentModalProps> = ({ scenar
         setShowHint(false);
         setAnswer('');
         if (data.runningScore !== undefined) setRunningScore(data.runningScore);
+
+        // Add AI question to conversation (prevent duplicates)
+        const newQuestionId = `ai-q${data.questionNumber || 1}`;
+        setConversationMessages(prev => {
+            // Check if this question already exists
+            if (prev.some(msg => msg.id === newQuestionId)) {
+                return prev; // Don't add duplicate
+            }
+            const aiMessage: ConversationMessage = {
+                id: newQuestionId,
+                type: 'ai-question',
+                content: data.question || '',
+                timestamp: new Date(),
+                metadata: {
+                    questionNumber: data.questionNumber || 1,
+                    difficulty: data.difficulty || 'Normal',
+                    scenario: data.scenario || '',
+                    missionName: data.mission || ''
+                }
+            };
+            return [...prev, aiMessage];
+        });
     };
 
     const startPostAssessment = async () => {
@@ -120,6 +144,15 @@ export const PostAssessmentModal: React.FC<PostAssessmentModalProps> = ({ scenar
     const submitAnswer = async () => {
         if (!answer.trim()) return;
 
+        // Add user answer to conversation immediately
+        const userMessage: ConversationMessage = {
+            id: `user-${Date.now()}-${questionNumber}`,
+            type: 'user-answer',
+            content: answer,
+            timestamp: new Date()
+        };
+        setConversationMessages(prev => [...prev, userMessage]);
+
         try {
             setLoading(true);
             setError('');
@@ -141,6 +174,33 @@ export const PostAssessmentModal: React.FC<PostAssessmentModalProps> = ({ scenar
                 throw new Error(data.message || 'Failed to submit answer');
             }
 
+            // Add evaluation to conversation (only if there's actual feedback)
+            const feedbackText = data.completed ? data.lastFeedback : data.previousFeedback;
+            const scoreValue = data.previousScore ?? (data.completed ? data.score : null);
+
+            if (feedbackText || scoreValue !== null) {
+                const xpForThisQuestion = (scoreValue && scoreValue >= 60) ? currentXP : 0;
+                const evalMessage: ConversationMessage = {
+                    id: `eval-q${questionNumber}`,
+                    type: 'evaluation',
+                    content: feedbackText || 'Answer evaluated.',
+                    timestamp: new Date(),
+                    metadata: {
+                        questionNumber: questionNumber,
+                        score: scoreValue || 0,
+                        xpEarned: xpForThisQuestion,
+                        feedback: feedbackText || ''
+                    }
+                };
+                setConversationMessages(prev => {
+                    // Prevent duplicate evaluation
+                    if (prev.some(msg => msg.id === `eval-q${questionNumber}`)) {
+                        return prev;
+                    }
+                    return [...prev, evalMessage];
+                });
+            }
+
             // XP and streak logic
             if (data.previousScore && data.previousScore >= 60) {
                 setTotalXPEarned(prev => prev + currentXP);
@@ -151,8 +211,8 @@ export const PostAssessmentModal: React.FC<PostAssessmentModalProps> = ({ scenar
                 setStreak(0);
             }
 
-            if (data.previousFeedback) {
-                setFeedback(data.previousFeedback);
+            if (data.previousFeedback || data.lastFeedback) {
+                setFeedback(data.previousFeedback || data.lastFeedback);
             }
 
             if (data.completed) {
@@ -194,10 +254,10 @@ export const PostAssessmentModal: React.FC<PostAssessmentModalProps> = ({ scenar
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-            <div className="bg-[#0a0a0a] border border-purple-500/30 rounded-lg w-full max-w-xl max-h-[90vh] overflow-y-auto flex flex-col relative animate-in fade-in zoom-in-95 duration-200 shadow-[0_0_30px_rgba(168,85,247,0.15)]">
+            <div className="bg-[#0a0a0a] border border-purple-500/30 rounded-lg w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col relative animate-in fade-in zoom-in-95 duration-200 shadow-[0_0_30px_rgba(168,85,247,0.15)]">
 
                 {/* Header - Gamified */}
-                <div className="p-6 border-b border-purple-500/20 flex justify-between items-start sticky top-0 bg-[#0a0a0a] z-10">
+                <div className="p-4 border-b border-purple-500/20 flex justify-between items-start bg-[#0a0a0a] z-10">
                     <div className="flex items-center gap-3">
                         <div className="p-2 bg-gradient-to-br from-purple-600 to-pink-600 rounded-lg animate-pulse">
                             <Trophy className="text-white" size={24} />
@@ -237,217 +297,230 @@ export const PostAssessmentModal: React.FC<PostAssessmentModalProps> = ({ scenar
                     </div>
                 )}
 
-                {/* Content */}
-                <div className="p-6">
-                    {error && (
-                        <div className="mb-4 p-3 bg-red-900/20 border border-red-500/30 rounded text-red-300 text-sm">
-                            {error}
-                        </div>
-                    )}
+                {/* Two Column Layout */}
+                <div className="flex-1 flex overflow-hidden">
 
-                    {/* Loading State */}
-                    {loading && !completed && questionNumber === 1 && (
-                        <div className="flex flex-col items-center justify-center py-12">
-                            <Loader className="animate-spin text-purple-400 mb-4" size={48} />
-                            <p className="text-gray-400">Preparing final challenge...</p>
-                        </div>
-                    )}
-
-                    {/* Questions - Gamified */}
-                    {!completed && !loading && (
-                        <div className="space-y-5">
-                            {/* Mission Header */}
-                            <div className="text-center mb-4">
-                                <h3 className="text-sm font-bold text-purple-400 tracking-wider">{missionName}</h3>
+                    {/* Left Panel - Main Content */}
+                    <div className="flex-1 p-6 overflow-y-auto border-r border-purple-500/10">
+                        {error && (
+                            <div className="mb-4 p-3 bg-red-900/20 border border-red-500/30 rounded text-red-300 text-sm">
+                                {error}
                             </div>
+                        )}
 
-                            {/* Progress and Difficulty */}
-                            <div className="flex justify-between items-center">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-sm text-gray-400">Challenge {questionNumber}/{totalQuestions}</span>
-                                    {runningScore > 0 && (
-                                        <span className={`text-xs font-bold ${getScoreColor(runningScore)}`}>
-                                            ({runningScore}%)
+                        {/* Loading State */}
+                        {loading && !completed && questionNumber === 1 && (
+                            <div className="flex flex-col items-center justify-center py-12">
+                                <Loader className="animate-spin text-purple-400 mb-4" size={48} />
+                                <p className="text-gray-400">Preparing final challenge...</p>
+                            </div>
+                        )}
+
+                        {/* Questions - Gamified */}
+                        {!completed && !loading && (
+                            <div className="space-y-5">
+                                {/* Mission Header */}
+                                <div className="text-center mb-4">
+                                    <h3 className="text-sm font-bold text-purple-400 tracking-wider">{missionName}</h3>
+                                </div>
+
+                                {/* Progress and Difficulty */}
+                                <div className="flex justify-between items-center">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-sm text-gray-400">Challenge {questionNumber}/{totalQuestions}</span>
+                                        {runningScore > 0 && (
+                                            <span className={`text-xs font-bold ${getScoreColor(runningScore)}`}>
+                                                ({runningScore}%)
+                                            </span>
+                                        )}
+                                        {/* Progress bar */}
+                                        <div className="w-20 h-2 bg-gray-800 rounded-full overflow-hidden">
+                                            <div
+                                                className="h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-500 shadow-[0_0_10px_rgba(168,85,247,0.5)]"
+                                                style={{ width: `${(questionNumber / totalQuestions) * 100}%` }}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <span className={`text-xs font-bold px-3 py-1 rounded-full border ${getDifficultyDisplay(difficulty).color}`}>
+                                            {getDifficultyDisplay(difficulty).label}
                                         </span>
-                                    )}
-                                    {/* Progress bar */}
-                                    <div className="w-20 h-2 bg-gray-800 rounded-full overflow-hidden">
-                                        <div
-                                            className="h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-500 shadow-[0_0_10px_rgba(168,85,247,0.5)]"
-                                            style={{ width: `${(questionNumber / totalQuestions) * 100}%` }}
-                                        />
+                                        <span className="text-xs text-yellow-400 font-bold flex items-center gap-1">
+                                            <Zap size={12} /> {currentXP} XP
+                                        </span>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <span className={`text-xs font-bold px-3 py-1 rounded-full border ${getDifficultyDisplay(difficulty).color}`}>
-                                        {getDifficultyDisplay(difficulty).label}
-                                    </span>
-                                    <span className="text-xs text-yellow-400 font-bold flex items-center gap-1">
-                                        <Zap size={12} /> {currentXP} XP
-                                    </span>
-                                </div>
-                            </div>
 
-                            {/* Previous Feedback */}
-                            {feedback && (
-                                <div className="p-3 bg-purple-900/20 border border-purple-500/30 rounded-lg text-purple-300 text-sm">
-                                    <strong>📊 Intel:</strong> {feedback}
-                                </div>
-                            )}
-
-                            {/* Scenario - Mission Style */}
-                            {currentScenario && (
-                                <div className="p-4 bg-gradient-to-r from-purple-900/30 to-pink-900/30 border border-purple-500/30 rounded-lg relative overflow-hidden">
-                                    <div className="absolute top-2 right-2 text-xs text-purple-400/50 font-mono">SITUATION</div>
-                                    <p className="text-gray-200">{currentScenario}</p>
-                                </div>
-                            )}
-
-                            {/* Question */}
-                            <div className="p-4 bg-white/5 border border-white/20 rounded-lg">
-                                <p className="text-white font-medium text-lg">❓ {currentQuestion}</p>
-                            </div>
-
-                            {/* Text Input */}
-                            <textarea
-                                value={answer}
-                                onChange={e => setAnswer(e.target.value)}
-                                placeholder="Deploy your response here, Agent..."
-                                className="w-full p-4 bg-black/50 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 focus:shadow-[0_0_15px_rgba(168,85,247,0.2)] resize-none transition-all"
-                                rows={3}
-                            />
-
-                            {/* Hint */}
-                            {hint && (
-                                <div>
-                                    {!showHint ? (
-                                        <button
-                                            onClick={() => setShowHint(true)}
-                                            className="flex items-center gap-2 text-yellow-400 hover:text-yellow-300 text-sm transition-colors"
-                                        >
-                                            <Lightbulb size={16} />
-                                            💡 Request Intel
-                                        </button>
-                                    ) : (
-                                        <div className="p-3 bg-yellow-900/20 border border-yellow-500/30 rounded-lg text-yellow-200 text-sm">
-                                            <Lightbulb className="inline mr-2" size={14} />
-                                            {hint}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
-                            {/* Submit Button - Gamified */}
-                            <button
-                                onClick={submitAnswer}
-                                disabled={loading || !answer.trim()}
-                                className="w-full py-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 disabled:from-gray-700 disabled:to-gray-700 disabled:opacity-50 text-white font-bold rounded-lg transition-all flex items-center justify-center gap-2 shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30 hover:scale-[1.02] active:scale-[0.98]"
-                            >
-                                {loading ? (
-                                    <Loader className="animate-spin" size={20} />
-                                ) : (
-                                    <>
-                                        <Target size={20} />
-                                        ⚔️ LOCK IN ANSWER
-                                    </>
+                                {/* Previous Feedback */}
+                                {feedback && (
+                                    <div className="p-3 bg-purple-900/20 border border-purple-500/30 rounded-lg text-purple-300 text-sm">
+                                        <strong>📊 Intel:</strong> {feedback}
+                                    </div>
                                 )}
-                            </button>
-                        </div>
-                    )}
 
-                    {/* Loading during answer processing */}
-                    {loading && questionNumber > 1 && !completed && (
-                        <div className="flex items-center justify-center py-4">
-                            <Loader className="animate-spin text-purple-400" size={24} />
-                        </div>
-                    )}
-
-                    {/* Completion - Victory Screen */}
-                    {completed && (
-                        <div className="text-center py-6 space-y-6">
-                            <div className="relative inline-block">
-                                <Trophy className="mx-auto text-yellow-400" size={80} />
-                                <div className="absolute -top-2 -right-2 text-3xl animate-bounce">🏆</div>
-                            </div>
-
-                            <div>
-                                <h3 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 mb-2">
-                                    🎮 CHALLENGE CONQUERED!
-                                </h3>
-                                <p className="text-gray-300 mb-4">
-                                    Outstanding performance, Agent!
-                                </p>
-
-                                {/* Main Score */}
-                                <div className={`text-6xl font-bold ${getScoreColor(finalScore)} mt-2`}>
-                                    {finalScore}%
-                                </div>
-
-                                {/* XP Earned */}
-                                <div className="mt-4 flex items-center justify-center gap-2 text-yellow-400 font-bold text-xl">
-                                    <Zap size={24} />
-                                    +{totalXPEarned} XP EARNED
-                                </div>
-
-                                {/* Before/After comparison */}
-                                <div className="mt-6 p-4 bg-gradient-to-r from-purple-900/30 to-pink-900/30 rounded-lg border border-purple-500/30">
-                                    <div className="flex items-center justify-center gap-6 text-sm">
-                                        <div className="text-gray-400">
-                                            <span className="block text-xs">📋 Baseline</span>
-                                            <span className="font-bold text-lg">{baselineScore}%</span>
-                                        </div>
-                                        <TrendingUp className={finalScore > baselineScore ? 'text-green-400' : 'text-red-400'} size={28} />
-                                        <div className="text-gray-400">
-                                            <span className="block text-xs">🏆 Final</span>
-                                            <span className={`font-bold text-lg ${getScoreColor(finalScore)}`}>{finalScore}%</span>
-                                        </div>
-                                        <div className={`text-lg font-bold ${getImprovement().color} flex items-center gap-1`}>
-                                            {getImprovement().icon} {getImprovement().text}
-                                        </div>
+                                {/* Scenario - Mission Style */}
+                                {currentScenario && (
+                                    <div className="p-4 bg-gradient-to-r from-purple-900/30 to-pink-900/30 border border-purple-500/30 rounded-lg relative overflow-hidden">
+                                        <div className="absolute top-2 right-2 text-xs text-purple-400/50 font-mono">SITUATION</div>
+                                        <p className="text-gray-200">{currentScenario}</p>
                                     </div>
+                                )}
+
+                                {/* Question */}
+                                <div className="p-4 bg-white/5 border border-white/20 rounded-lg">
+                                    <p className="text-white font-medium text-lg">❓ {currentQuestion}</p>
                                 </div>
-                            </div>
 
-                            {/* Personalized Feedback */}
-                            {personalizedFeedback && (
-                                <div className="text-left space-y-4 p-4 bg-white/5 rounded-lg border border-white/10">
-                                    <p className="text-gray-300 text-sm">{personalizedFeedback.summary}</p>
+                                {/* Text Input */}
+                                <textarea
+                                    value={answer}
+                                    onChange={e => setAnswer(e.target.value)}
+                                    placeholder="Deploy your response here, Agent..."
+                                    className="w-full p-4 bg-black/50 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 focus:shadow-[0_0_15px_rgba(168,85,247,0.2)] resize-none transition-all"
+                                    rows={3}
+                                />
 
-                                    {personalizedFeedback.strengths?.length > 0 && (
-                                        <div>
-                                            <p className="text-green-400 font-semibold text-sm flex items-center gap-1">
-                                                <Star size={14} /> 💪 Mastered Skills:
-                                            </p>
-                                            <ul className="text-gray-400 text-xs ml-4 list-disc">
-                                                {personalizedFeedback.strengths.map((s, i) => <li key={i}>{s}</li>)}
-                                            </ul>
-                                        </div>
-                                    )}
+                                {/* Hint */}
+                                {hint && (
+                                    <div>
+                                        {!showHint ? (
+                                            <button
+                                                onClick={() => setShowHint(true)}
+                                                className="flex items-center gap-2 text-yellow-400 hover:text-yellow-300 text-sm transition-colors"
+                                            >
+                                                <Lightbulb size={16} />
+                                                💡 Request Intel
+                                            </button>
+                                        ) : (
+                                            <div className="p-3 bg-yellow-900/20 border border-yellow-500/30 rounded-lg text-yellow-200 text-sm">
+                                                <Lightbulb className="inline mr-2" size={14} />
+                                                {hint}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
 
-                                    {personalizedFeedback.recommendations?.length > 0 && (
-                                        <div>
-                                            <p className="text-purple-400 font-semibold text-sm flex items-center gap-1">
-                                                <ArrowRight size={14} /> 🎯 Next Quest:
-                                            </p>
-                                            <ul className="text-gray-400 text-xs ml-4 list-disc">
-                                                {personalizedFeedback.recommendations.map((r, i) => <li key={i}>{r}</li>)}
-                                            </ul>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
-                            <div className="pt-4">
+                                {/* Submit Button - Gamified */}
                                 <button
-                                    onClick={handleComplete}
-                                    className="px-8 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold rounded-lg transition-all flex items-center gap-2 mx-auto shadow-lg shadow-purple-500/20 hover:scale-105"
+                                    onClick={submitAnswer}
+                                    disabled={loading || !answer.trim()}
+                                    className="w-full py-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 disabled:from-gray-700 disabled:to-gray-700 disabled:opacity-50 text-white font-bold rounded-lg transition-all flex items-center justify-center gap-2 shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30 hover:scale-[1.02] active:scale-[0.98]"
                                 >
-                                    <CheckCircle size={20} />
-                                    Claim Victory
+                                    {loading ? (
+                                        <Loader className="animate-spin" size={20} />
+                                    ) : (
+                                        <>
+                                            <Target size={20} />
+                                            ⚔️ LOCK IN ANSWER
+                                        </>
+                                    )}
                                 </button>
                             </div>
-                        </div>
-                    )}
+                        )}
+
+                        {/* Loading during answer processing */}
+                        {loading && questionNumber > 1 && !completed && (
+                            <div className="flex items-center justify-center py-4">
+                                <Loader className="animate-spin text-purple-400" size={24} />
+                            </div>
+                        )}
+
+                        {/* Completion - Victory Screen */}
+                        {completed && (
+                            <div className="text-center py-6 space-y-6">
+                                <div className="relative inline-block">
+                                    <Trophy className="mx-auto text-yellow-400" size={80} />
+                                    <div className="absolute -top-2 -right-2 text-3xl animate-bounce">🏆</div>
+                                </div>
+
+                                <div>
+                                    <h3 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 mb-2">
+                                        🎮 CHALLENGE CONQUERED!
+                                    </h3>
+                                    <p className="text-gray-300 mb-4">
+                                        Outstanding performance, Agent!
+                                    </p>
+
+                                    {/* Main Score */}
+                                    <div className={`text-6xl font-bold ${getScoreColor(finalScore)} mt-2`}>
+                                        {finalScore}%
+                                    </div>
+
+                                    {/* XP Earned */}
+                                    <div className="mt-4 flex items-center justify-center gap-2 text-yellow-400 font-bold text-xl">
+                                        <Zap size={24} />
+                                        +{totalXPEarned} XP EARNED
+                                    </div>
+
+                                    {/* Before/After comparison */}
+                                    <div className="mt-6 p-4 bg-gradient-to-r from-purple-900/30 to-pink-900/30 rounded-lg border border-purple-500/30">
+                                        <div className="flex items-center justify-center gap-6 text-sm">
+                                            <div className="text-gray-400">
+                                                <span className="block text-xs">📋 Baseline</span>
+                                                <span className="font-bold text-lg">{baselineScore}%</span>
+                                            </div>
+                                            <TrendingUp className={finalScore > baselineScore ? 'text-green-400' : 'text-red-400'} size={28} />
+                                            <div className="text-gray-400">
+                                                <span className="block text-xs">🏆 Final</span>
+                                                <span className={`font-bold text-lg ${getScoreColor(finalScore)}`}>{finalScore}%</span>
+                                            </div>
+                                            <div className={`text-lg font-bold ${getImprovement().color} flex items-center gap-1`}>
+                                                {getImprovement().icon} {getImprovement().text}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Personalized Feedback */}
+                                {personalizedFeedback && (
+                                    <div className="text-left space-y-4 p-4 bg-white/5 rounded-lg border border-white/10">
+                                        <p className="text-gray-300 text-sm">{personalizedFeedback.summary}</p>
+
+                                        {personalizedFeedback.strengths?.length > 0 && (
+                                            <div>
+                                                <p className="text-green-400 font-semibold text-sm flex items-center gap-1">
+                                                    <Star size={14} /> 💪 Mastered Skills:
+                                                </p>
+                                                <ul className="text-gray-400 text-xs ml-4 list-disc">
+                                                    {personalizedFeedback.strengths.map((s, i) => <li key={i}>{s}</li>)}
+                                                </ul>
+                                            </div>
+                                        )}
+
+                                        {personalizedFeedback.recommendations?.length > 0 && (
+                                            <div>
+                                                <p className="text-purple-400 font-semibold text-sm flex items-center gap-1">
+                                                    <ArrowRight size={14} /> 🎯 Next Quest:
+                                                </p>
+                                                <ul className="text-gray-400 text-xs ml-4 list-disc">
+                                                    {personalizedFeedback.recommendations.map((r, i) => <li key={i}>{r}</li>)}
+                                                </ul>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                <div className="pt-4">
+                                    <button
+                                        onClick={handleComplete}
+                                        className="px-8 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold rounded-lg transition-all flex items-center gap-2 mx-auto shadow-lg shadow-purple-500/20 hover:scale-105"
+                                    >
+                                        <CheckCircle size={20} />
+                                        Claim Victory
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Right Panel - Conversation History */}
+                    <div className="w-80 flex-shrink-0 bg-[#050505] border-l border-purple-500/20 h-full">
+                        <ConversationPanel
+                            messages={conversationMessages}
+                            isLoading={loading}
+                            accentColor="purple"
+                        />
+                    </div>
                 </div>
             </div>
         </div>
