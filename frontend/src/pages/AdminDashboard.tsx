@@ -80,6 +80,14 @@ export const AdminDashboard: React.FC = () => {
                     <span className="text-xs text-white/60">SYSTEM OVERVIEW</span>
                 </div>
                 <div className="flex items-center gap-4">
+                    <button
+                        onClick={() => navigate('/leaderboard')}
+                        className="flex items-center gap-2 px-3 py-1 border border-yellow-500/30 text-yellow-500 rounded hover:bg-yellow-500/10 transition-colors text-xs font-mono"
+                    >
+                        <Trophy size={12} />
+                        RANKINGS
+                    </button>
+
                     <div className="flex items-center gap-2 px-3 py-1 bg-red-500/10 border border-red-500/20 rounded text-xs text-red-400">
                         <AlertCircle size={12} />
                         <span>LIVE MONITORING</span>

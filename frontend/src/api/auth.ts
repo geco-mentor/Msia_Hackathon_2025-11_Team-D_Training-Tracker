@@ -45,6 +45,7 @@ export interface User {
     ranking?: number;
     win_rate?: number;
     streak?: number;
+    elo_rating?: number;
     skills_profile?: Record<string, number>;
 }
 
@@ -54,6 +55,7 @@ export interface AuthResponse {
     token?: string;
     user?: User;
 }
+
 
 export const authAPI = {
     register: async (data: RegisterData): Promise<AuthResponse> => {

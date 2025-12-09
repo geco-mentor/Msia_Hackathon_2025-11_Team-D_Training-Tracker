@@ -69,6 +69,47 @@ export const getDashboardStats = async (req: AuthRequest, res: Response): Promis
 };
 
 /**
+ * Get Global Leaderboard (Ranked by ELO)
+ * GET /api/employees/leaderboard
+ */
+export const getGlobalLeaderboard = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        if (!req.user) {
+            res.status(401).json({ success: false, message: 'Unauthorized' });
+            return;
+        }
+
+        // Fetch employees sorted by ELO rating descending
+        const { data: leaderboard, error } = await supabase
+            .from('employees')
+            .select('id, name, username, department, elo_rating, win_rate, total_points, job_title')
+            .order('elo_rating', { ascending: false })
+            .limit(100); // Top 100
+
+        if (error) {
+            console.error('Error fetching leaderboard:', error);
+            res.status(500).json({ success: false, message: 'Failed to fetch leaderboard' });
+            return;
+        }
+
+        // Add rank index
+        const rankedData = leaderboard?.map((player, index) => ({
+            ...player,
+            rank: index + 1
+        })) || [];
+
+        res.status(200).json({
+            success: true,
+            leaderboard: rankedData
+        });
+
+    } catch (error) {
+        console.error('Get leaderboard error:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+};
+
+/**
  * Get All Employees (Admin only)
  * GET /api/employees/all
  */
@@ -399,6 +440,43 @@ export const getMyProfile = async (req: AuthRequest, res: Response): Promise<voi
 
     } catch (error) {
         console.error('Get my profile error:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+};
+
+/**
+ * Get Global Leaderboard
+ * GET /api/employees/leaderboard
+ */
+export const getLeaderboard = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        if (!req.user) {
+            res.status(403).json({ success: false, message: 'Access denied' });
+            return;
+        }
+
+        const { data: leaderboard, error } = await supabase
+            .from('employees')
+            .select('id, name, username, elo_rating, ranking, win_rate')
+            .order('elo_rating', { ascending: false })
+            .limit(10);
+
+        if (error) {
+            console.error('Error fetching leaderboard:', error);
+            res.status(500).json({ success: false, message: 'Failed to fetch leaderboard' });
+            return;
+        }
+
+        res.status(200).json({
+            success: true,
+            leaderboard: leaderboard.map((emp, index) => ({
+                ...emp,
+                rank: index + 1 // Calculate rank dynamically based on order
+            }))
+        });
+
+    } catch (error) {
+        console.error('Get leaderboard error:', error);
         res.status(500).json({ success: false, message: 'Internal server error' });
     }
 };

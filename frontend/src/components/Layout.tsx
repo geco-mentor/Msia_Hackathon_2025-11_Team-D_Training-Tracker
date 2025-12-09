@@ -48,6 +48,19 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                     </button>
 
                     <button
+                        onClick={() => navigate('/leaderboard')}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${isActive('/leaderboard')
+                            ? 'bg-indigo-50 text-indigo-700 shadow-sm'
+                            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                            }`}
+                    >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                        </svg>
+                        Leaderboard
+                    </button>
+
+                    <button
                         onClick={() => navigate('/profile')}
                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${isActive('/profile')
                             ? 'bg-indigo-50 text-indigo-700 shadow-sm'

@@ -66,45 +66,7 @@ export const generateChallenge = async (jobTitle: string, difficulty: string, us
     }
 };
 
-export const getMainChallenges = async (userId?: string) => {
-    // If userId is provided, filter by employee's department
-    if (userId) {
-        // Get employee's department name
-        const { data: employee } = await supabase
-            .from('employees')
-            .select('department')
-            .eq('id', userId)
-            .single();
-
-        console.log('DEBUG: getMainChallenges - employee department:', employee?.department);
-
-        if (employee?.department) {
-            // Find department ID by name
-            const { data: dept } = await supabase
-                .from('departments')
-                .select('id')
-                .eq('name', employee.department)
-                .single();
-
-            console.log('DEBUG: getMainChallenges - matched department_id:', dept?.id);
-
-            if (dept?.id) {
-                // Filter scenarios by department
-                const { data, error } = await supabase
-                    .from('scenarios')
-                    .select('*')
-                    .eq('is_personalized', false)
-                    .eq('department_id', dept.id)
-                    .order('created_at', { ascending: false });
-
-                if (error) throw error;
-                console.log('DEBUG: getMainChallenges - returning', data?.length, 'department-filtered scenarios');
-                return data;
-            }
-        }
-    }
-
-    // Fallback: return all non-personalized scenarios (for admins or if no department match)
+export const getMainChallenges = async () => {
     const { data, error } = await supabase
         .from('scenarios')
         .select('*')
@@ -112,7 +74,6 @@ export const getMainChallenges = async (userId?: string) => {
         .order('created_at', { ascending: false });
 
     if (error) throw error;
-    console.log('DEBUG: getMainChallenges - returning', data?.length, 'unfiltered scenarios');
     return data;
 };
 

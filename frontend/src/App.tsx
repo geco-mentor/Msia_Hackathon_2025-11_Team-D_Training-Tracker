@@ -8,6 +8,7 @@ import { EmployeeDashboard } from './pages/EmployeeDashboard';
 import { AdminDashboard } from './pages/AdminDashboard';
 import CreateAssessment from './pages/CreateAssessment';
 import { Profile } from './pages/Profile';
+import Leaderboard from './pages/Leaderboard';
 
 // Home redirect component
 const HomeRedirect: React.FC = () => {
@@ -76,6 +77,16 @@ function App() {
                         element={
                             <ProtectedRoute>
                                 <Profile />
+                            </ProtectedRoute>
+                        }
+                    />
+
+                    {/* Protected leaderboard route (accessible by both) */}
+                    <Route
+                        path="/leaderboard"
+                        element={
+                            <ProtectedRoute>
+                                <Leaderboard />
                             </ProtectedRoute>
                         }
                     />

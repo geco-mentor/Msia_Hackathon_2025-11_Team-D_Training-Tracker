@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Terminal, Cpu, Activity, LogOut, Plus, Trash2, Sparkles, User } from 'lucide-react';
+import { Terminal, Cpu, Activity, LogOut, Plus, Trash2, Sparkles, User, Trophy } from 'lucide-react';
 import { ChallengeCard } from '../components/ChallengeCard';
 import { ChallengeModal } from '../components/ChallengeModal';
 import { PreAssessmentModal } from '../components/PreAssessmentModal';
@@ -200,9 +200,18 @@ export const EmployeeDashboard: React.FC = () => {
                         <span>DEVICE_CONNECTED</span>
                     </div>
                     <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+
+                    <button
+                        onClick={() => navigate('/leaderboard')}
+                        className="ml-4 flex items-center gap-2 px-3 py-1 border border-yellow-500/30 text-yellow-500 rounded hover:bg-yellow-500/10 transition-colors"
+                    >
+                        <Trophy size={14} />
+                        LEADERBOARD
+                    </button>
+
                     <button
                         onClick={() => navigate('/profile')}
-                        className="ml-4 flex items-center gap-2 px-3 py-1 border border-cyan-500/30 text-cyan-400 rounded hover:bg-cyan-500/10 transition-colors"
+                        className="ml-2 flex items-center gap-2 px-3 py-1 border border-cyan-500/30 text-cyan-400 rounded hover:bg-cyan-500/10 transition-colors"
                     >
                         <User size={14} />
                         MY_PROFILE

@@ -651,12 +651,12 @@ export const generateMicroScenario = async (
     rubrics: { generic?: string[], department?: string[], module?: string[] },
     history: { scenario: string, question: string, answer: string }[] = []
 ): Promise<{
-    mission: string;
     scenario: string;
     question: string;
-    type: 'text';
+    type: 'text' | 'multiple_choice';
+    options?: string[];
+    correctAnswer?: string;
     hint: string;
-    xp: number;
 }> => {
     const previousQuestions = history.map(h => h.question.toLowerCase());
 
@@ -677,6 +677,21 @@ export const generateMicroScenario = async (
     const maxRetries = 10;
     let lastFailureReason: 'duplicate' | 'parse_failed' = 'parse_failed';
 
+
+
+    // Determine question type based on difficulty
+    // Easy (Basic) -> multiple_choice
+    // Normal (Intermediate) -> Mixed
+    // Hard (Advance) -> text
+    let targetType: 'text' | 'multiple_choice' = 'text';
+    if (difficulty === 'Easy') {
+        targetType = 'multiple_choice';
+    } else if (difficulty === 'Normal') {
+        targetType = Math.random() > 0.5 ? 'multiple_choice' : 'text';
+    } else {
+        targetType = 'text';
+    }
+
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
         const temperature = Math.min(1.0, 0.5 + (attempt * 0.05)); // gradual increase
 
@@ -684,42 +699,41 @@ export const generateMicroScenario = async (
             ? history.map((h) => `- "${h.question}"`).join('\n')
             : "None yet";
 
-        // Gamified difficulty descriptions
-        const difficultyMap = {
-            'Easy': { points: '100 XP', level: 'Rookie', style: 'straightforward' },
-            'Normal': { points: '250 XP', level: 'Pro', style: 'requires thinking' },
-            'Hard': { points: '500 XP', level: 'Expert', style: 'tricky real-world challenge' }
-        };
-        const diff = difficultyMap[difficulty];
+        const typeInstruction = targetType === 'multiple_choice'
+            ? `Generate a MULTIPLE CHOICE question. Provide 4 options and the correct answer.`
+            : `Generate a short answer TEXT question.`;
 
-        const prompt = `🎮 MISSION GENERATOR - Create a SHORT, FUN challenge question!
+        const prompt = `Create a workplace scenario question for training assessment.
 
-AGENT ROLE: ${jobDescription.substring(0, 150)}
-INTEL (Training): ${curriculum.substring(0, 1500)}
-MISSION LEVEL: ${diff.level} (${diff.points}) - ${diff.style}
-CHALLENGE #${history.length + 1}
+JOB: ${jobDescription.substring(0, 200)}
+TRAINING CONTENT: ${curriculum.substring(0, 2000)}
+DIFFICULTY: ${difficulty}
+QUESTION NUMBER: ${history.length + 1}
+TYPE: ${targetType}
 
-PREVIOUS MISSIONS (DO NOT REPEAT):
+ALREADY ASKED (DO NOT REPEAT OR ASK SIMILAR):
 ${historyText}
 
-RULES:
-- Mission: Create a catchy 2-4 word mission title (e.g., "MISSION: Cloud Breach Response")
-- Scenario: MAX 1-2 sentences. Quick setup, like a video game mission briefing.
-- Question: MAX 1 sentence. Clear, direct challenge.
-- Use action words: "handle", "solve", "respond", "tackle", "navigate"
-- Make it feel like a real work challenge, but FUN
-- ${difficulty === 'Easy' ? 'Basic knowledge check' : difficulty === 'Normal' ? 'Apply the concept' : 'Complex situation requiring expertise'}
+IMPORTANT: Create a completely DIFFERENT question. Focus on a NEW aspect of the training material not covered above.
+${typeInstruction}
 
 Output ONLY valid JSON:
-{"mission":"MISSION: Topic Name","scenario":"1-2 sentence briefing","question":"direct challenge","hint":"quick tip"}`;
+{
+    "scenario": "brief workplace situation",
+    "question": "your unique question",
+    "type": "${targetType}",
+    "options": ["Option 1 Text", "Option 2 Text", "Option 3 Text", "Option 4 Text"], // Only if multiple_choice
+    "correctAnswer": "Option 2 Text", // Must match one of the options exactly
+    "hint": "helpful hint"
+}`;
 
         const command = new ConverseCommand({
             modelId: "qwen.qwen3-235b-a22b-2507-v1:0",
             messages: [{ role: "user", content: [{ text: prompt }] }],
-            inferenceConfig: { maxTokens: 500, temperature }
+            inferenceConfig: { maxTokens: 800, temperature }
         });
 
-        console.log(`DEBUG: Generating scenario, attempt ${attempt}/${maxRetries}, temp=${temperature}`);
+        console.log(`DEBUG: Generating scenario, attempt ${attempt}/${maxRetries}, temp=${temperature}, type=${targetType}`);
         const response = await getBedrockClient().send(command);
         const content = response.output?.message?.content?.[0]?.text || "{}";
         console.log('DEBUG: Raw AI response:', content.substring(0, 150));
@@ -736,16 +750,23 @@ Output ONLY valid JSON:
                         console.log('DEBUG: Question too similar, retrying...');
                         continue;
                     }
+
+                    // Validate MCQ fields
+                    if (targetType === 'multiple_choice') {
+                        if (!parsed.options || !Array.isArray(parsed.options) || parsed.options.length < 2 || !parsed.correctAnswer) {
+                            console.log('DEBUG: Invalid MCQ format, retrying...');
+                            continue;
+                        }
+                    }
+
                     console.log('DEBUG: Unique question generated:', parsed.question.substring(0, 50));
-                    // Get XP based on difficulty
-                    const xpMap = { 'Easy': 100, 'Normal': 250, 'Hard': 500 };
                     return {
-                        mission: parsed.mission || `MISSION: Challenge ${history.length + 1}`,
                         scenario: parsed.scenario,
                         question: parsed.question,
-                        type: 'text',
-                        hint: parsed.hint || 'Think about how this applies to your daily work.',
-                        xp: xpMap[difficulty]
+                        type: targetType,
+                        options: parsed.options,
+                        correctAnswer: parsed.correctAnswer,
+                        hint: parsed.hint || 'Think about how this applies to your daily work.'
                     }
                 }
             }
@@ -753,68 +774,68 @@ Output ONLY valid JSON:
             console.log('DEBUG: JSON parse failed, trying regex extraction');
         }
 
-        // Text extraction with multiple patterns
-        let scenario = '';
-        let question = '';
-        let hint = '';
+        // Fallback for Text only (Regex extraction)
+        if (targetType === 'text') {
+            // Text extraction with multiple patterns
+            let scenario = '';
+            let question = '';
+            let hint = '';
 
-        // Pattern 1: labeled fields
-        const scenarioMatch = content.match(/scenario[:\s\-]*["']?([^"'\n]+)/i) ||
-            content.match(/situation[:\s\-]*["']?([^"'\n]+)/i) ||
-            content.match(/\*\*scenario\*\*[:\s]*([^\n]+)/i);
-        const questionMatch = content.match(/question[:\s\-]*["']?([^"']+?)(?:\n|$|")/i) ||
-            content.match(/\*\*question\*\*[:\s]*([^\n]+)/i);
-        const hintMatch = content.match(/hint[:\s\-]*["']?([^"'\n]+)/i);
+            // Pattern 1: labeled fields
+            const scenarioMatch = content.match(/scenario[:\s\-]*["']?([^"'\n]+)/i) ||
+                content.match(/situation[:\s\-]*["']?([^"'\n]+)/i) ||
+                content.match(/\*\*scenario\*\*[:\s]*([^\n]+)/i);
+            const questionMatch = content.match(/question[:\s\-]*["']?([^"']+?)(?:\n|$|")/i) ||
+                content.match(/\*\*question\*\*[:\s]*([^\n]+)/i);
+            const hintMatch = content.match(/hint[:\s\-]*["']?([^"'\n]+)/i);
 
-        if (scenarioMatch) scenario = scenarioMatch[1].trim().replace(/["\*]/g, '');
-        if (questionMatch) question = questionMatch[1].trim().replace(/["\*]/g, '');
-        if (hintMatch) hint = hintMatch[1].trim();
+            if (scenarioMatch) scenario = scenarioMatch[1].trim().replace(/["\*]/g, '');
+            if (questionMatch) question = questionMatch[1].trim().replace(/["\*]/g, '');
+            if (hintMatch) hint = hintMatch[1].trim();
 
-        // Pattern 2: If no labeled fields, try to find any question-like sentence (ends with ?)
-        if (!question) {
-            const questionSentence = content.match(/([A-Z][^.!?]*\?)/);
-            if (questionSentence) {
-                question = questionSentence[1].trim();
-            }
-        }
-
-        // Pattern 3: If we have a question but no scenario, use the first sentence
-        if (question && !scenario) {
-            const firstSentence = content.match(/^[^.!?]+[.!?]/m);
-            if (firstSentence && firstSentence[0] !== question) {
-                scenario = firstSentence[0].trim();
-            }
-        }
-
-        // Pattern 4: Split content into lines and try to find scenario/question
-        if (!scenario || !question) {
-            const lines = content.split('\n').filter(l => l.trim().length > 10);
-            if (lines.length >= 2) {
-                if (!scenario) scenario = lines[0].replace(/^[\d\.\-\*\s]+/, '').trim();
-                if (!question) {
-                    // Find a line with a question mark or use second line
-                    const questionLine = lines.find(l => l.includes('?')) || lines[1];
-                    question = questionLine.replace(/^[\d\.\-\*\s]+/, '').trim();
+            // Pattern 2: If no labeled fields, try to find any question-like sentence (ends with ?)
+            if (!question) {
+                const questionSentence = content.match(/([A-Z][^.!?]*\?)/);
+                if (questionSentence) {
+                    question = questionSentence[1].trim();
                 }
             }
-        }
 
-        if (scenario && question && scenario.length > 5 && question.length > 10) {
-            if (history.length > 0 && isSimilar(question)) {
-                console.log('DEBUG: Extracted question too similar, retrying...');
-                lastFailureReason = 'duplicate';
-                continue;
+            // Pattern 3: If we have a question but no scenario, use the first sentence
+            if (question && !scenario) {
+                const firstSentence = content.match(/^[^.!?]+[.!?]/m);
+                if (firstSentence && firstSentence[0] !== question) {
+                    scenario = firstSentence[0].trim();
+                }
             }
-            console.log('DEBUG: Successfully extracted scenario and question');
-            const xpMap = { 'Easy': 100, 'Normal': 250, 'Hard': 500 };
-            return {
-                mission: `MISSION: Challenge ${history.length + 1}`,
-                scenario: scenario.substring(0, 200),
-                question: question.substring(0, 300),
-                type: 'text',
-                hint: hint || 'Consider applying what you learned in the training.',
-                xp: xpMap[difficulty]
-            };
+
+            // Pattern 4: Split content into lines and try to find scenario/question
+            if (!scenario || !question) {
+                const lines = content.split('\n').filter(l => l.trim().length > 10);
+                if (lines.length >= 2) {
+                    if (!scenario) scenario = lines[0].replace(/^[\d\.\-\*\s]+/, '').trim();
+                    if (!question) {
+                        // Find a line with a question mark or use second line
+                        const questionLine = lines.find(l => l.includes('?')) || lines[1];
+                        question = questionLine.replace(/^[\d\.\-\*\s]+/, '').trim();
+                    }
+                }
+            }
+
+            if (scenario && question && scenario.length > 5 && question.length > 10) {
+                if (history.length > 0 && isSimilar(question)) {
+                    console.log('DEBUG: Extracted question too similar, retrying...');
+                    lastFailureReason = 'duplicate';
+                    continue;
+                }
+                console.log('DEBUG: Successfully extracted scenario and question');
+                return {
+                    scenario: scenario.substring(0, 200),
+                    question: question.substring(0, 300),
+                    type: 'text',
+                    hint: hint || 'Consider applying what you learned in the training.'
+                };
+            }
         }
 
         // Neither JSON nor regex worked
@@ -840,13 +861,25 @@ export const evaluateWithRubrics = async (
     correctAnswer: string | number | undefined,
     rubrics: { generic?: string[], department?: string[], module?: string[] },
     curriculum: string,
-    questionType: 'text' | 'mcq'
+    questionType: 'text' | 'multiple_choice' | 'mcq'
 ): Promise<{
     score: number;
     isCorrect: boolean;
     feedback: string;
     rubricScores: { generic: number, department: number, module: number };
 }> => {
+    // Handle MCQ evaluation
+    if ((questionType === 'multiple_choice' || questionType === 'mcq') && correctAnswer) {
+        console.log('DEBUG: Evaluating MCQ answer:', answer, 'Correct:', correctAnswer);
+        const isCorrect = answer.trim().toLowerCase() === String(correctAnswer).trim().toLowerCase();
+        return {
+            score: isCorrect ? 100 : 0,
+            isCorrect,
+            feedback: isCorrect ? 'Correct!' : `Incorrect. The correct answer was: ${correctAnswer}`,
+            rubricScores: { generic: isCorrect ? 100 : 0, department: isCorrect ? 100 : 0, module: isCorrect ? 100 : 0 }
+        };
+    }
+
     // Ultra-simple prompt - just ask for a score
     const prompt = `Rate this answer 0-100 and give brief feedback.
 
