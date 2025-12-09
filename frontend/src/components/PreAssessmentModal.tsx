@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { X, Loader, CheckCircle, Brain, Lightbulb, ArrowRight, Star, Zap, Target, Trophy } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { API_BASE_URL } from '../config';
+import { ConversationPanel, ConversationMessage } from './ConversationPanel';
+import { fetchWithRetry } from '../api/apiRetry';
 
 interface PreAssessmentModalProps {
     scenario: any;
@@ -55,6 +57,7 @@ export const PreAssessmentModal: React.FC<PreAssessmentModalProps> = ({ scenario
     const [personalizedFeedback, setPersonalizedFeedback] = useState<PersonalizedFeedback | null>(null);
     const [error, setError] = useState<string>('');
     const [showXPAnimation, setShowXPAnimation] = useState<boolean>(false);
+    const [conversationMessages, setConversationMessages] = useState<ConversationMessage[]>([]);
 
     useEffect(() => {
         startPreAssessment();
@@ -66,7 +69,7 @@ export const PreAssessmentModal: React.FC<PreAssessmentModalProps> = ({ scenario
             setError('');
             console.log('Starting pre-assessment for scenario:', scenario.id);
 
-            const res = await fetch(`${API_BASE_URL}/api/assessments/pre-assessment/start`, {
+            const res = await fetchWithRetry(`${API_BASE_URL}/api/assessments/pre-assessment/start`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -116,6 +119,28 @@ export const PreAssessmentModal: React.FC<PreAssessmentModalProps> = ({ scenario
         setShowHint(false);
         setAnswer('');
         setSelectedOption(null);
+
+        // Add AI question to conversation (prevent duplicates)
+        const newQuestionId = `ai-q${data.questionNumber || 1}`;
+        setConversationMessages(prev => {
+            // Check if this question already exists
+            if (prev.some(msg => msg.id === newQuestionId)) {
+                return prev; // Don't add duplicate
+            }
+            const aiMessage: ConversationMessage = {
+                id: newQuestionId,
+                type: 'ai-question',
+                content: data.question || '',
+                timestamp: new Date(),
+                metadata: {
+                    questionNumber: data.questionNumber || 1,
+                    difficulty: data.difficulty || 'Easy',
+                    scenario: data.scenario || '',
+                    missionName: data.mission || ''
+                }
+            };
+            return [...prev, aiMessage];
+        });
     };
 
     const submitFamiliarity = async (isFamiliar: boolean) => {
@@ -124,7 +149,7 @@ export const PreAssessmentModal: React.FC<PreAssessmentModalProps> = ({ scenario
             setError('');
             console.log('Submitting familiarity:', isFamiliar);
 
-            const res = await fetch(`${API_BASE_URL}/api/assessments/pre-assessment/familiarity`, {
+            const res = await fetchWithRetry(`${API_BASE_URL}/api/assessments/pre-assessment/familiarity`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -162,12 +187,21 @@ export const PreAssessmentModal: React.FC<PreAssessmentModalProps> = ({ scenario
 
         if (!answerToSubmit?.trim()) return;
 
+        // Add user answer to conversation immediately
+        const userMessage: ConversationMessage = {
+            id: `user-${Date.now()}-${questionNumber}`,
+            type: 'user-answer',
+            content: answerToSubmit,
+            timestamp: new Date()
+        };
+        setConversationMessages(prev => [...prev, userMessage]);
+
         try {
             setLoading(true);
             setError('');
             console.log('Submitting answer:', answerToSubmit);
 
-            const res = await fetch(`${API_BASE_URL}/api/assessments/pre-assessment/answer`, {
+            const res = await fetchWithRetry(`${API_BASE_URL}/api/assessments/pre-assessment/answer`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -183,6 +217,33 @@ export const PreAssessmentModal: React.FC<PreAssessmentModalProps> = ({ scenario
                 throw new Error(data.message || 'Failed to submit answer');
             }
 
+            // Add evaluation to conversation (only if there's actual feedback)
+            const feedbackText = data.completed ? data.lastFeedback : data.previousFeedback;
+            const scoreValue = data.previousScore ?? (data.completed ? data.baselineScore : null);
+
+            if (feedbackText || scoreValue !== null) {
+                const xpForThisQuestion = (scoreValue && scoreValue >= 60) ? currentXP : 0;
+                const evalMessage: ConversationMessage = {
+                    id: `eval-q${questionNumber}`,
+                    type: 'evaluation',
+                    content: feedbackText || 'Answer evaluated.',
+                    timestamp: new Date(),
+                    metadata: {
+                        questionNumber: questionNumber,
+                        score: scoreValue || 0,
+                        xpEarned: xpForThisQuestion,
+                        feedback: feedbackText || ''
+                    }
+                };
+                setConversationMessages(prev => {
+                    // Prevent duplicate evaluation
+                    if (prev.some(msg => msg.id === `eval-q${questionNumber}`)) {
+                        return prev;
+                    }
+                    return [...prev, evalMessage];
+                });
+            }
+
             // Animate XP gain
             if (data.previousScore && data.previousScore >= 60) {
                 setTotalXPEarned(prev => prev + currentXP);
@@ -190,8 +251,8 @@ export const PreAssessmentModal: React.FC<PreAssessmentModalProps> = ({ scenario
                 setTimeout(() => setShowXPAnimation(false), 1500);
             }
 
-            if (data.previousFeedback) {
-                setFeedback(data.previousFeedback);
+            if (data.previousFeedback || data.lastFeedback) {
+                setFeedback(data.previousFeedback || data.lastFeedback);
             }
 
             if (data.completed) {
@@ -221,10 +282,10 @@ export const PreAssessmentModal: React.FC<PreAssessmentModalProps> = ({ scenario
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-            <div className="bg-[#0a0a0a] border border-cyan-500/30 rounded-lg w-full max-w-xl max-h-[90vh] overflow-y-auto flex flex-col relative animate-in fade-in zoom-in-95 duration-200 shadow-[0_0_30px_rgba(6,182,212,0.15)]">
+            <div className="bg-[#0a0a0a] border border-cyan-500/30 rounded-lg w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col relative animate-in fade-in zoom-in-95 duration-200 shadow-[0_0_30px_rgba(6,182,212,0.15)]">
 
                 {/* Header - Gamified */}
-                <div className="p-6 border-b border-cyan-500/20 flex justify-between items-start sticky top-0 bg-[#0a0a0a] z-10">
+                <div className="p-4 border-b border-cyan-500/20 flex justify-between items-start bg-[#0a0a0a] z-10">
                     <div className="flex items-center gap-3">
                         <div className="p-2 bg-gradient-to-br from-purple-600 to-cyan-600 rounded-lg animate-pulse">
                             <Target className="text-white" size={24} />
@@ -258,260 +319,268 @@ export const PreAssessmentModal: React.FC<PreAssessmentModalProps> = ({ scenario
                     </div>
                 )}
 
-                {/* Content */}
-                <div className="p-6">
-                    {error && (
-                        <div className="mb-4 p-3 bg-red-900/20 border border-red-500/30 rounded text-red-300 text-sm">
-                            {error}
-                        </div>
-                    )}
+                {/* Two Column Layout */}
+                <div className="flex-1 flex overflow-hidden">
 
-                    {/* Loading State */}
-                    {step === 'loading' && (
-                        <div className="flex flex-col items-center justify-center py-12">
-                            <Loader className="animate-spin text-cyan-400 mb-4" size={48} />
-                            <p className="text-gray-400">Initializing mission...</p>
-                        </div>
-                    )}
-
-                    {/* Familiarity Question - Gamified */}
-                    {step === 'familiarity' && (
-                        <div className="text-center py-6 space-y-8">
-                            <div className="relative">
-                                <Brain className="mx-auto text-cyan-400 animate-pulse" size={64} />
-                                <div className="absolute -top-2 -right-2 text-2xl">🎮</div>
+                    {/* Left Panel - Main Content */}
+                    <div className="flex-1 p-6 overflow-y-auto border-r border-cyan-500/10">
+                        {error && (
+                            <div className="mb-4 p-3 bg-red-900/20 border border-red-500/30 rounded text-red-300 text-sm">
+                                {error}
                             </div>
+                        )}
 
-                            <div>
-                                <h3 className="text-xl font-bold text-white mb-2">⚡ INTEL CHECK</h3>
-                                <p className="text-gray-300">
-                                    Agent, do you have prior knowledge of <span className="text-cyan-400 font-bold">{topicName}</span>?
-                                </p>
+                        {/* Loading State */}
+                        {step === 'loading' && (
+                            <div className="flex flex-col items-center justify-center py-12">
+                                <Loader className="animate-spin text-cyan-400 mb-4" size={48} />
+                                <p className="text-gray-400">Initializing mission...</p>
                             </div>
+                        )}
 
-                            <div className="flex gap-4 justify-center">
-                                <button
-                                    onClick={() => submitFamiliarity(false)}
-                                    disabled={loading}
-                                    className="px-6 py-3 bg-gray-800 hover:bg-gray-700 border border-gray-600 text-white font-bold rounded-lg transition-all disabled:opacity-50 group"
-                                >
-                                    <span className="group-hover:scale-105 inline-block transition-transform">
-                                        🆕 New Territory
-                                    </span>
-                                </button>
-                                <button
-                                    onClick={() => submitFamiliarity(true)}
-                                    disabled={loading}
-                                    className="px-6 py-3 bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 text-white font-bold rounded-lg transition-all disabled:opacity-50 group shadow-lg shadow-cyan-500/20"
-                                >
-                                    <span className="group-hover:scale-105 inline-block transition-transform">
-                                        💪 Ready for Action
-                                    </span>
-                                </button>
-                            </div>
-
-                            {loading && <Loader className="animate-spin mx-auto text-purple-400" size={24} />}
-
-                            <p className="text-xs text-gray-500">This calibrates your starting difficulty level</p>
-                        </div>
-                    )}
-
-                    {/* Questions - Gamified */}
-                    {step === 'questions' && (
-                        <div className="space-y-5">
-                            {/* Mission Header */}
-                            <div className="text-center mb-4">
-                                <h3 className="text-sm font-bold text-cyan-400 tracking-wider">{missionName}</h3>
-                            </div>
-
-                            {/* Progress and Difficulty */}
-                            <div className="flex justify-between items-center">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-sm text-gray-400">Challenge {questionNumber}/4</span>
-                                    {/* Progress bar */}
-                                    <div className="w-24 h-2 bg-gray-800 rounded-full overflow-hidden">
-                                        <div
-                                            className="h-full bg-gradient-to-r from-cyan-500 to-purple-500 transition-all duration-500 shadow-[0_0_10px_rgba(6,182,212,0.5)]"
-                                            style={{ width: `${(questionNumber / 4) * 100}%` }}
-                                        />
-                                    </div>
+                        {/* Familiarity Question - Gamified */}
+                        {step === 'familiarity' && (
+                            <div className="text-center py-6 space-y-8">
+                                <div className="relative">
+                                    <Brain className="mx-auto text-cyan-400 animate-pulse" size={64} />
+                                    <div className="absolute -top-2 -right-2 text-2xl">🎮</div>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <span className={`text-xs font-bold px-3 py-1 rounded-full border ${getDifficultyDisplay(difficulty).color}`}>
-                                        {getDifficultyDisplay(difficulty).label}
-                                    </span>
-                                    <span className="text-xs text-yellow-400 font-bold flex items-center gap-1">
-                                        <Zap size={12} /> {currentXP} XP
-                                    </span>
-                                </div>
-                            </div>
 
-                            {/* Previous Feedback */}
-                            {feedback && (
-                                <div className="p-3 bg-purple-900/20 border border-purple-500/30 rounded-lg text-purple-300 text-sm">
-                                    <strong>📊 Intel:</strong> {feedback}
-                                </div>
-                            )}
-
-                            {/* Scenario - Mission Style */}
-                            {currentScenario && (
-                                <div className="p-4 bg-gradient-to-r from-cyan-900/30 to-purple-900/30 border border-cyan-500/30 rounded-lg relative overflow-hidden">
-                                    <div className="absolute top-2 right-2 text-xs text-cyan-400/50 font-mono">SITUATION</div>
-                                    <p className="text-gray-200">{currentScenario}</p>
-                                </div>
-                            )}
-
-                            {/* Question */}
-                            <div className="p-4 bg-white/5 border border-white/20 rounded-lg">
-                                <p className="text-white font-medium text-lg">❓ {currentQuestion}</p>
-                            </div>
-
-                            {/* MCQ Options */}
-                            {questionType === 'mcq' && options.length > 0 && (
-                                <div className="space-y-2">
-                                    {options.map((option, idx) => (
-                                        <button
-                                            key={idx}
-                                            onClick={() => setSelectedOption(idx)}
-                                            className={`w-full p-3 text-left rounded-lg border transition-all ${selectedOption === idx
-                                                ? 'bg-cyan-600/20 border-cyan-500 text-cyan-300 shadow-lg shadow-cyan-500/10'
-                                                : 'bg-white/5 border-white/10 text-gray-300 hover:border-white/30'
-                                                }`}
-                                        >
-                                            <span className="font-bold mr-2">{String.fromCharCode(65 + idx)}.</span>
-                                            {option}
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-
-                            {/* Text Input */}
-                            {questionType === 'text' && (
-                                <textarea
-                                    value={answer}
-                                    onChange={e => setAnswer(e.target.value)}
-                                    placeholder="Deploy your response here, Agent..."
-                                    className="w-full p-4 bg-black/50 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500 focus:shadow-[0_0_15px_rgba(6,182,212,0.2)] resize-none transition-all"
-                                    rows={3}
-                                />
-                            )}
-
-                            {/* Hint Button and Display */}
-                            {hint && (
                                 <div>
-                                    {!showHint ? (
-                                        <button
-                                            onClick={() => setShowHint(true)}
-                                            className="flex items-center gap-2 text-yellow-400 hover:text-yellow-300 text-sm transition-colors"
-                                        >
-                                            <Lightbulb size={16} />
-                                            💡 Request Intel
-                                        </button>
-                                    ) : (
-                                        <div className="p-3 bg-yellow-900/20 border border-yellow-500/30 rounded-lg text-yellow-200 text-sm">
-                                            <Lightbulb className="inline mr-2" size={14} />
-                                            {hint}
-                                        </div>
-                                    )}
+                                    <h3 className="text-xl font-bold text-white mb-2">⚡ INTEL CHECK</h3>
+                                    <p className="text-gray-300">
+                                        Agent, do you have prior knowledge of <span className="text-cyan-400 font-bold">{topicName}</span>?
+                                    </p>
                                 </div>
-                            )}
 
-                            {/* Submit Button - Gamified */}
-                            <button
-                                onClick={submitAnswer}
-                                disabled={loading || (questionType === 'mcq' ? selectedOption === null : !answer.trim())}
-                                className="w-full py-4 bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 disabled:from-gray-700 disabled:to-gray-700 disabled:opacity-50 text-white font-bold rounded-lg transition-all flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/30 hover:scale-[1.02] active:scale-[0.98]"
-                            >
-                                {loading ? (
-                                    <Loader className="animate-spin" size={20} />
-                                ) : (
-                                    <>
-                                        <Target size={20} />
-                                        ⚔️ LOCK IN ANSWER
-                                    </>
+                                <div className="flex gap-4 justify-center">
+                                    <button
+                                        onClick={() => submitFamiliarity(false)}
+                                        disabled={loading}
+                                        className="px-6 py-3 bg-gray-800 hover:bg-gray-700 border border-gray-600 text-white font-bold rounded-lg transition-all disabled:opacity-50 group"
+                                    >
+                                        <span className="group-hover:scale-105 inline-block transition-transform">
+                                            🆕 New Territory
+                                        </span>
+                                    </button>
+                                    <button
+                                        onClick={() => submitFamiliarity(true)}
+                                        disabled={loading}
+                                        className="px-6 py-3 bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 text-white font-bold rounded-lg transition-all disabled:opacity-50 group shadow-lg shadow-cyan-500/20"
+                                    >
+                                        <span className="group-hover:scale-105 inline-block transition-transform">
+                                            💪 Ready for Action
+                                        </span>
+                                    </button>
+                                </div>
+
+                                {loading && <Loader className="animate-spin mx-auto text-purple-400" size={24} />}
+
+                                <p className="text-xs text-gray-500">This calibrates your starting difficulty level</p>
+                            </div>
+                        )}
+
+                        {/* Questions - Gamified */}
+                        {step === 'questions' && (
+                            <div className="space-y-5">
+                                {/* Mission Header */}
+                                <div className="text-center mb-4">
+                                    <h3 className="text-sm font-bold text-cyan-400 tracking-wider">{missionName}</h3>
+                                </div>
+
+                                {/* Progress and Difficulty */}
+                                <div className="flex justify-between items-center">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-sm text-gray-400">Challenge {questionNumber}/4</span>
+                                        {/* Progress bar */}
+                                        <div className="w-24 h-2 bg-gray-800 rounded-full overflow-hidden">
+                                            <div
+                                                className="h-full bg-gradient-to-r from-cyan-500 to-purple-500 transition-all duration-500 shadow-[0_0_10px_rgba(6,182,212,0.5)]"
+                                                style={{ width: `${(questionNumber / 4) * 100}%` }}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <span className={`text-xs font-bold px-3 py-1 rounded-full border ${getDifficultyDisplay(difficulty).color}`}>
+                                            {getDifficultyDisplay(difficulty).label}
+                                        </span>
+                                        <span className="text-xs text-yellow-400 font-bold flex items-center gap-1">
+                                            <Zap size={12} /> {currentXP} XP
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* Note: Previous feedback now shown in chat panel sidebar */}
+
+                                {/* Scenario - Mission Style */}
+                                {currentScenario && (
+                                    <div className="p-4 bg-gradient-to-r from-cyan-900/30 to-purple-900/30 border border-cyan-500/30 rounded-lg relative overflow-hidden">
+                                        <div className="absolute top-2 right-2 text-xs text-cyan-400/50 font-mono">SITUATION</div>
+                                        <p className="text-gray-200">{currentScenario}</p>
+                                    </div>
                                 )}
-                            </button>
-                        </div>
-                    )}
 
-                    {/* Completion - Gamified */}
-                    {step === 'complete' && (
-                        <div className="text-center py-6 space-y-6">
-                            <div className="relative inline-block">
-                                <Trophy className="mx-auto text-yellow-400 animate-bounce" size={80} />
-                                <div className="absolute -top-2 -right-2 text-3xl">🎯</div>
-                            </div>
-
-                            <div>
-                                <h3 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400 mb-2">
-                                    🎮 MISSION COMPLETE!
-                                </h3>
-                                <p className="text-gray-300">
-                                    Baseline knowledge calibrated, Agent.
-                                </p>
-
-                                {/* Score Display */}
-                                <div className="mt-4 p-4 bg-gradient-to-r from-cyan-900/30 to-purple-900/30 rounded-lg border border-cyan-500/30">
-                                    <div className="text-5xl font-bold text-cyan-400 mb-2">
-                                        {baselineScore}%
-                                    </div>
-                                    <div className="flex items-center justify-center gap-2 text-yellow-400 font-bold text-lg">
-                                        <Zap size={20} />
-                                        +{totalXPEarned} XP EARNED
-                                    </div>
+                                {/* Question */}
+                                <div className="p-4 bg-white/5 border border-white/20 rounded-lg">
+                                    <p className="text-white font-medium text-lg">❓ {currentQuestion}</p>
                                 </div>
-                            </div>
 
-                            {feedback && (
-                                <p className="text-gray-400 text-sm max-w-md mx-auto">
-                                    {feedback}
-                                </p>
-                            )}
+                                {/* MCQ Options */}
+                                {questionType === 'mcq' && options.length > 0 && (
+                                    <div className="space-y-2">
+                                        {options.map((option, idx) => (
+                                            <button
+                                                key={idx}
+                                                onClick={() => setSelectedOption(idx)}
+                                                className={`w-full p-3 text-left rounded-lg border transition-all ${selectedOption === idx
+                                                    ? 'bg-cyan-600/20 border-cyan-500 text-cyan-300 shadow-lg shadow-cyan-500/10'
+                                                    : 'bg-white/5 border-white/10 text-gray-300 hover:border-white/30'
+                                                    }`}
+                                            >
+                                                <span className="font-bold mr-2">{String.fromCharCode(65 + idx)}.</span>
+                                                {option}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
 
-                            {/* Personalized Feedback */}
-                            {personalizedFeedback && (
-                                <div className="text-left space-y-4 p-4 bg-white/5 rounded-lg border border-white/10">
-                                    <p className="text-gray-300 text-sm">{personalizedFeedback.summary}</p>
+                                {/* Text Input */}
+                                {questionType === 'text' && (
+                                    <textarea
+                                        value={answer}
+                                        onChange={e => setAnswer(e.target.value)}
+                                        placeholder="Deploy your response here, Agent..."
+                                        className="w-full p-4 bg-black/50 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500 focus:shadow-[0_0_15px_rgba(6,182,212,0.2)] resize-none transition-all"
+                                        rows={3}
+                                    />
+                                )}
 
-                                    {personalizedFeedback.strengths?.length > 0 && (
-                                        <div>
-                                            <p className="text-green-400 font-semibold text-sm flex items-center gap-1">
-                                                <Star size={14} /> 💪 Strengths:
-                                            </p>
-                                            <ul className="text-gray-400 text-xs ml-4 list-disc">
-                                                {personalizedFeedback.strengths.map((s, i) => <li key={i}>{s}</li>)}
-                                            </ul>
-                                        </div>
-                                    )}
+                                {/* Hint Button and Display */}
+                                {hint && (
+                                    <div>
+                                        {!showHint ? (
+                                            <button
+                                                onClick={() => setShowHint(true)}
+                                                className="flex items-center gap-2 text-yellow-400 hover:text-yellow-300 text-sm transition-colors"
+                                            >
+                                                <Lightbulb size={16} />
+                                                💡 Request Intel
+                                            </button>
+                                        ) : (
+                                            <div className="p-3 bg-yellow-900/20 border border-yellow-500/30 rounded-lg text-yellow-200 text-sm">
+                                                <Lightbulb className="inline mr-2" size={14} />
+                                                {hint}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
 
-                                    {personalizedFeedback.recommendations?.length > 0 && (
-                                        <div>
-                                            <p className="text-cyan-400 font-semibold text-sm flex items-center gap-1">
-                                                <ArrowRight size={14} /> 🎯 Next Objectives:
-                                            </p>
-                                            <ul className="text-gray-400 text-xs ml-4 list-disc">
-                                                {personalizedFeedback.recommendations.map((r, i) => <li key={i}>{r}</li>)}
-                                            </ul>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
-                            <div className="pt-4">
+                                {/* Submit Button - Gamified */}
                                 <button
-                                    onClick={handleComplete}
-                                    className="px-8 py-3 bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 text-white font-bold rounded-lg transition-all flex items-center gap-2 mx-auto shadow-lg shadow-cyan-500/20 hover:scale-105"
+                                    onClick={submitAnswer}
+                                    disabled={loading || (questionType === 'mcq' ? selectedOption === null : !answer.trim())}
+                                    className="w-full py-4 bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 disabled:from-gray-700 disabled:to-gray-700 disabled:opacity-50 text-white font-bold rounded-lg transition-all flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/30 hover:scale-[1.02] active:scale-[0.98]"
                                 >
-                                    <CheckCircle size={20} />
-                                    Continue to Training
+                                    {loading ? (
+                                        <Loader className="animate-spin" size={20} />
+                                    ) : (
+                                        <>
+                                            <Target size={20} />
+                                            ⚔️ LOCK IN ANSWER
+                                        </>
+                                    )}
                                 </button>
                             </div>
+                        )}
 
-                            <p className="text-xs text-gray-500">
-                                Complete your training, then return for the <span className="text-cyan-400 font-semibold">Post-Assessment Challenge</span>.
-                            </p>
-                        </div>
-                    )}
+                        {/* Completion - Gamified */}
+                        {step === 'complete' && (
+                            <div className="text-center py-6 space-y-6">
+                                <div className="relative inline-block">
+                                    <Trophy className="mx-auto text-yellow-400 animate-bounce" size={80} />
+                                    <div className="absolute -top-2 -right-2 text-3xl">🎯</div>
+                                </div>
+
+                                <div>
+                                    <h3 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400 mb-2">
+                                        🎮 MISSION COMPLETE!
+                                    </h3>
+                                    <p className="text-gray-300">
+                                        Baseline knowledge calibrated, Agent.
+                                    </p>
+
+                                    {/* Score Display */}
+                                    <div className="mt-4 p-4 bg-gradient-to-r from-cyan-900/30 to-purple-900/30 rounded-lg border border-cyan-500/30">
+                                        <div className="text-5xl font-bold text-cyan-400 mb-2">
+                                            {baselineScore}%
+                                        </div>
+                                        <div className="flex items-center justify-center gap-2 text-yellow-400 font-bold text-lg">
+                                            <Zap size={20} />
+                                            +{totalXPEarned} XP EARNED
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {feedback && (
+                                    <p className="text-gray-400 text-sm max-w-md mx-auto">
+                                        {feedback}
+                                    </p>
+                                )}
+
+                                {/* Personalized Feedback */}
+                                {personalizedFeedback && (
+                                    <div className="text-left space-y-4 p-4 bg-white/5 rounded-lg border border-white/10">
+                                        <p className="text-gray-300 text-sm">{personalizedFeedback.summary}</p>
+
+                                        {personalizedFeedback.strengths?.length > 0 && (
+                                            <div>
+                                                <p className="text-green-400 font-semibold text-sm flex items-center gap-1">
+                                                    <Star size={14} /> 💪 Strengths:
+                                                </p>
+                                                <ul className="text-gray-400 text-xs ml-4 list-disc">
+                                                    {personalizedFeedback.strengths.map((s, i) => <li key={i}>{s}</li>)}
+                                                </ul>
+                                            </div>
+                                        )}
+
+                                        {personalizedFeedback.recommendations?.length > 0 && (
+                                            <div>
+                                                <p className="text-cyan-400 font-semibold text-sm flex items-center gap-1">
+                                                    <ArrowRight size={14} /> 🎯 Next Objectives:
+                                                </p>
+                                                <ul className="text-gray-400 text-xs ml-4 list-disc">
+                                                    {personalizedFeedback.recommendations.map((r, i) => <li key={i}>{r}</li>)}
+                                                </ul>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                <div className="pt-4">
+                                    <button
+                                        onClick={handleComplete}
+                                        className="px-8 py-3 bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 text-white font-bold rounded-lg transition-all flex items-center gap-2 mx-auto shadow-lg shadow-cyan-500/20 hover:scale-105"
+                                    >
+                                        <CheckCircle size={20} />
+                                        Continue to Training
+                                    </button>
+                                </div>
+
+                                <p className="text-xs text-gray-500">
+                                    Complete your training, then return for the <span className="text-cyan-400 font-semibold">Post-Assessment Challenge</span>.
+                                </p>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Right Panel - Conversation History */}
+                    <div className="w-80 flex-shrink-0 bg-[#050505] border-l border-cyan-500/20 h-full">
+                        <ConversationPanel
+                            messages={conversationMessages}
+                            isLoading={loading}
+                            accentColor="cyan"
+                        />
+                    </div>
                 </div>
             </div>
         </div>
