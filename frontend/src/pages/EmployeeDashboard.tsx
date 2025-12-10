@@ -2,17 +2,23 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useNavigate } from 'react-router-dom';
-import { Terminal, Cpu, Activity, LogOut, User, Trophy, Sun, Moon } from 'lucide-react';
+import { Terminal, Cpu, Activity, LogOut, User, Trophy, Sun, Moon, TrendingUp, Award } from 'lucide-react';
 import { ChallengeCard } from '../components/ChallengeCard';
 import { ChallengeModal } from '../components/ChallengeModal';
 import { PreAssessmentModal } from '../components/PreAssessmentModal';
 import { PostAssessmentModal } from '../components/PostAssessmentModal';
+import { GrowthTab } from '../components/GrowthTab';
+import { CareerPath } from '../components/CareerPath';
+import { CertificationManager } from '../components/CertificationManager';
 import { API_BASE_URL } from '../config';
+
+type DashboardTab = 'challenges' | 'progress' | 'career' | 'growth';
 
 export const EmployeeDashboard: React.FC = () => {
     const { user, logout } = useAuth();
     const { toggleTheme, isDark } = useTheme();
     const navigate = useNavigate();
+    const [activeTab, setActiveTab] = useState<DashboardTab>('challenges');
     const [mainChallenges, setMainChallenges] = useState<any[]>([]);
     const [selectedChallenge, setSelectedChallenge] = useState<any | null>(null);
     const [showPreAssessment, setShowPreAssessment] = useState(false);
@@ -196,117 +202,191 @@ export const EmployeeDashboard: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Main Content Grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+                {/* Tab Navigation */}
+                <div className="flex gap-1 p-1 theme-bg-secondary rounded-lg border theme-border">
+                    {[
+                        { id: 'challenges' as DashboardTab, label: 'CHALLENGES', icon: Terminal },
+                        { id: 'progress' as DashboardTab, label: 'PROGRESS', icon: Activity },
+                        { id: 'career' as DashboardTab, label: 'CAREER', icon: TrendingUp },
+                        { id: 'growth' as DashboardTab, label: 'GROWTH', icon: Award }
+                    ].map((tab) => {
+                        const Icon = tab.icon;
+                        return (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id)}
+                                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-md text-xs font-bold tracking-wider transition-all ${activeTab === tab.id
+                                    ? 'bg-gradient-to-r from-cyan-500 to-purple-500 text-white shadow-lg'
+                                    : 'text-gray-400 hover:text-white hover:bg-white/5'
+                                    }`}
+                            >
+                                <Icon size={14} />
+                                {tab.label}
+                            </button>
+                        );
+                    })}
+                </div>
 
-                    {/* Left Column: Challenges (3 cols) */}
-                    <div className="lg:col-span-3 space-y-8">
+                {/* Tab Content */}
+                {activeTab === 'growth' && (
+                    <GrowthTab
+                        userName={user?.name?.split(' ')[0]}
+                        completedTrainings={Object.values(postAssessmentStatuses).filter(Boolean).length}
+                        eloRating={(user as any)?.elo_rating || 1000}
+                    />
+                )}
 
-                        {/* Main Quests */}
+                {activeTab === 'career' && (
+                    <CareerPath userId={user?.id} />
+                )}
+
+                {activeTab === 'progress' && (
+                    <div className="space-y-6">
+                        {/* In Progress Trainings */}
                         <div className="theme-bg-secondary border theme-border rounded-lg p-6">
-                            <div className="flex items-center justify-between mb-6">
-                                <h2 className="text-lg font-bold theme-text-primary tracking-wider flex items-center gap-2">
-                                    <span className="text-cyan-600 dark:text-cyan-400">&gt;_</span> CTF CHALLENGE
-                                </h2>
-                                <button className="px-3 py-1 bg-cyan-100 dark:bg-cyan-900/20 border border-cyan-500/30 text-cyan-600 dark:text-cyan-400 text-xs font-bold rounded hover:bg-cyan-200 dark:hover:bg-cyan-900/40 transition-colors">
-                                    VIEW ALL
-                                </button>
-                            </div>
+                            <h2 className="text-lg font-bold theme-text-primary tracking-wider flex items-center gap-2 mb-6">
+                                <Activity size={18} className="text-cyan-400" />
+                                IN PROGRESS
+                            </h2>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                {mainChallenges.map(challenge => (
-                                    <ChallengeCard
-                                        key={challenge.id}
-                                        challenge={challenge}
-                                        onClick={() => handleChallengeClick(challenge)}
-                                        preAssessmentCompleted={preAssessmentStatuses[challenge.id]}
-                                        postAssessmentCompleted={postAssessmentStatuses[challenge.id]}
-                                    />
-                                ))}
-                                {mainChallenges.length === 0 && (
+                                {mainChallenges
+                                    .filter(c => preAssessmentStatuses[c.id] && !postAssessmentStatuses[c.id])
+                                    .map(challenge => (
+                                        <ChallengeCard
+                                            key={challenge.id}
+                                            challenge={challenge}
+                                            onClick={() => handleChallengeClick(challenge)}
+                                            preAssessmentCompleted={preAssessmentStatuses[challenge.id]}
+                                            postAssessmentCompleted={postAssessmentStatuses[challenge.id]}
+                                        />
+                                    ))}
+                                {mainChallenges.filter(c => preAssessmentStatuses[c.id] && !postAssessmentStatuses[c.id]).length === 0 && (
                                     <div className="col-span-full text-center py-8 theme-text-muted text-sm">
-                                        No main quests available.
+                                        No trainings in progress. Start a new challenge!
                                     </div>
                                 )}
                             </div>
                         </div>
-                    </div>
 
-                    {/* Right Column: Sidebar (1 col) */}
-                    <div className="space-y-6 sticky top-24 self-start">
-
-                        {/* Recent Activity */}
+                        {/* Certifications Manager - Full CRUD */}
                         <div className="theme-bg-secondary border theme-border rounded-lg p-6">
-                            <h2 className="text-sm font-bold theme-text-secondary tracking-wider flex items-center gap-2 mb-6 uppercase">
-                                <Activity size={16} className="text-cyan-600 dark:text-cyan-400" />
-                                Recent Activity
-                            </h2>
-                            <div className="space-y-6">
-                                {[1, 2, 3].map((_, i) => (
-                                    <div key={i} className="flex items-center gap-3 pb-4 border-b theme-border last:pb-0 last:border-0 group">
-                                        <div className="w-8 h-8 rounded bg-cyan-100 dark:bg-cyan-900/20 flex items-center justify-center text-cyan-600 dark:text-cyan-400 font-bold border border-cyan-500/20 text-xs">
-                                            AI
+                            <CertificationManager userId={user?.id} />
+                        </div>
+                    </div>
+                )}
+
+                {activeTab === 'challenges' && (
+                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+
+                        {/* Left Column: Challenges (3 cols) */}
+                        <div className="lg:col-span-3 space-y-8">
+
+                            {/* Main Quests */}
+                            <div className="theme-bg-secondary border theme-border rounded-lg p-6">
+                                <div className="flex items-center justify-between mb-6">
+                                    <h2 className="text-lg font-bold theme-text-primary tracking-wider flex items-center gap-2">
+                                        <span className="text-cyan-600 dark:text-cyan-400">&gt;_</span> CTF CHALLENGE
+                                    </h2>
+                                    <button className="px-3 py-1 bg-cyan-100 dark:bg-cyan-900/20 border border-cyan-500/30 text-cyan-600 dark:text-cyan-400 text-xs font-bold rounded hover:bg-cyan-200 dark:hover:bg-cyan-900/40 transition-colors">
+                                        VIEW ALL
+                                    </button>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {mainChallenges.map(challenge => (
+                                        <ChallengeCard
+                                            key={challenge.id}
+                                            challenge={challenge}
+                                            onClick={() => handleChallengeClick(challenge)}
+                                            preAssessmentCompleted={preAssessmentStatuses[challenge.id]}
+                                            postAssessmentCompleted={postAssessmentStatuses[challenge.id]}
+                                        />
+                                    ))}
+                                    {mainChallenges.length === 0 && (
+                                        <div className="col-span-full text-center py-8 theme-text-muted text-sm">
+                                            No main quests available.
                                         </div>
-                                        <div className="flex-1 min-w-0">
-                                            <h3 className="font-bold theme-text-secondary text-xs truncate group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">Completed "Prompt Eng..."</h3>
-                                            <p className="text-[10px] theme-text-muted font-mono mt-1">SCORE: 92% • 2H AGO</p>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Right Column: Sidebar (1 col) */}
+                        <div className="space-y-6 sticky top-24 self-start">
+
+                            {/* Recent Activity */}
+                            <div className="theme-bg-secondary border theme-border rounded-lg p-6">
+                                <h2 className="text-sm font-bold theme-text-secondary tracking-wider flex items-center gap-2 mb-6 uppercase">
+                                    <Activity size={16} className="text-cyan-600 dark:text-cyan-400" />
+                                    Recent Activity
+                                </h2>
+                                <div className="space-y-6">
+                                    {[1, 2, 3].map((_, i) => (
+                                        <div key={i} className="flex items-center gap-3 pb-4 border-b theme-border last:pb-0 last:border-0 group">
+                                            <div className="w-8 h-8 rounded bg-cyan-100 dark:bg-cyan-900/20 flex items-center justify-center text-cyan-600 dark:text-cyan-400 font-bold border border-cyan-500/20 text-xs">
+                                                AI
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <h3 className="font-bold theme-text-secondary text-xs truncate group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">Completed "Prompt Eng..."</h3>
+                                                <p className="text-[10px] theme-text-muted font-mono mt-1">SCORE: 92% • 2H AGO</p>
+                                            </div>
+                                            <span className="px-1.5 py-0.5 bg-green-100 dark:bg-green-500/10 text-green-600 dark:text-green-400 text-[10px] font-bold border border-green-500/20 rounded">PASS</span>
                                         </div>
-                                        <span className="px-1.5 py-0.5 bg-green-100 dark:bg-green-500/10 text-green-600 dark:text-green-400 text-[10px] font-bold border border-green-500/20 rounded">PASS</span>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Stats Summary */}
+                            <div className="theme-bg-secondary border theme-border rounded-lg p-6">
+                                <h2 className="text-sm font-bold theme-text-secondary tracking-wider mb-4 uppercase">Stats</h2>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="p-3 theme-bg-tertiary rounded border theme-border">
+                                        <p className="text-[10px] theme-text-muted uppercase">Rank</p>
+                                        <p className="text-xl font-bold text-amber-500 dark:text-amber-400">#{stats.ranking || '-'}</p>
                                     </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Stats Summary */}
-                        <div className="theme-bg-secondary border theme-border rounded-lg p-6">
-                            <h2 className="text-sm font-bold theme-text-secondary tracking-wider mb-4 uppercase">Stats</h2>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="p-3 theme-bg-tertiary rounded border theme-border">
-                                    <p className="text-[10px] theme-text-muted uppercase">Rank</p>
-                                    <p className="text-xl font-bold text-amber-500 dark:text-amber-400">#{stats.ranking || '-'}</p>
-                                </div>
-                                <div className="p-3 theme-bg-tertiary rounded border theme-border">
-                                    <p className="text-[10px] theme-text-muted uppercase">Win Rate</p>
-                                    <p className="text-xl font-bold text-emerald-500 dark:text-emerald-400">{stats.win_rate}%</p>
+                                    <div className="p-3 theme-bg-tertiary rounded border theme-border">
+                                        <p className="text-[10px] theme-text-muted uppercase">Win Rate</p>
+                                        <p className="text-xl font-bold text-emerald-500 dark:text-emerald-400">{stats.win_rate}%</p>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
 
+                        </div>
                     </div>
-                </div>
+                )}
+
+                {showPreAssessment && preAssessmentScenario && (
+                    <PreAssessmentModal
+                        scenario={preAssessmentScenario}
+                        onClose={() => {
+                            setShowPreAssessment(false);
+                            setPreAssessmentScenario(null);
+                        }}
+                        onComplete={handlePreAssessmentComplete}
+                    />
+                )}
+
+                {showPostAssessment && postAssessmentScenario && (
+                    <PostAssessmentModal
+                        scenario={postAssessmentScenario}
+                        onClose={() => {
+                            setShowPostAssessment(false);
+                            setPostAssessmentScenario(null);
+                        }}
+                        onComplete={handlePostAssessmentComplete}
+                    />
+                )}
+
+                {selectedChallenge && (
+                    <ChallengeModal
+                        challenge={selectedChallenge}
+                        onClose={() => setSelectedChallenge(null)}
+                        onSolve={() => {
+                            // Refresh challenges or update state
+                            fetchChallenges();
+                        }}
+                    />
+                )}
             </div>
-
-            {showPreAssessment && preAssessmentScenario && (
-                <PreAssessmentModal
-                    scenario={preAssessmentScenario}
-                    onClose={() => {
-                        setShowPreAssessment(false);
-                        setPreAssessmentScenario(null);
-                    }}
-                    onComplete={handlePreAssessmentComplete}
-                />
-            )}
-
-            {showPostAssessment && postAssessmentScenario && (
-                <PostAssessmentModal
-                    scenario={postAssessmentScenario}
-                    onClose={() => {
-                        setShowPostAssessment(false);
-                        setPostAssessmentScenario(null);
-                    }}
-                    onComplete={handlePostAssessmentComplete}
-                />
-            )}
-
-            {selectedChallenge && (
-                <ChallengeModal
-                    challenge={selectedChallenge}
-                    onClose={() => setSelectedChallenge(null)}
-                    onSolve={() => {
-                        // Refresh challenges or update state
-                        fetchChallenges();
-                    }}
-                />
-            )}
         </div>
     );
 };

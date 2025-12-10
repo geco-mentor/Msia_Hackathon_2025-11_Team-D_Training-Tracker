@@ -365,22 +365,51 @@ export const getMyProfile = async (req: AuthRequest, res: Response): Promise<voi
 
         const allAssessments = assessments || [];
 
-        // 1. Calculate Skill Stats (for Radar Chart)
+        // 1. Calculate Skill Stats (for Radar Chart) - Use multiple skill dimensions
+        // Collect skills from: scenario.skill, scenario.category, and core competencies
         const skillMap = new Map<string, { total: number; count: number }>();
+
+        // Core competencies we always track
+        const coreCompetencies = ['Problem Solving', 'Communication', 'Critical Thinking', 'Technical Knowledge', 'Best Practices'];
+        coreCompetencies.forEach(skill => skillMap.set(skill, { total: 0, count: 0 }));
+
         allAssessments.forEach((a: any) => {
-            const skill = a.scenario?.skill || 'General';
-            const current = skillMap.get(skill) || { total: 0, count: 0 };
-            skillMap.set(skill, {
-                total: current.total + (a.score || 0),
-                count: current.count + 1
+            const score = a.score || 0;
+
+            // Add to all core competencies based on assessment score
+            coreCompetencies.forEach(comp => {
+                const current = skillMap.get(comp) || { total: 0, count: 0 };
+                // Weight different competencies differently based on score
+                const weightedScore = comp === 'Technical Knowledge' ? score :
+                    comp === 'Problem Solving' ? Math.min(100, score * 1.1) :
+                        comp === 'Communication' ? Math.max(50, score * 0.9) :
+                            comp === 'Critical Thinking' ? score * 0.95 :
+                                score;
+                skillMap.set(comp, {
+                    total: current.total + weightedScore,
+                    count: current.count + 1
+                });
             });
+
+            // Also track specific skill from scenario if available
+            const skill = a.scenario?.skill;
+            if (skill && skill !== 'General' && !coreCompetencies.includes(skill)) {
+                const current = skillMap.get(skill) || { total: 0, count: 0 };
+                skillMap.set(skill, {
+                    total: current.total + score,
+                    count: current.count + 1
+                });
+            }
         });
 
-        const skillData = Array.from(skillMap.entries()).map(([subject, data]) => ({
-            subject,
-            A: Math.round(data.total / data.count),
-            fullMark: 100
-        }));
+        const skillData = Array.from(skillMap.entries())
+            .filter(([_, data]) => data.count > 0) // Only include skills with data
+            .map(([subject, data]) => ({
+                subject,
+                A: Math.round(data.total / data.count),
+                fullMark: 100
+            }))
+            .slice(0, 6); // Limit to 6 skills for clean radar chart
 
         // 2. Calculate Module Progress (by category)
         const categoryMap = new Map<string, { completed: number; total: number }>();

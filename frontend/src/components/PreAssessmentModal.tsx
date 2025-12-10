@@ -58,6 +58,11 @@ export const PreAssessmentModal: React.FC<PreAssessmentModalProps> = ({ scenario
     const [error, setError] = useState<string>('');
     const [showXPAnimation, setShowXPAnimation] = useState<boolean>(false);
     const [conversationMessages, setConversationMessages] = useState<ConversationMessage[]>([]);
+    
+    // ELO Animation state
+    const [showEloAnimation, setShowEloAnimation] = useState<boolean>(false);
+    const [eloChange, setEloChange] = useState<number>(0);
+    const [eloMessage, setEloMessage] = useState<string>('');
 
     useEffect(() => {
         startPreAssessment();
@@ -244,11 +249,30 @@ export const PreAssessmentModal: React.FC<PreAssessmentModalProps> = ({ scenario
                 });
             }
 
-            // Animate XP gain
+            // Animate XP gain and ELO gain (pre-assessment: no penalty for wrong answers)
             if (data.previousScore && data.previousScore >= 60) {
                 setTotalXPEarned(prev => prev + currentXP);
                 setShowXPAnimation(true);
                 setTimeout(() => setShowXPAnimation(false), 1500);
+                
+                // Calculate ELO gain based on score (no deduction in pre-assessment)
+                let eloGain = 0;
+                let message = '';
+                if (data.previousScore >= 90) {
+                    eloGain = 15;
+                    message = '🎯 Brilliant Move!';
+                } else if (data.previousScore >= 70) {
+                    eloGain = 10;
+                    message = '⚡ Great Answer!';
+                } else {
+                    eloGain = 5;
+                    message = '✓ Good Work!';
+                }
+                
+                setEloChange(eloGain);
+                setEloMessage(message);
+                setShowEloAnimation(true);
+                setTimeout(() => setShowEloAnimation(false), 2000);
             }
 
             if (data.previousFeedback || data.lastFeedback) {
@@ -315,6 +339,20 @@ export const PreAssessmentModal: React.FC<PreAssessmentModalProps> = ({ scenario
                     <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
                         <div className="text-4xl font-bold text-yellow-400 animate-bounce">
                             +{currentXP} XP! 🎯
+                        </div>
+                    </div>
+                )}
+                
+                {/* ELO Animation Overlay - Only gains in pre-assessment */}
+                {showEloAnimation && eloChange > 0 && (
+                    <div className="absolute inset-0 flex items-center justify-center z-30 pointer-events-none">
+                        <div className="flex flex-col items-center animate-bounce">
+                            <div className="text-5xl font-bold text-green-400 drop-shadow-[0_0_15px_rgba(34,197,94,0.5)]">
+                                +{eloChange} ELO
+                            </div>
+                            <div className="text-2xl font-bold text-green-300 mt-2">
+                                {eloMessage}
+                            </div>
                         </div>
                     </div>
                 )}

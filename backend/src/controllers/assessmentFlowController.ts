@@ -633,7 +633,7 @@ export const startPostAssessment = async (req: Request, res: Response) => {
                     completed: false,
                     currentStep: 'questions',
                     questionNumber: currentQuestionIndex + 1,
-                    totalQuestions: existing.total_questions || 4,
+                    totalQuestions: existing.total_questions || 20,
                     mission: currentQ.mission || `MISSION: Challenge ${currentQuestionIndex + 1}`,
                     scenario: currentQ.scenario,
                     question: currentQ.question,
@@ -712,7 +712,7 @@ export const startPostAssessment = async (req: Request, res: Response) => {
             answers_given: [],
             current_difficulty: startDifficulty,
             current_question: 1,
-            total_questions: 4,  // Fixed: 4 questions
+            total_questions: 20,  // Fixed: 20 questions
             score: 0,
             completed: false,
             // Required fields from original schema
@@ -744,7 +744,7 @@ export const startPostAssessment = async (req: Request, res: Response) => {
             completed: false,
             currentStep: 'questions',
             questionNumber: 1,
-            totalQuestions: 4,  // Fixed: was 7
+            totalQuestions: 20,  // Fixed: was 7
             mission: firstScenario.mission || 'MISSION: Challenge 1',
             scenario: firstScenario.scenario,
             question: firstScenario.question,
@@ -789,7 +789,7 @@ export const submitPostAssessmentAnswer = async (req: Request, res: Response) =>
         const questionsAsked = assessment.questions_asked || [];
         const answersGiven = assessment.answers_given || [];
         const currentQuestion = assessment.current_question || 1;
-        const totalQuestions = assessment.total_questions || 7;
+        const totalQuestions = assessment.total_questions || 20;
         const lastScenario = questionsAsked[questionsAsked.length - 1];
         const currentDifficulty: 'Easy' | 'Normal' | 'Hard' = assessment.current_difficulty || 'Normal';
 

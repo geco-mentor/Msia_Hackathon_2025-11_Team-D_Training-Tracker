@@ -79,15 +79,15 @@ const RankBadge = ({ elo }: { elo: number }) => {
     };
 
     return (
-        <div className={`flex items-center gap-2 px-4 py-2 rounded-full border bg-opacity-10 ${rank.color.replace('text-', 'bg-')} ${rank.color.replace('text-', 'border-')}`}>
+        <div className={`flex items-center gap-3 px-4 py-2 rounded-full border bg-opacity-10 ${rank.color.replace('text-', 'bg-')} ${rank.color.replace('text-', 'border-')}`}>
             <div className={`${rank.color} ${rank.badgeId === 'ghost' ? 'animate-pulse' : ''}`}>
                 {getIcon()}
             </div>
             <div className="flex flex-col">
-                <span className={`text-xs font-bold uppercase tracking-wider ${rank.color}`}>
+                <span className={`text-sm font-bold uppercase tracking-wider ${rank.color}`}>
                     {rank.title}
                 </span>
-                <span className="text-[10px] theme-text-primary/60 font-mono">
+                <span className="text-sm font-mono text-cyan-400 font-bold">
                     {elo} ELO
                 </span>
             </div>

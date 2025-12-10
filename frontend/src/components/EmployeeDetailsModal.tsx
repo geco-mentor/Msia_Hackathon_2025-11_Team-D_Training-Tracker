@@ -121,6 +121,7 @@ export const EmployeeDetailsModal: React.FC<EmployeeDetailsModalProps> = ({ isOp
                                             />
                                             <Tooltip
                                                 contentStyle={{ backgroundColor: '#000', border: '1px solid #333', borderRadius: '4px' }}
+                                                labelStyle={{ color: '#fff' }}
                                                 itemStyle={{ color: '#fff' }}
                                             />
                                         </RadarChart>
@@ -154,6 +155,7 @@ export const EmployeeDetailsModal: React.FC<EmployeeDetailsModalProps> = ({ isOp
                                             <YAxis domain={[0, 100]} stroke="#666" tick={{ fontSize: 10 }} />
                                             <Tooltip
                                                 contentStyle={{ backgroundColor: '#000', border: '1px solid #333', borderRadius: '4px' }}
+                                                labelStyle={{ color: '#fff' }}
                                                 itemStyle={{ color: '#fff' }}
                                             />
                                             <Line

@@ -58,6 +58,12 @@ export const PostAssessmentModal: React.FC<PostAssessmentModalProps> = ({ scenar
     const [conversationMessages, setConversationMessages] = useState<ConversationMessage[]>([]);
     const startedRef = React.useRef(false);
 
+    // ELO Animation state
+    const [showEloAnimation, setShowEloAnimation] = useState<boolean>(false);
+    const [eloChange, setEloChange] = useState<number>(0);
+    const [eloMessage, setEloMessage] = useState<string>('');
+    const [totalEloChange, setTotalEloChange] = useState<number>(0);
+
     useEffect(() => {
         // Prevent double start in React Strict Mode
         if (startedRef.current) return;
@@ -201,14 +207,49 @@ export const PostAssessmentModal: React.FC<PostAssessmentModalProps> = ({ scenar
                 });
             }
 
-            // XP and streak logic
+            // XP and streak logic + ELO calculation (post-assessment: both gains and losses)
+            let currentEloChange = 0;
+            let message = '';
+
             if (data.previousScore && data.previousScore >= 60) {
                 setTotalXPEarned(prev => prev + currentXP);
                 setStreak(prev => prev + 1);
                 setShowXPAnimation(true);
                 setTimeout(() => setShowXPAnimation(false), 1500);
+
+                // Calculate ELO gain based on score
+                if (data.previousScore >= 90) {
+                    currentEloChange = 15;
+                    message = '🎯 Brilliant Move!';
+                } else if (data.previousScore >= 70) {
+                    currentEloChange = 10;
+                    message = '⚡ Great Answer!';
+                } else {
+                    currentEloChange = 5;
+                    message = '✓ Good Work!';
+                }
             } else {
                 setStreak(0);
+
+                // Calculate ELO loss based on score (post-assessment only)
+                if (data.previousScore !== undefined) {
+                    if (data.previousScore >= 40) {
+                        currentEloChange = -5;
+                        message = '📉 Keep Trying!';
+                    } else {
+                        currentEloChange = -10;
+                        message = '💪 Room to Improve!';
+                    }
+                }
+            }
+
+            // Update ELO tracking and show animation
+            if (currentEloChange !== 0) {
+                setEloChange(currentEloChange);
+                setEloMessage(message);
+                setTotalEloChange(prev => prev + currentEloChange);
+                setShowEloAnimation(true);
+                setTimeout(() => setShowEloAnimation(false), 2000);
             }
 
             if (data.previousFeedback || data.lastFeedback) {
@@ -293,6 +334,20 @@ export const PostAssessmentModal: React.FC<PostAssessmentModalProps> = ({ scenar
                     <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
                         <div className="text-4xl font-bold text-yellow-400 animate-bounce">
                             +{currentXP} XP! {streak >= 2 ? '🔥' : '🎯'}
+                        </div>
+                    </div>
+                )}
+
+                {/* ELO Animation Overlay - Both gains and losses in post-assessment */}
+                {showEloAnimation && eloChange !== 0 && (
+                    <div className="absolute inset-0 flex items-center justify-center z-30 pointer-events-none">
+                        <div className="flex flex-col items-center animate-bounce">
+                            <div className={`text-5xl font-bold ${eloChange > 0 ? 'text-green-400 drop-shadow-[0_0_15px_rgba(34,197,94,0.5)]' : 'text-red-400 drop-shadow-[0_0_15px_rgba(239,68,68,0.5)]'}`}>
+                                {eloChange > 0 ? '+' : ''}{eloChange} ELO
+                            </div>
+                            <div className={`text-2xl font-bold mt-2 ${eloChange > 0 ? 'text-green-300' : 'text-red-300'}`}>
+                                {eloMessage}
+                            </div>
                         </div>
                     </div>
                 )}
@@ -451,6 +506,14 @@ export const PostAssessmentModal: React.FC<PostAssessmentModalProps> = ({ scenar
                                         <Zap size={24} />
                                         +{totalXPEarned} XP EARNED
                                     </div>
+
+                                    {/* Total ELO Change */}
+                                    {totalEloChange !== 0 && (
+                                        <div className={`mt-2 flex items-center justify-center gap-2 font-bold text-lg ${totalEloChange > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                            <TrendingUp size={20} />
+                                            {totalEloChange > 0 ? '+' : ''}{totalEloChange} ELO
+                                        </div>
+                                    )}
 
                                     {/* Before/After comparison */}
                                     <div className="mt-6 p-4 bg-gradient-to-r from-purple-900/30 to-pink-900/30 rounded-lg border border-purple-500/30">

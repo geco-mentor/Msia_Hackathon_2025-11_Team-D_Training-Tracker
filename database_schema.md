@@ -174,6 +174,69 @@ create table if not exists public.pre_assessments (
   completed_at timestamp with time zone,
   unique(user_id, scenario_id)
 );
+
+-- 10. Course Ratings Table (star ratings and reviews for courses)
+create table if not exists public.course_ratings (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid references public.employees(id) on delete cascade not null,
+  scenario_id uuid references public.scenarios(id) on delete cascade not null,
+  rating integer not null check (rating >= 1 and rating <= 5),
+  review text,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  unique(user_id, scenario_id)
+);
+
+-- 11. Career Paths Table (progression tracks for employees)
+create table if not exists public.career_paths (
+  id uuid primary key default uuid_generate_v4(),
+  name text not null,
+  description text,
+  department text,
+  levels jsonb default '[]'::jsonb,  -- Array of {level, title, required_trainings[], min_elo}
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- 12. Update Employees table for career tracking and manager flag
+alter table employees add column if not exists career_path_id uuid references public.career_paths(id);
+alter table employees add column if not exists career_level integer default 1;
+alter table employees add column if not exists is_manager boolean default false;
+alter table employees add column if not exists manager_id uuid references public.employees(id);
+
+-- Sample Career Paths Data
+INSERT INTO career_paths (name, description, department, levels) VALUES
+  ('Software Engineering', 'Technical career track for engineers', 'Engineering', '[
+    {"level": 1, "title": "Junior Engineer", "required_trainings": [], "min_elo": 800},
+    {"level": 2, "title": "Mid Engineer", "required_trainings": ["Technical Excellence"], "min_elo": 1000},
+    {"level": 3, "title": "Senior Engineer", "required_trainings": ["System Design", "Innovation"], "min_elo": 1200},
+    {"level": 4, "title": "Staff Engineer", "required_trainings": ["Architecture", "Leadership"], "min_elo": 1400},
+    {"level": 5, "title": "Principal Engineer", "required_trainings": ["Strategy", "Mentorship"], "min_elo": 1600}
+  ]'::jsonb),
+  ('Sales Professional', 'Sales career progression track', 'Sales', '[
+    {"level": 1, "title": "Sales Associate", "required_trainings": [], "min_elo": 800},
+    {"level": 2, "title": "Sales Executive", "required_trainings": ["Sales Strategy"], "min_elo": 1000},
+    {"level": 3, "title": "Senior Account Manager", "required_trainings": ["Customer Focus", "Revenue Generation"], "min_elo": 1200},
+    {"level": 4, "title": "Sales Manager", "required_trainings": ["Leadership", "Team Management"], "min_elo": 1400}
+  ]'::jsonb),
+  ('Finance Professional', 'Finance and accounting career track', 'Finance', '[
+    {"level": 1, "title": "Financial Analyst", "required_trainings": [], "min_elo": 800},
+    {"level": 2, "title": "Senior Analyst", "required_trainings": ["Financial Analysis"], "min_elo": 1000},
+    {"level": 3, "title": "Finance Manager", "required_trainings": ["Risk Management", "Compliance"], "min_elo": 1200},
+    {"level": 4, "title": "Finance Director", "required_trainings": ["Strategy", "Leadership"], "min_elo": 1400}
+  ]'::jsonb)
+ON CONFLICT DO NOTHING;
+-- 13. Employee Certifications Table (employees add their own certificates)
+create table if not exists public.employee_certifications (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid references public.employees(id) on delete cascade not null,
+  name text not null,
+  issuer text,
+  issue_date date,
+  expiry_date date,
+  credential_id text,
+  credential_url text,
+  description text,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
 ```
 
 ## Typescript Interface Mapping

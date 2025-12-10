@@ -44,6 +44,39 @@ const getBedrockClient = () => {
     return _bedrockClient;
 };
 
+/**
+ * Retry helper for Bedrock calls.
+ * Retries up to 10 times with 1.5s interval between retries.
+ */
+export const withBedrockRetry = async <T>(
+    operation: () => Promise<T>,
+    operationName: string = 'Bedrock operation'
+): Promise<T> => {
+    const MAX_RETRIES = 10;
+    const RETRY_INTERVAL_MS = 1500;
+    let lastError: Error | null = null;
+
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        try {
+            const result = await operation();
+            if (attempt > 1) {
+                console.log(`DEBUG: ${operationName} succeeded on attempt ${attempt}`);
+            }
+            return result;
+        } catch (error: any) {
+            lastError = error;
+            console.log(`DEBUG: ${operationName} attempt ${attempt}/${MAX_RETRIES} failed: ${error.message}`);
+
+            if (attempt < MAX_RETRIES) {
+                console.log(`DEBUG: Retrying ${operationName} in ${RETRY_INTERVAL_MS}ms...`);
+                await new Promise(resolve => setTimeout(resolve, RETRY_INTERVAL_MS));
+            }
+        }
+    }
+
+    throw new Error(`${operationName} failed after ${MAX_RETRIES} attempts: ${lastError?.message}`);
+};
+
 export const generateUploadUrl = async (bucket: string, key: string, contentType: string) => {
     const command = new PutObjectCommand({
         Bucket: bucket,
@@ -551,7 +584,10 @@ export const generatePreAssessmentQuestion = async (
     });
 
     console.log('DEBUG: Generating pre-assessment question...');
-    const response = await getBedrockClient().send(command);
+    const response = await withBedrockRetry(
+        () => getBedrockClient().send(command),
+        'generatePreAssessmentQuestion'
+    );
     let text = response.output?.message?.content?.[0]?.text || "Error generating question.";
 
     // Clean up any prefixes the AI might add
@@ -621,7 +657,10 @@ export const evaluatePreAssessmentAnswer = async (
     });
 
     console.log('DEBUG: Evaluating pre-assessment answer...');
-    const response = await getBedrockClient().send(command);
+    const response = await withBedrockRetry(
+        () => getBedrockClient().send(command),
+        'evaluatePreAssessmentAnswer'
+    );
     const content = response.output?.message?.content?.[0]?.text || "{}";
 
     try {

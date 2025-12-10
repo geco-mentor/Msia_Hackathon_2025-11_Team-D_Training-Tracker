@@ -206,6 +206,7 @@ export const AdminDashboard: React.FC = () => {
                                     <YAxis stroke="#666" tick={{ fontSize: 10 }} />
                                     <Tooltip
                                         contentStyle={{ backgroundColor: '#000', border: '1px solid #333', borderRadius: '4px' }}
+                                        labelStyle={{ color: '#fff' }}
                                         itemStyle={{ color: '#fff' }}
                                     />
                                     <Area type="monotone" dataKey="count" stroke="#06b6d4" fillOpacity={1} fill="url(#colorCount)" />
@@ -256,6 +257,7 @@ export const AdminDashboard: React.FC = () => {
                                         <Tooltip
                                             cursor={{ fill: 'rgba(255,255,255,0.05)' }}
                                             contentStyle={{ backgroundColor: '#000', border: '1px solid #333', borderRadius: '4px' }}
+                                            labelStyle={{ color: '#fff' }}
                                             itemStyle={{ color: '#fff' }}
                                             formatter={(value: number, name: string) => [
                                                 `${value}%`,
@@ -296,6 +298,7 @@ export const AdminDashboard: React.FC = () => {
                                     <Tooltip
                                         cursor={{ fill: 'rgba(255,255,255,0.05)' }}
                                         contentStyle={{ backgroundColor: '#000', border: '1px solid #333', borderRadius: '4px' }}
+                                        labelStyle={{ color: '#fff' }}
                                         itemStyle={{ color: '#fff' }}
                                     />
                                     <Bar dataKey="avgScore" fill="#22c55e" radius={[4, 4, 0, 0]} barSize={30} />
@@ -316,10 +319,18 @@ export const AdminDashboard: React.FC = () => {
                                     <BarChart data={analytics?.skillsGap || []} layout="vertical">
                                         <CartesianGrid strokeDasharray="3 3" stroke="#333" horizontal={false} />
                                         <XAxis type="number" stroke="#666" tick={{ fontSize: 10 }} domain={[0, 100]} />
-                                        <YAxis dataKey="skill" type="category" stroke="#666" tick={{ fontSize: 10 }} width={80} />
+                                        <YAxis
+                                            dataKey="skill"
+                                            type="category"
+                                            stroke="#666"
+                                            tick={{ fontSize: 10 }}
+                                            width={140}
+                                            tickFormatter={(value: string) => value.length > 18 ? value.substring(0, 18) + '...' : value}
+                                        />
                                         <Tooltip
                                             cursor={{ fill: 'rgba(255,255,255,0.05)' }}
                                             contentStyle={{ backgroundColor: '#000', border: '1px solid #333', borderRadius: '4px' }}
+                                            labelStyle={{ color: '#fff' }}
                                             itemStyle={{ color: '#fff' }}
                                             formatter={(value: number) => [`${value}%`, 'Avg Score']}
                                         />
@@ -365,6 +376,7 @@ export const AdminDashboard: React.FC = () => {
                                         <Tooltip
                                             cursor={{ fill: 'rgba(255,255,255,0.05)' }}
                                             contentStyle={{ backgroundColor: '#000', border: '1px solid #333', borderRadius: '4px' }}
+                                            labelStyle={{ color: '#fff' }}
                                             itemStyle={{ color: '#fff' }}
                                             formatter={(value: number, name: string) => [
                                                 name === 'improvement' ? `${value >= 0 ? '+' : ''}${value}%` : `${value}%`,
@@ -413,6 +425,7 @@ export const AdminDashboard: React.FC = () => {
                                         <YAxis stroke="#666" tick={{ fontSize: 10 }} domain={[0, 100]} />
                                         <Tooltip
                                             contentStyle={{ backgroundColor: '#000', border: '1px solid #333', borderRadius: '4px' }}
+                                            labelStyle={{ color: '#fff' }}
                                             itemStyle={{ color: '#fff' }}
                                             formatter={(value: number) => [`${value}%`, 'Avg Score']}
                                         />
