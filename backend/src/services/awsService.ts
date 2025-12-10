@@ -1216,3 +1216,124 @@ Output ONLY valid JSON:
 
     throw new Error(`Failed to generate self-assessment plan after ${maxRetries} attempts: ${lastError}`);
 };
+
+// ============================================
+// CAREER ROADMAP GENERATION
+// ============================================
+
+/**
+ * Generate a personalized career roadmap based on the target goal.
+ * Returns milestones, recommended certifications, and assessments.
+ */
+export const generateCareerRoadmap = async (
+    currentRole: string,
+    targetGoal: string,
+    department: string,
+    currentSkills: Record<string, any>,
+    weaknesses: string[]
+): Promise<{
+    roadmap: {
+        milestones: { title: string; description: string; timeframe: string; actions: string[] }[];
+        skills_to_develop: string[];
+    };
+    certifications: string[];
+    assessments: string[];
+}> => {
+    const maxRetries = 10;
+    let lastError = '';
+
+    const skillsText = Object.keys(currentSkills).length > 0
+        ? JSON.stringify(currentSkills).substring(0, 500)
+        : 'Not yet assessed';
+    const weaknessesText = weaknesses.length > 0
+        ? weaknesses.join(', ')
+        : 'Not yet identified';
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        const temperature = Math.min(1.0, 0.5 + (attempt * 0.05));
+
+        const prompt = `You are a career development expert. Create a personalized roadmap.
+
+CURRENT STATE:
+- Role: ${currentRole}
+- Department: ${department}
+- Skills: ${skillsText}
+- Areas to improve: ${weaknessesText}
+
+GOAL: ${targetGoal}
+
+TASK: Create a realistic 5-year roadmap to achieve this goal.
+
+Return ONLY valid JSON:
+{
+    "roadmap": {
+        "milestones": [
+            {
+                "title": "First milestone title",
+                "description": "What needs to be achieved",
+                "timeframe": "0-6 months",
+                "actions": ["Specific action 1", "Specific action 2"]
+            },
+            {
+                "title": "Second milestone",
+                "description": "...",
+                "timeframe": "6-12 months",
+                "actions": ["..."]
+            }
+        ],
+        "skills_to_develop": ["Skill 1", "Skill 2", "Skill 3"]
+    },
+    "certifications": ["Certification 1", "Certification 2"],
+    "assessments": ["Assessment topic 1", "Assessment topic 2"]
+}
+
+Include 4-6 milestones covering the journey from current role to goal.
+Be specific to the ${department} department context.`;
+
+        const command = new ConverseCommand({
+            modelId: "qwen.qwen3-235b-a22b-2507-v1:0",
+            messages: [{ role: "user", content: [{ text: prompt }] }],
+            inferenceConfig: { maxTokens: 2000, temperature }
+        });
+
+        try {
+            console.log(`DEBUG: Generating career roadmap, attempt ${attempt}/${maxRetries}`);
+            const response = await getBedrockClient().send(command);
+            const content = response.output?.message?.content?.[0]?.text || "{}";
+            console.log("DEBUG: Raw roadmap response:", content.substring(0, 300));
+
+            // Parse JSON
+            const firstOpen = content.indexOf('{');
+            const lastClose = content.lastIndexOf('}');
+
+            if (firstOpen !== -1 && lastClose > firstOpen) {
+                const jsonString = content.substring(firstOpen, lastClose + 1);
+                const parsed = JSON.parse(jsonString);
+
+                if (parsed.roadmap && Array.isArray(parsed.roadmap.milestones)) {
+                    console.log('DEBUG: Successfully generated career roadmap');
+                    return {
+                        roadmap: {
+                            milestones: parsed.roadmap.milestones,
+                            skills_to_develop: parsed.roadmap.skills_to_develop || []
+                        },
+                        certifications: parsed.certifications || [],
+                        assessments: parsed.assessments || []
+                    };
+                }
+            }
+            lastError = 'Invalid JSON structure';
+        } catch (e: any) {
+            lastError = e.message;
+            console.log(`DEBUG: Attempt ${attempt} failed:`, lastError);
+        }
+
+        if (attempt < maxRetries) {
+            const delay = Math.min(5000, 500 * attempt);
+            console.log(`DEBUG: Retrying career roadmap in ${delay}ms...`);
+            await new Promise(r => setTimeout(r, delay));
+        }
+    }
+
+    throw new Error(`Failed to generate career roadmap after ${maxRetries} attempts: ${lastError}`);
+};

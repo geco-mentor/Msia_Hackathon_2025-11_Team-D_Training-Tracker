@@ -31,26 +31,48 @@ export const getAnalyticsOverview = async (req: AuthRequest, res: Response): Pro
 
         if (assessError) throw assessError;
 
-        // 3. Activity Timeline (Last 30 days)
+        // 3. Activity Timeline (Last 30 days) - By Department
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
         const { data: activityData, error: activityError } = await supabase
             .from('assessments')
-            .select('created_at')
+            .select(`
+                created_at,
+                employees!inner (
+                    department
+                )
+            `)
             .gte('created_at', thirtyDaysAgo.toISOString());
 
         if (activityError) throw activityError;
 
-        // Group by date
-        const activityMap = new Map<string, number>();
+        // Group by date AND department
+        // Structure: { date: "2023-10-01", Sales: 2, Engineering: 5, ... }
+        const activityMap = new Map<string, Record<string, number>>();
+        const allDepartments = new Set<string>();
+
         activityData?.forEach((item: any) => {
             const date = new Date(item.created_at).toISOString().split('T')[0];
-            activityMap.set(date, (activityMap.get(date) || 0) + 1);
+            const dept = (item.employees as any)?.department || 'Unknown';
+            allDepartments.add(dept);
+
+            if (!activityMap.has(date)) {
+                activityMap.set(date, {});
+            }
+            const dateEntry = activityMap.get(date)!;
+            dateEntry[dept] = (dateEntry[dept] || 0) + 1;
         });
 
         const activityTimeline = Array.from(activityMap.entries())
-            .map(([date, count]) => ({ date, count }))
+            .map(([date, counts]) => {
+                // Ensure all departments have a value (0 if missing) for properly stacked chart
+                const entry: any = { date };
+                allDepartments.forEach(dept => {
+                    entry[dept] = counts[dept] || 0;
+                });
+                return entry;
+            })
             .sort((a, b) => a.date.localeCompare(b.date));
 
         // 4. Skill Distribution
@@ -405,6 +427,110 @@ export const getAnalyticsOverview = async (req: AuthRequest, res: Response): Pro
             .sort((a, b) => a.avgScore - b.avgScore)
             .slice(0, 10);
 
+        // 17. Active Learners (In Training)
+        // Users who have completed pre-assessment but NOT the final assessment for a module
+        const activeLearnersSet = new Set<string>(); // "userId-scenarioId"
+        const completedAssessmentsSet = new Set<string>();
+
+        (postAssessmentsData || []).forEach((item: any) => {
+            completedAssessmentsSet.add(`${item.user_id}-${item.scenario_id}`);
+        });
+
+        const activeLearnersList: any[] = [];
+        (preAssessmentsData || []).forEach((item: any) => {
+            const key = `${item.user_id}-${item.scenario_id}`;
+            // If they did pre-assessment but haven't finished post-assessment, they are "Undergoing Training"
+            if (!completedAssessmentsSet.has(key)) {
+                // To avoid duplicates if multiple pre-assessments (shouldn't happen with unique constraint but safe to check)
+                if (!activeLearnersSet.has(key)) {
+                    activeLearnersSet.add(key);
+                    activeLearnersList.push({
+                        id: item.user_id,
+                        name: `Employee ${item.user_id.substring(0, 4)}`, // Ideally we have name join, check preAssessment select
+                        // preAssessmentsData select doesn't join employees name, only department. 
+                        // We can map from employees list if available or just use ID. 
+                        // Wait, employees list IS available in 'employees' var (line 16).
+                        employeeName: (employees || []).find((e: any) => e.id === item.user_id)?.name || 'Unknown Employee',
+                        department: (item.employees as any)?.department || 'Unknown',
+                        module: item.scenarios?.title || 'Unknown Module',
+                        startedAt: item.created_at, // Pre-assessment time
+                        progress: 50 // Generic "In Progress"
+                    });
+                }
+            }
+        });
+
+        // 18. Skill Heatmap (Department x Skill Adoption)
+        // Adoption = % of employees in dept who have "Proficient" score (>70) in that skill?
+        // Or just Average Score (0.0 - 1.0). The image shows 0.17, 0.5, etc. So let's do normalized average score (0-1).
+        const heatmapMap = new Map<string, Map<string, { total: number; count: number }>>();
+
+        // Use postAssessmentsData
+        (postAssessmentsData || []).forEach((item: any) => {
+            const dept = (item.employees as any)?.department || 'Unknown';
+            const skill = item.scenarios?.skill || item.scenarios?.title || 'General';
+            // Normalize score to 0-1 (assuming score is 0-100)
+            const normalizedScore = (item.score || 0) / 100;
+
+            if (!heatmapMap.has(dept)) {
+                heatmapMap.set(dept, new Map());
+            }
+            const deptSkills = heatmapMap.get(dept)!;
+            const current = deptSkills.get(skill) || { total: 0, count: 0 };
+
+            deptSkills.set(skill, {
+                total: current.total + normalizedScore,
+                count: current.count + 1
+            });
+        });
+
+        // Convert to format: [{ name: 'Department', skills: [{ name: 'Skill', value: 0.5 }] }]
+        const skillHeatmap: any[] = [];
+        // Get all unique skills across all depts to ensure matrix is aligned? 
+        // Or just let frontend handle it. Let's send a structured list.
+
+        heatmapMap.forEach((skillsMap, dept) => {
+            const skillsList: any[] = [];
+            skillsMap.forEach((data, skill) => {
+                skillsList.push({
+                    name: skill,
+                    value: parseFloat((data.total / data.count).toFixed(2))
+                });
+            });
+            skillHeatmap.push({
+                name: dept,
+                skills: skillsList
+            });
+        });
+
+        // 19. Training ROI (Return on Investment)
+        // ROI = (Value - Cost) / Cost. 
+        // Proxy: (Avg Post Score - Avg Pre Score) / Avg Pre Score * 100
+        // We already have preVsPostMap.
+        let totalPreSum = 0;
+        let totalPostSum = 0;
+        let pairCount = 0;
+
+        preVsPostMap.forEach((data) => {
+            if (data.preCount > 0 && data.postCount > 0) {
+                // Averages per curriculum
+                const avgPre = data.preTotal / data.preCount;
+                const avgPost = data.postTotal / data.postCount;
+                totalPreSum += avgPre;
+                totalPostSum += avgPost;
+                pairCount++;
+            }
+        });
+
+        const globalAvgPre = pairCount > 0 ? totalPreSum / pairCount : 0;
+        const globalAvgPost = pairCount > 0 ? totalPostSum / pairCount : 0;
+
+        // Avoid division by zero
+        const trainingROI = globalAvgPre > 0
+            ? Math.round(((globalAvgPost - globalAvgPre) / globalAvgPre) * 100)
+            : 0;
+
+
         console.log('Analytics data prepared:', {
             preVsPostAssessment: preVsPostAssessment.length,
             skillsGap: skillsGap.length,
@@ -432,7 +558,11 @@ export const getAnalyticsOverview = async (req: AuthRequest, res: Response): Pro
                 skillsGap,
                 moduleEffectiveness,
                 improvementTrend,
-                atRiskEmployees
+                atRiskEmployees,
+                // New additions for Enhanced Admin Dashboard
+                activeLearners: activeLearnersList.slice(0, 20), // Top 20 active learners
+                skillHeatmap,
+                trainingROI
             }
         });
 

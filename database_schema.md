@@ -237,6 +237,21 @@ create table if not exists public.employee_certifications (
   description text,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
+
+-- 14. Employee Career Goals Table (career aspirations with AI roadmaps)
+create table if not exists public.employee_career_goals (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid references public.employees(id) on delete cascade not null,
+  goal_title text not null,
+  goal_description text,
+  target_timeframe text default '5 years',
+  generated_roadmap jsonb,
+  recommended_certifications text[] default '{}',
+  recommended_assessments text[] default '{}',
+  status text default 'active',
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
 ```
 
 ## Typescript Interface Mapping

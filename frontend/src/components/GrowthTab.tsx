@@ -1,17 +1,84 @@
-import React from 'react';
-import { Target, Compass, Lightbulb, Zap, TrendingUp, Award, Sparkles } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Target, Compass, Lightbulb, Zap, TrendingUp, Award, Sparkles, Loader } from 'lucide-react';
+import { API_BASE_URL } from '../config';
 
 interface GrowthTabProps {
     userName?: string;
     completedTrainings?: number;
     eloRating?: number;
+    userId?: string;
+}
+
+interface ActionItems {
+    goal: string[];
+    reality: string[];
+    options: string[];
+    will: string[];
 }
 
 export const GrowthTab: React.FC<GrowthTabProps> = ({
     userName = 'Operative',
     completedTrainings = 0,
-    eloRating = 1000
+    eloRating = 1000,
+    userId
 }) => {
+    const [actionItems, setActionItems] = useState<ActionItems | null>(null);
+    const [loadingItems, setLoadingItems] = useState(false);
+
+    useEffect(() => {
+        if (userId) {
+            fetchActionItems();
+        }
+    }, [userId]);
+
+    const fetchActionItems = async () => {
+        if (!userId) return;
+
+        try {
+            setLoadingItems(true);
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${API_BASE_URL}/api/career-goals/growth/action-items/${userId}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            const data = await response.json();
+            if (data.success) {
+                setActionItems(data.data);
+            }
+        } catch (err) {
+            console.error('Error fetching action items:', err);
+        } finally {
+            setLoadingItems(false);
+        }
+    };
+
+    // Default tips if API hasn't loaded yet
+    const defaultTips = {
+        goal: [
+            'Identify skills you want to develop',
+            'Set a target ELO rating milestone',
+            'Visualize your ideal role in 1-2 years'
+        ],
+        reality: [
+            `Your current ELO: ${eloRating}`,
+            `Completed trainings: ${completedTrainings}`,
+            'Review your assessment feedback'
+        ],
+        options: [
+            'Browse available CTF challenges',
+            'Discuss with your team lead',
+            'Check the career path requirements'
+        ],
+        will: [
+            'Start your next training today',
+            'Set a weekly learning goal',
+            'Track progress in your profile'
+        ]
+    };
+
+    const tips = actionItems || defaultTips;
+
     const growComponents = [
         {
             letter: 'G',
@@ -22,11 +89,7 @@ export const GrowthTab: React.FC<GrowthTabProps> = ({
             color: 'from-green-500 to-emerald-600',
             bgColor: 'bg-green-500/10',
             borderColor: 'border-green-500/30',
-            tips: [
-                'Identify skills you want to develop',
-                'Set a target ELO rating milestone',
-                'Visualize your ideal role in 1-2 years'
-            ]
+            tips: tips.goal
         },
         {
             letter: 'R',
@@ -37,11 +100,7 @@ export const GrowthTab: React.FC<GrowthTabProps> = ({
             color: 'from-cyan-500 to-blue-600',
             bgColor: 'bg-cyan-500/10',
             borderColor: 'border-cyan-500/30',
-            tips: [
-                `Your current ELO: ${eloRating}`,
-                `Completed trainings: ${completedTrainings}`,
-                'Review your assessment feedback'
-            ]
+            tips: tips.reality
         },
         {
             letter: 'O',
@@ -52,11 +111,7 @@ export const GrowthTab: React.FC<GrowthTabProps> = ({
             color: 'from-yellow-500 to-orange-600',
             bgColor: 'bg-yellow-500/10',
             borderColor: 'border-yellow-500/30',
-            tips: [
-                'Browse available CTF challenges',
-                'Discuss with your team lead',
-                'Check the career path requirements'
-            ]
+            tips: tips.options
         },
         {
             letter: 'W',
@@ -67,11 +122,7 @@ export const GrowthTab: React.FC<GrowthTabProps> = ({
             color: 'from-purple-500 to-pink-600',
             bgColor: 'bg-purple-500/10',
             borderColor: 'border-purple-500/30',
-            tips: [
-                'Start your next training today',
-                'Set a weekly learning goal',
-                'Track progress in your profile'
-            ]
+            tips: tips.will
         }
     ];
 
@@ -151,6 +202,9 @@ export const GrowthTab: React.FC<GrowthTabProps> = ({
                                 <div className="flex items-center gap-2 mb-2">
                                     <Icon size={16} className="text-cyan-400" />
                                     <span className="text-xs font-bold text-cyan-400 uppercase">Action Items</span>
+                                    {loadingItems && (
+                                        <Loader size={12} className="text-cyan-400 animate-spin" />
+                                    )}
                                 </div>
                                 <ul className="space-y-1">
                                     {component.tips.map((tip, tipIdx) => (
@@ -164,23 +218,6 @@ export const GrowthTab: React.FC<GrowthTabProps> = ({
                         </div>
                     );
                 })}
-            </div>
-
-            {/* Call to Action */}
-            <div className="text-center py-8 theme-bg-secondary rounded-lg border border-purple-500/30">
-                <h3 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 mb-3">
-                    Ready to Level Up?
-                </h3>
-                <p className="theme-text-secondary mb-6 max-w-md mx-auto">
-                    Every training you complete brings you closer to your goals.
-                    Start your next challenge and watch your ELO grow!
-                </p>
-                <button
-                    onClick={() => window.location.hash = '#challenges'}
-                    className="px-8 py-3 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-bold rounded-lg hover:from-cyan-400 hover:to-purple-500 transition-all transform hover:scale-105 shadow-lg"
-                >
-                    START TRAINING →
-                </button>
             </div>
         </div>
     );

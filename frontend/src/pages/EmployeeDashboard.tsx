@@ -9,7 +9,6 @@ import { PreAssessmentModal } from '../components/PreAssessmentModal';
 import { PostAssessmentModal } from '../components/PostAssessmentModal';
 import { GrowthTab } from '../components/GrowthTab';
 import { CareerPath } from '../components/CareerPath';
-import { CertificationManager } from '../components/CertificationManager';
 import { API_BASE_URL } from '../config';
 
 type DashboardTab = 'challenges' | 'progress' | 'career' | 'growth';
@@ -27,12 +26,6 @@ export const EmployeeDashboard: React.FC = () => {
     const [postAssessmentScenario, setPostAssessmentScenario] = useState<any | null>(null);
     const [preAssessmentStatuses, setPreAssessmentStatuses] = useState<Record<string, boolean>>({});
     const [postAssessmentStatuses, setPostAssessmentStatuses] = useState<Record<string, boolean>>({});
-    const [stats] = useState({
-        ranking: user?.ranking || 0,
-        win_rate: user?.win_rate || 0,
-        streak: user?.streak || 0,
-        total_assessments: 0
-    });
 
     const handleLogout = () => {
         logout();
@@ -233,6 +226,7 @@ export const EmployeeDashboard: React.FC = () => {
                         userName={user?.name?.split(' ')[0]}
                         completedTrainings={Object.values(postAssessmentStatuses).filter(Boolean).length}
                         eloRating={(user as any)?.elo_rating || 1000}
+                        userId={user?.id}
                     />
                 )}
 
@@ -242,10 +236,30 @@ export const EmployeeDashboard: React.FC = () => {
 
                 {activeTab === 'progress' && (
                     <div className="space-y-6">
+                        {/* Progress Stats Overview */}
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div className="theme-bg-secondary border theme-border rounded-lg p-6 text-center">
+                                <p className="text-xs theme-text-muted uppercase tracking-wider mb-1">ELO Rating</p>
+                                <p className="text-3xl font-bold text-cyan-400">{(user as any)?.elo_rating || 1000}</p>
+                            </div>
+                            <div className="theme-bg-secondary border theme-border rounded-lg p-6 text-center">
+                                <p className="text-xs theme-text-muted uppercase tracking-wider mb-1">Completed</p>
+                                <p className="text-3xl font-bold text-green-400">{Object.values(postAssessmentStatuses).filter(Boolean).length}</p>
+                            </div>
+                            <div className="theme-bg-secondary border theme-border rounded-lg p-6 text-center">
+                                <p className="text-xs theme-text-muted uppercase tracking-wider mb-1">In Progress</p>
+                                <p className="text-3xl font-bold text-yellow-400">{mainChallenges.filter(c => preAssessmentStatuses[c.id] && !postAssessmentStatuses[c.id]).length}</p>
+                            </div>
+                            <div className="theme-bg-secondary border theme-border rounded-lg p-6 text-center">
+                                <p className="text-xs theme-text-muted uppercase tracking-wider mb-1">Available</p>
+                                <p className="text-3xl font-bold text-purple-400">{mainChallenges.filter(c => !preAssessmentStatuses[c.id]).length}</p>
+                            </div>
+                        </div>
+
                         {/* In Progress Trainings */}
                         <div className="theme-bg-secondary border theme-border rounded-lg p-6">
                             <h2 className="text-lg font-bold theme-text-primary tracking-wider flex items-center gap-2 mb-6">
-                                <Activity size={18} className="text-cyan-400" />
+                                <Activity size={18} className="text-yellow-400" />
                                 IN PROGRESS
                             </h2>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -268,9 +282,30 @@ export const EmployeeDashboard: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* Certifications Manager - Full CRUD */}
+                        {/* Completed Trainings */}
                         <div className="theme-bg-secondary border theme-border rounded-lg p-6">
-                            <CertificationManager userId={user?.id} />
+                            <h2 className="text-lg font-bold theme-text-primary tracking-wider flex items-center gap-2 mb-6">
+                                <Award size={18} className="text-green-400" />
+                                COMPLETED
+                            </h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {mainChallenges
+                                    .filter(c => postAssessmentStatuses[c.id])
+                                    .map(challenge => (
+                                        <ChallengeCard
+                                            key={challenge.id}
+                                            challenge={challenge}
+                                            onClick={() => handleChallengeClick(challenge)}
+                                            preAssessmentCompleted={preAssessmentStatuses[challenge.id]}
+                                            postAssessmentCompleted={postAssessmentStatuses[challenge.id]}
+                                        />
+                                    ))}
+                                {mainChallenges.filter(c => postAssessmentStatuses[c.id]).length === 0 && (
+                                    <div className="col-span-full text-center py-8 theme-text-muted text-sm">
+                                        No completed trainings yet. Finish a challenge to see it here!
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 )}
@@ -312,44 +347,8 @@ export const EmployeeDashboard: React.FC = () => {
 
                         {/* Right Column: Sidebar (1 col) */}
                         <div className="space-y-6 sticky top-24 self-start">
-
-                            {/* Recent Activity */}
-                            <div className="theme-bg-secondary border theme-border rounded-lg p-6">
-                                <h2 className="text-sm font-bold theme-text-secondary tracking-wider flex items-center gap-2 mb-6 uppercase">
-                                    <Activity size={16} className="text-cyan-600 dark:text-cyan-400" />
-                                    Recent Activity
-                                </h2>
-                                <div className="space-y-6">
-                                    {[1, 2, 3].map((_, i) => (
-                                        <div key={i} className="flex items-center gap-3 pb-4 border-b theme-border last:pb-0 last:border-0 group">
-                                            <div className="w-8 h-8 rounded bg-cyan-100 dark:bg-cyan-900/20 flex items-center justify-center text-cyan-600 dark:text-cyan-400 font-bold border border-cyan-500/20 text-xs">
-                                                AI
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <h3 className="font-bold theme-text-secondary text-xs truncate group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">Completed "Prompt Eng..."</h3>
-                                                <p className="text-[10px] theme-text-muted font-mono mt-1">SCORE: 92% • 2H AGO</p>
-                                            </div>
-                                            <span className="px-1.5 py-0.5 bg-green-100 dark:bg-green-500/10 text-green-600 dark:text-green-400 text-[10px] font-bold border border-green-500/20 rounded">PASS</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Stats Summary */}
-                            <div className="theme-bg-secondary border theme-border rounded-lg p-6">
-                                <h2 className="text-sm font-bold theme-text-secondary tracking-wider mb-4 uppercase">Stats</h2>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="p-3 theme-bg-tertiary rounded border theme-border">
-                                        <p className="text-[10px] theme-text-muted uppercase">Rank</p>
-                                        <p className="text-xl font-bold text-amber-500 dark:text-amber-400">#{stats.ranking || '-'}</p>
-                                    </div>
-                                    <div className="p-3 theme-bg-tertiary rounded border theme-border">
-                                        <p className="text-[10px] theme-text-muted uppercase">Win Rate</p>
-                                        <p className="text-xl font-bold text-emerald-500 dark:text-emerald-400">{stats.win_rate}%</p>
-                                    </div>
-                                </div>
-                            </div>
-
+                            {/* Career Quick View */}
+                            <CareerPath userId={user?.id} compact={true} />
                         </div>
                     </div>
                 )}

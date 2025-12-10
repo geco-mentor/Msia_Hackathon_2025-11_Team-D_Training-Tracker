@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer } from 'recharts';
 import { Terminal, Shield, Target, Cpu, Database, Lock, Activity, LogOut, User, Briefcase, CheckCircle, AlertTriangle, Lightbulb, Sparkles, X, Loader, Award, Code, Network, Brain, Ghost } from 'lucide-react';
 import { API_BASE_URL, getRankFromElo } from '../config';
+import { CertificationManager } from '../components/CertificationManager';
 
 interface SkillData {
     subject: string;
@@ -481,6 +482,11 @@ export const Profile: React.FC = () => {
                             <p className="text-2xl font-bold text-cyan-400">#{profile?.ranking || '-'}</p>
                         </div>
                     </div>
+                </div>
+
+                {/* Certifications Section */}
+                <div className="theme-bg-secondary border border-white/5 rounded-lg p-6">
+                    <CertificationManager userId={user?.id} />
                 </div>
             </div>
 
