@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Trophy, Activity, Calendar, Award, TrendingUp, Target } from 'lucide-react';
+import { X, Trophy, Activity, Calendar, Award, TrendingUp, Target, Loader } from 'lucide-react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
 interface Assessment {
@@ -39,7 +39,18 @@ interface EmployeeDetailsModalProps {
 }
 
 export const EmployeeDetailsModal: React.FC<EmployeeDetailsModalProps> = ({ isOpen, onClose, employee }) => {
-    if (!isOpen || !employee) return null;
+    if (!isOpen) return null;
+
+    if (!employee) {
+        return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+                <div className="theme-bg-secondary border border-white/10 rounded-lg p-8 flex flex-col items-center shadow-2xl">
+                    <Loader className="animate-spin text-cyan-400 mb-4" size={32} />
+                    <p className="theme-text-secondary">Loading employee details...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
@@ -92,7 +103,7 @@ export const EmployeeDetailsModal: React.FC<EmployeeDetailsModalProps> = ({ isOp
                                 <TrendingUp className="text-yellow-400" size={20} />
                                 <span className="text-sm theme-text-primary/60">Elo Rating</span>
                             </div>
-                            <div className="text-2xl font-bold theme-text-primary">{employee.elo_rating || 1200}</div>
+                            <div className="text-2xl font-bold theme-text-primary">{employee.elo_rating ?? 1200}</div>
                         </div>
                     </div>
 

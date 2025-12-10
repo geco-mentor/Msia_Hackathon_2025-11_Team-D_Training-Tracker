@@ -261,14 +261,14 @@ export const getGrowthActionItems = async (req: AuthRequest, res: Response): Pro
             .eq('id', userId)
             .single();
 
-        // Get ELO from ranking
+        // Get ELO from employee record
         const { data: eloData } = await supabase
             .from('employees')
-            .select('ranking')
+            .select('elo_rating')
             .eq('id', userId)
             .single();
 
-        const elo = eloData?.ranking || 1000;
+        const elo = eloData?.elo_rating || 1000;
 
         // Fetch user's assessment feedback
         const { data: feedbackData } = await supabase
@@ -374,50 +374,52 @@ export const generateSelfAssessment = async (req: AuthRequest, res: Response): P
             return;
         }
 
-        // We'll create a dynamic scenario entry for this assessment
-        // First, check if a similar scenario already exists
-        const { data: existingScenario } = await supabase
-            .from('scenarios')
-            .select('id, title')
-            .ilike('title', `%${topic}%`)
-            .limit(1)
-            .single();
+        // Use retry helper for supabase operations
+        const existingScenario = await withRetry(
+            async () => {
+                const { data, error } = await supabase
+                    .from('scenarios')
+                    .select('id, title')
+                    .ilike('title', `%${topic}%`)
+                    .limit(1)
+                    .single();
+                if (error) throw error;
+                return data;
+            },
+            'Check existing scenario'
+        );
 
         let scenarioId: string;
-
         if (existingScenario) {
             console.log('[CareerGoals] Using existing scenario:', existingScenario.id);
             scenarioId = existingScenario.id;
         } else {
-            // Create a new scenario for this topic
             console.log('[CareerGoals] Creating new scenario for topic:', topic);
-
-            const { data: newScenario, error: scenarioError } = await supabase
-                .from('scenarios')
-                .insert({
-                    title: `Self-Assessment: ${topic}`,
-                    description: description || `Auto-generated assessment for ${topic}`,
-                    video_url: '', // No video for self-assessments
-                    module: 'self-assessment',
-                    skill: topic,
-                    difficulty: 'Intermediate',
-                    points: 50,
-                    time_estimate: 15,
-                    require_post_assessment: true // We want to assess the user
-                })
-                .select()
-                .single();
-
-            if (scenarioError) {
-                console.error('[CareerGoals] Error creating scenario:', scenarioError);
-                res.status(500).json({ success: false, message: 'Failed to create assessment scenario' });
-                return;
-            }
-
+            const newScenario = await withRetry(
+                async () => {
+                    const { data, error } = await supabase
+                        .from('scenarios')
+                        .insert({
+                            title: `Self-Assessment: ${topic}`,
+                            description: description || `Auto-generated assessment for ${topic}`,
+                            video_url: '',
+                            category: 'self-assessment',
+                            skill: topic,
+                            difficulty: 'Intermediate',
+                            points: 50,
+                            time_estimate: 15,
+                            require_post_assessment: true
+                        })
+                        .select()
+                        .single();
+                    if (error) throw error;
+                    return data;
+                },
+                'Create new scenario'
+            );
             scenarioId = newScenario.id;
         }
 
-        // Return the scenario ID so the frontend can launch the assessment modal
         res.json({
             success: true,
             data: {
@@ -425,7 +427,6 @@ export const generateSelfAssessment = async (req: AuthRequest, res: Response): P
                 message: `Assessment for "${topic}" is ready. You can now take it.`
             }
         });
-
     } catch (error: any) {
         console.error('[CareerGoals] Error generating self-assessment:', error);
         res.status(500).json({ success: false, message: error.message });

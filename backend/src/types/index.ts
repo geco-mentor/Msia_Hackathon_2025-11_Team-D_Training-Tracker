@@ -57,7 +57,7 @@ export interface AuthResponse {
         id: string;
         name: string;
         username: string;
-        role: 'employee' | 'admin';
+        role: 'employee' | 'admin' | 'manager';
         employee_id?: string;
         job_title?: string;
         job_description?: string;
@@ -68,6 +68,7 @@ export interface AuthResponse {
         total_points?: number;
         elo_rating?: number;
         level?: number;
+        skills_profile?: Record<string, number>;
     };
 }
 

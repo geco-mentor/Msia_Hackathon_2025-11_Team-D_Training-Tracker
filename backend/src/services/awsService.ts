@@ -235,6 +235,49 @@ export const analyzeText = async (text: string) => {
     };
 };
 
+// Determine the single most relevant specific skill category from text
+export const determineMainSkill = async (text: string): Promise<string> => {
+    const prompt = `
+    Analyze the following training content and identify the ONE most specific technical skill or competency it teaches.
+    
+    CONTENT PREVIEW:
+    ${text.substring(0, 3000)}
+
+    TASK:
+    Return a SINGLE short phrase (1-3 words) representing the specific skill.
+    
+    GUIDELINES:
+    - Be SPECIFIC, not generic. 
+    - BAD: "Cybersecurity", "IT", "Programming"
+    - GOOD: "Penetration Testing", "Network Forensics", "React Optimization", "GDPR Compliance", "Phishing Analysis"
+    - If it's about a specific tool, name it (e.g. "Wireshark Analysis").
+    
+    IMPORTANT: Return ONLY the skill name. No other text.
+    `;
+
+    const command = new ConverseCommand({
+        modelId: "qwen.qwen3-235b-a22b-2507-v1:0",
+        messages: [{ role: "user", content: [{ text: prompt }] }],
+        inferenceConfig: { maxTokens: 50, temperature: 0.1 }
+    });
+
+    try {
+        console.log('DEBUG: Determining main skill...');
+        const response = await getBedrockClient().send(command);
+        let skill = response.output?.message?.content?.[0]?.text || "General Knowledge";
+
+        // Cleanup
+        skill = skill.replace(/['"]/g, '').trim();
+        if (skill.endsWith('.')) skill = skill.slice(0, -1);
+
+        console.log('DEBUG: Determined skill:', skill);
+        return skill;
+    } catch (error) {
+        console.error('Failed to determine skill:', error);
+        return "General Knowledge";
+    }
+};
+
 // ============================================
 // RUBRIC GENERATION - Admin Assessment Upload
 // ============================================

@@ -6,6 +6,7 @@ import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { EmployeeDashboard } from './pages/EmployeeDashboard';
 import { AdminDashboard } from './pages/AdminDashboard';
+import { ManagerDashboard } from './pages/ManagerDashboard';
 import CreateAssessment from './pages/CreateAssessment';
 import { Profile } from './pages/Profile';
 import Leaderboard from './pages/Leaderboard';
@@ -87,6 +88,16 @@ function App() {
                         element={
                             <ProtectedRoute>
                                 <Leaderboard />
+                            </ProtectedRoute>
+                        }
+                    />
+
+                    {/* Protected Manager routes */}
+                    <Route
+                        path="/manager"
+                        element={
+                            <ProtectedRoute requiredRole="manager">
+                                <ManagerDashboard />
                             </ProtectedRoute>
                         }
                     />

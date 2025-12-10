@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { TrendingUp, Lock, CheckCircle, Award, Target, Plus, Sparkles } from 'lucide-react';
 import { API_BASE_URL } from '../config';
+import { fetchWithRetry } from '../utils/apiRetry';
 import { useAuth } from '../contexts/AuthContext';
 import { CareerGoalModal } from './CareerGoalModal';
 import { CareerRoadmap } from './CareerRoadmap';
 
-interface CareerLevel {
+export interface CareerLevel {
     level: number;
     title: string;
     isCurrent: boolean;
@@ -18,7 +19,7 @@ interface CareerLevel {
     meetsElo: boolean;
 }
 
-interface CareerData {
+export interface CareerData {
     employee: {
         id: string;
         name: string;
@@ -66,6 +67,8 @@ export const CareerPath: React.FC<CareerPathProps> = ({
     const [goalsLoading, setGoalsLoading] = useState(true);
     const [showGoalModal, setShowGoalModal] = useState(false);
     const [activeTab, setActiveTab] = useState<'goals' | 'path'>('goals');
+    const [isGenerating, setIsGenerating] = useState(false);
+
 
     const targetUserId = userId || user?.id;
 
@@ -128,9 +131,10 @@ export const CareerPath: React.FC<CareerPathProps> = ({
 
         console.log('[CareerPath] Generating assessment for:', topic);
 
+        setIsGenerating(true);
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch(`${API_BASE_URL}/api/career-goals/generate-assessment`, {
+            const data = await fetchWithRetry(`${API_BASE_URL}/api/career-goals/generate-assessment`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -142,20 +146,18 @@ export const CareerPath: React.FC<CareerPathProps> = ({
                     description: `Self-assessment for career goal: ${topic}`
                 })
             });
-
-            const data = await response.json();
-
-            if (data.success) {
-                // Navigate to the assessment or show a success message
-                alert(`Assessment created! Scenario ID: ${data.data.scenarioId}. Navigate to Challenges to find it, or it will appear in your dashboard.`);
-                // Optionally, we could trigger a navigation or modal here
+            const json = await data.json();
+            if (json.success) {
+                alert(`Assessment created! Scenario ID: ${json.data.scenarioId}. Navigate to Challenges to find it, or it will appear in your dashboard.`);
             } else {
-                console.error('[CareerPath] Failed to generate assessment:', data.message);
-                alert(`Failed to generate assessment: ${data.message}`);
+                console.error('[CareerPath] Failed to generate assessment:', json.message);
+                alert(`Failed to generate assessment: ${json.message}`);
             }
         } catch (err) {
             console.error('[CareerPath] Error generating assessment:', err);
             alert('Error generating assessment. Please try again.');
+        } finally {
+            setIsGenerating(false);
         }
     };
 
@@ -236,7 +238,7 @@ export const CareerPath: React.FC<CareerPathProps> = ({
                 </div>
                 <div className="text-right">
                     <p className="text-xs theme-text-muted">Current ELO</p>
-                    <p className="text-2xl font-bold text-cyan-400">{careerData?.employee?.eloRating || 1000}</p>
+                    <p className="text-2xl font-bold text-cyan-400">{careerData?.employee?.eloRating ?? 1000}</p>
                 </div>
             </div>
 
@@ -303,6 +305,7 @@ export const CareerPath: React.FC<CareerPathProps> = ({
                                     certifications={activeGoal.recommended_certifications}
                                     assessments={activeGoal.recommended_assessments}
                                     onGenerateAssessment={handleGenerateAssessment}
+                                    isGenerating={isGenerating}
                                 />
                             )}
                         </>
@@ -446,8 +449,13 @@ export const CareerPath: React.FC<CareerPathProps> = ({
                                 <div className="theme-bg-secondary rounded-lg p-4 border theme-border">
                                     <h3 className="text-sm font-bold theme-text-primary mb-3 flex items-center gap-2">
                                         <Award size={16} className="text-yellow-400" />
-                                        Completed Trainings ({careerData.completedTrainings.length})
+                                        Performance Overview
                                     </h3>
+                                    <div className="flex items-center gap-4 mb-4 text-sm theme-text-secondary">
+                                        <span>ELO Rating: <strong className="text-cyan-400">{careerData.employee.eloRating || 1000}</strong></span>
+                                        <span>Trainings Completed: <strong className="text-purple-400">{careerData.completedTrainings.length}</strong></span>
+                                    </div>
+                                    <h4 className="text-xs font-bold theme-text-muted uppercase tracking-wider mb-2">Recent Trainings</h4>
                                     <div className="flex flex-wrap gap-2">
                                         {careerData.completedTrainings.slice(0, 10).map((training, idx) => (
                                             <span

@@ -127,7 +127,7 @@ export const getAllEmployees = async (req: AuthRequest, res: Response): Promise<
         console.log('Fetching all employees...');
         const { data: employees, error } = await supabase
             .from('employees')
-            .select('id, name, job_title, department, ranking, win_rate, streak')
+            .select('id, name, job_title, department, ranking, win_rate, streak, skills_profile, elo_rating')
             .order('name');
 
         if (error) {
@@ -148,7 +148,9 @@ export const getAllEmployees = async (req: AuthRequest, res: Response): Promise<
             role: emp.job_title, // Using job_title as role for display
             department: emp.department || 'Unassigned',
             progress: emp.win_rate || 0, // Using win_rate as progress proxy
-            status: 'Active' // Mock status for now
+            status: 'Active', // Mock status for now
+            elo_rating: emp.elo_rating,
+            skills_profile: emp.skills_profile
         }));
 
         res.status(200).json({
@@ -408,8 +410,8 @@ export const getMyProfile = async (req: AuthRequest, res: Response): Promise<voi
                 subject,
                 A: Math.round(data.total / data.count),
                 fullMark: 100
-            }))
-            .slice(0, 6); // Limit to 6 skills for clean radar chart
+            }));
+        // .slice(0, 6); // Limit removed to show all relevant skills
 
         // 2. Calculate Module Progress (by category)
         const categoryMap = new Map<string, { completed: number; total: number }>();

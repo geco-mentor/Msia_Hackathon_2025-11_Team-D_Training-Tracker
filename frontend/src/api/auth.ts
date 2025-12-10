@@ -92,7 +92,8 @@ export interface User {
     id: string;
     name: string;
     username: string;
-    role: 'employee' | 'admin';
+    role: 'employee' | 'admin' | 'manager';
+    department?: string;
     employee_id?: string;
     job_title?: string;
     ranking?: number;

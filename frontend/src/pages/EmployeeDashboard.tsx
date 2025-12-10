@@ -8,8 +8,9 @@ import { ChallengeModal } from '../components/ChallengeModal';
 import { PreAssessmentModal } from '../components/PreAssessmentModal';
 import { PostAssessmentModal } from '../components/PostAssessmentModal';
 import { GrowthTab } from '../components/GrowthTab';
-import { CareerPath } from '../components/CareerPath';
+import { CareerPath, CareerData } from '../components/CareerPath';
 import { API_BASE_URL } from '../config';
+import { Zap, Target, Star } from 'lucide-react';
 
 type DashboardTab = 'challenges' | 'progress' | 'career' | 'growth';
 
@@ -20,6 +21,7 @@ export const EmployeeDashboard: React.FC = () => {
     const [activeTab, setActiveTab] = useState<DashboardTab>('challenges');
     const [mainChallenges, setMainChallenges] = useState<any[]>([]);
     const [selectedChallenge, setSelectedChallenge] = useState<any | null>(null);
+    const [careerData, setCareerData] = useState<CareerData | null>(null);
     const [showPreAssessment, setShowPreAssessment] = useState(false);
     const [showPostAssessment, setShowPostAssessment] = useState(false);
     const [preAssessmentScenario, setPreAssessmentScenario] = useState<any | null>(null);
@@ -41,6 +43,22 @@ export const EmployeeDashboard: React.FC = () => {
             if (mainData.success) setMainChallenges(mainData.data);
         } catch (error) {
             console.error('Failed to fetch challenges', error);
+        }
+    };
+
+    const fetchCareerProgress = async () => {
+        if (!user?.id) return;
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${API_BASE_URL}/api/career/progress/${user.id}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await response.json();
+            if (data.success) {
+                setCareerData(data.data);
+            }
+        } catch (err) {
+            console.error('Error fetching career progress:', err);
         }
     };
 
@@ -128,6 +146,7 @@ export const EmployeeDashboard: React.FC = () => {
     useEffect(() => {
         const loadData = async () => {
             await fetchChallenges();
+            await fetchCareerProgress();
         };
         loadData();
     }, [user?.id]);
@@ -316,11 +335,63 @@ export const EmployeeDashboard: React.FC = () => {
                         {/* Left Column: Challenges (3 cols) */}
                         <div className="lg:col-span-3 space-y-8">
 
+                            {/* Growth Snapshot / Dopamine Hit */}
+                            {careerData?.levels?.find(l => l.isCurrent) && (
+                                <div className="theme-bg-secondary border theme-border rounded-lg p-6 relative overflow-hidden group">
+                                    <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none"></div>
+                                    <div className="relative z-10">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="p-2 bg-gradient-to-br from-cyan-500/20 to-purple-500/20 rounded-lg border border-cyan-500/30">
+                                                    <Zap size={20} className="text-cyan-400" />
+                                                </div>
+                                                <div>
+                                                    <h3 className="text-xs font-bold theme-text-muted uppercase tracking-wider">Current Focus</h3>
+                                                    <p className="text-xl font-bold theme-text-primary flex items-center gap-2">
+                                                        {careerData.levels.find(l => l.isCurrent)?.title}
+                                                        <span className="text-xs px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+                                                            Lvl {careerData.levels.find(l => l.isCurrent)?.level}
+                                                        </span>
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-xs theme-text-muted uppercase tracking-wider mb-1">Skill Rating</p>
+                                                <div className="flex items-center gap-2 justify-end">
+                                                    <Star size={16} className="text-yellow-400 fill-yellow-400" />
+                                                    <span className="text-2xl font-bold text-white">{(user as any)?.elo_rating || 1000}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Progress Bar */}
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between text-xs font-medium">
+                                                <span className="theme-text-secondary">Progress to Next Level</span>
+                                                <span className="text-cyan-400">{careerData.levels.find(l => l.isCurrent)?.trainingProgress}%</span>
+                                            </div>
+                                            <div className="h-3 bg-black/40 rounded-full overflow-hidden border border-white/5">
+                                                <div
+                                                    className="h-full bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-600 rounded-full transition-all duration-1000 shadow-[0_0_15px_rgba(6,182,212,0.5)]"
+                                                    style={{ width: `${careerData.levels.find(l => l.isCurrent)?.trainingProgress}%` }}
+                                                />
+                                            </div>
+                                            <div className="flex justify-between items-center text-xs theme-text-muted mt-2">
+                                                <span>{careerData.levels.find(l => l.isCurrent)?.completedTrainings.length} / {careerData.levels.find(l => l.isCurrent)?.requiredTrainings.length} Missions Completed</span>
+                                                <span className="flex items-center gap-1 hover:text-cyan-400 cursor-pointer transition-colors" onClick={() => setActiveTab('career')}>
+                                                    View Career Path <Target size={12} />
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Main Quests */}
                             <div className="theme-bg-secondary border theme-border rounded-lg p-6">
                                 <div className="flex items-center justify-between mb-6">
                                     <h2 className="text-lg font-bold theme-text-primary tracking-wider flex items-center gap-2">
-                                        <span className="text-cyan-600 dark:text-cyan-400">&gt;_</span> CTF CHALLENGE
+                                        <span className="text-cyan-600 dark:text-cyan-400">&gt;_</span> CHALLENGE
                                     </h2>
                                     <button className="px-3 py-1 bg-cyan-100 dark:bg-cyan-900/20 border border-cyan-500/30 text-cyan-600 dark:text-cyan-400 text-xs font-bold rounded hover:bg-cyan-200 dark:hover:bg-cyan-900/40 transition-colors">
                                         VIEW ALL

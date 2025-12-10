@@ -207,12 +207,15 @@ export const login = async (req: Request, res: Response): Promise<void> => {
                 return;
             }
 
+            // Determine role based on job title (simple logic for Hackathon)
+            const role = employee.job_title?.toLowerCase().includes('manager') ? 'manager' : 'employee';
+
             // Generate JWT token
             const token = jwt.sign(
                 {
                     id: employee.id,
                     username: employee.username,
-                    role: 'employee'
+                    role: role
                 },
                 JWT_SECRET,
                 { expiresIn: '24h' }
@@ -226,9 +229,10 @@ export const login = async (req: Request, res: Response): Promise<void> => {
                     id: employee.id,
                     name: employee.name,
                     username: employee.username,
-                    role: 'employee',
+                    role: role as 'employee' | 'manager', // Cast to satisfy type
                     employee_id: employee.employee_id,
                     job_title: employee.job_title,
+                    department: employee.department, // Include department for Manager Dashboard
                     ranking: employee.ranking,
                     win_rate: employee.win_rate,
                     streak: employee.streak
@@ -345,10 +349,10 @@ export const getCurrentUser = async (req: AuthRequest, res: Response): Promise<v
 
         const { id, role } = req.user;
 
-        if (role === 'employee') {
+        if (role !== 'admin') {
             const { data: employee, error } = await supabase
                 .from('employees')
-                .select('id, name, username, employee_id, job_title, ranking, win_rate, streak, skills_profile')
+                .select('id, name, username, employee_id, job_title, department, ranking, win_rate, streak, skills_profile')
                 .eq('id', id)
                 .single();
 
@@ -360,15 +364,18 @@ export const getCurrentUser = async (req: AuthRequest, res: Response): Promise<v
                 return;
             }
 
+            const userRole = employee.job_title?.toLowerCase().includes('manager') ? 'manager' : 'employee';
+
             res.status(200).json({
                 success: true,
                 user: {
                     id: employee.id,
                     name: employee.name,
                     username: employee.username,
-                    role: 'employee',
+                    role: userRole,
                     employee_id: employee.employee_id,
                     job_title: employee.job_title,
+                    department: employee.department,
                     ranking: employee.ranking,
                     win_rate: employee.win_rate,
                     streak: employee.streak,

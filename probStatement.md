@@ -104,12 +104,6 @@ Teams may also generate their own synthetic data to expand scenario coverage.
 - **Analytics & Visualization**
   - Track skill progression over time.
 
-### Technologies participants may use:
-
-- AWS Bedrock (Amazon Titan Text Express - verified working)
-- Supabase PostgreSQL database
-
----
 
 ## 9. Questions & Answers
 
@@ -130,14 +124,7 @@ A5. Yes — the goal is to shift from manual reviews to automated skill assessme
 
 ---
 
-## Technical Infrastructure Status
 
-✅ **Ready for Development:**
-- Database: Supabase PostgreSQL (connected & tested)
-- AI Model: Amazon Titan Text Express (verified working)
-- Backend: Node.js/TypeScript
-- Frontend: React
-- Authentication: AWS SSO 
 
 📁 **Key Resources:**
 - [WORKING_MODELS.md](WORKING_MODELS.md) - List of accessible AI models

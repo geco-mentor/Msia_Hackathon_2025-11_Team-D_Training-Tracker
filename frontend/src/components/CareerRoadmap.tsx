@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle, Clock, Target, Award, Sparkles, BookOpen } from 'lucide-react';
+import { CheckCircle, Clock, Target, Award, Sparkles, BookOpen, Loader } from 'lucide-react';
 
 interface Milestone {
     title: string;
@@ -16,13 +16,15 @@ interface CareerRoadmapProps {
     certifications: string[];
     assessments: string[];
     onGenerateAssessment?: (topic: string) => void;
+    isGenerating?: boolean;
 }
 
 export const CareerRoadmap: React.FC<CareerRoadmapProps> = ({
     roadmap,
     certifications,
     assessments,
-    onGenerateAssessment
+    onGenerateAssessment,
+    isGenerating = false
 }) => {
     return (
         <div className="space-y-6">
@@ -41,8 +43,8 @@ export const CareerRoadmap: React.FC<CareerRoadmapProps> = ({
                         <div key={idx} className="relative pl-10">
                             {/* Timeline dot */}
                             <div className={`absolute left-2 w-5 h-5 rounded-full border-2 flex items-center justify-center ${idx === 0
-                                    ? 'bg-cyan-500 border-cyan-400'
-                                    : 'bg-gray-800 border-gray-600'
+                                ? 'bg-cyan-500 border-cyan-400'
+                                : 'bg-gray-800 border-gray-600'
                                 }`}>
                                 {idx === 0 ? (
                                     <CheckCircle size={12} className="text-white" />
@@ -137,9 +139,20 @@ export const CareerRoadmap: React.FC<CareerRoadmapProps> = ({
                                     {onGenerateAssessment && (
                                         <button
                                             onClick={() => onGenerateAssessment(assessment)}
-                                            className="px-2 py-1 text-xs bg-cyan-500/10 text-cyan-400 rounded hover:bg-cyan-500/20 transition-colors"
+                                            disabled={isGenerating}
+                                            className={`px-2 py-1 text-xs rounded transition-colors flex items-center gap-1 ${isGenerating
+                                                    ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
+                                                    : 'bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20'
+                                                }`}
                                         >
-                                            Take
+                                            {isGenerating ? (
+                                                <>
+                                                    <Loader size={10} className="animate-spin" />
+                                                    Generating...
+                                                </>
+                                            ) : (
+                                                'Take'
+                                            )}
                                         </button>
                                     )}
                                 </li>

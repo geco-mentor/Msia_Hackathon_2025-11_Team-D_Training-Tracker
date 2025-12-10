@@ -61,6 +61,7 @@ const AssessmentUploader: React.FC<AssessmentUploaderProps> = ({ onUploadComplet
     const [departments, setDepartments] = useState<Department[]>([]);
     const [selectedDepartments, setSelectedDepartments] = useState<string[]>([]);
     const [postAssessmentDate, setPostAssessmentDate] = useState<string>('');
+    const [moduleName, setModuleName] = useState<string>('');
 
     // Custom Dropdown State
     const [isDeptDropdownOpen, setIsDeptDropdownOpen] = useState(false);
@@ -105,8 +106,8 @@ const AssessmentUploader: React.FC<AssessmentUploaderProps> = ({ onUploadComplet
     };
 
     const handleUpload = async () => {
-        if (!file || selectedDepartments.length === 0 || !postAssessmentDate) {
-            setError('Please fill in all fields, select at least one department, and upload a file.');
+        if (!file || selectedDepartments.length === 0 || !postAssessmentDate || !moduleName.trim()) {
+            setError('Please fill in all fields (Module Name, Departments, Date) and upload a file.');
             return;
         }
 
@@ -156,7 +157,8 @@ const AssessmentUploader: React.FC<AssessmentUploaderProps> = ({ onUploadComplet
                     key,
                     userId: user.id,
                     departmentIds: selectedDepartments,
-                    postAssessmentDate: new Date(postAssessmentDate).toISOString()
+                    postAssessmentDate: new Date(postAssessmentDate).toISOString(),
+                    moduleName: moduleName.trim()
                 },
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -246,6 +248,21 @@ const AssessmentUploader: React.FC<AssessmentUploaderProps> = ({ onUploadComplet
                         )}
                     </div>
                 )}
+            </div>
+
+            {/* Module Name Input */}
+            <div>
+                <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider flex items-center gap-2">
+                    <FileText className="w-3 h-3" />
+                    Module Name
+                </label>
+                <input
+                    type="text"
+                    value={moduleName}
+                    onChange={(e) => setModuleName(e.target.value)}
+                    placeholder="e.g. Advanced Phishing Defense"
+                    className="w-full theme-bg-tertiary border theme-border rounded px-4 py-3 theme-text-primary focus:outline-none focus:border-cyan-500/50"
+                />
             </div>
 
             {/* Date Selection */}

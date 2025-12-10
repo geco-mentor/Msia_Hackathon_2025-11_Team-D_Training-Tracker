@@ -49,7 +49,7 @@ export const processFile = async (req: Request, res: Response) => {
     try {
         console.log('=== PROCESS FILE START ===');
         console.log('DEBUG: processFile called with body:', JSON.stringify(req.body));
-        const { key, userId, departmentIds, postAssessmentDate } = req.body;
+        const { key, userId, departmentIds, postAssessmentDate, moduleName } = req.body;
 
         if (!key || !userId || !departmentIds || !Array.isArray(departmentIds) || departmentIds.length === 0 || !postAssessmentDate) {
             console.log('DEBUG: Missing required fields');
@@ -89,6 +89,11 @@ export const processFile = async (req: Request, res: Response) => {
         const rubric = await generateRubricsFromText(text, departmentIds);
         console.log('DEBUG: Step 3 COMPLETE - Generated rubrics:', JSON.stringify(rubric, null, 2));
 
+        // Step 3.5: Determine Main Skill
+        console.log('DEBUG: Step 3.5 - Determining main skill...');
+        const mainSkill = await import('../services/awsService').then(m => m.determineMainSkill(text));
+        console.log('DEBUG: Main skill determined:', mainSkill);
+
         // Step 4: Check if userId is an employee (creator_id FK references employees)
         console.log('DEBUG: Step 4 - Checking if userId is an employee...');
         const { data: employeeCheck } = await supabase
@@ -102,14 +107,11 @@ export const processFile = async (req: Request, res: Response) => {
 
         // Step 5: Insert into database
         console.log('DEBUG: Step 5 - Inserting into database...');
-        // Generate unique title from filename: remove timestamp prefix (e.g., "1765289516887-genai" -> "genai")
-        // Then add a short unique suffix to ensure uniqueness
-        const cleanFileName = originalFileName
-            .replace(/^\d+-/, '')  // Remove leading timestamp prefix like "1765289516887-"
-            .replace(/_/g, ' ')    // Replace underscores with spaces
-            .trim();
-        const uniqueSuffix = Date.now().toString(36).slice(-4);  // Short 4-char suffix
-        const title = `${cleanFileName || 'Training Module'} (${uniqueSuffix})`;
+
+        // Use provided Module Name or fallback to filename
+        const title = moduleName && moduleName.trim().length > 0
+            ? moduleName.trim()
+            : `${originalFileName.replace(/^\d+-/, '').replace(/_/g, ' ')} (Auto)`;
 
         const insertData = {
             title: title,
@@ -121,11 +123,11 @@ export const processFile = async (req: Request, res: Response) => {
             creator_id: creatorId,  // null for admin, employee ID for employees
             source_file: key,
             extracted_text_file: extractedTextKey,
-            status: 'published',  // Published immediately so employees can see it
+            status: 'published',
             type: 'text',
             category: 'Training',
-            skill: 'General',
-            department_ids: departmentIds,  // Array of department IDs
+            skill: mainSkill, // Use AI-determined skill
+            department_ids: departmentIds,
             post_assessment_date: postAssessmentDate
         };
         console.log('DEBUG: Insert data:', JSON.stringify(insertData, null, 2));

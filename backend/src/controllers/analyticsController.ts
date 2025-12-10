@@ -241,7 +241,7 @@ export const getAnalyticsOverview = async (req: AuthRequest, res: Response): Pro
                 scenario_id,
                 user_id,
                 completed,
-                scenarios (id, title, category, rubric),
+                scenarios (id, title, category, rubric, skill),
                 employees!inner (department)
             `)
             .eq('completed', true);
@@ -283,8 +283,10 @@ export const getAnalyticsOverview = async (req: AuthRequest, res: Response): Pro
 
         const preVsPostAssessment = Array.from(preVsPostMap.entries())
             .filter(([_, data]) => data.preCount > 0 || data.postCount > 0)
-            .map(([_, data]) => ({
+            .map(([scenarioId, data]) => ({
+                id: scenarioId,
                 curriculum: data.curriculum.length > 15 ? data.curriculum.substring(0, 15) + '...' : data.curriculum,
+                fullTitle: data.curriculum,
                 preScore: data.preCount > 0 ? Math.round(data.preTotal / data.preCount) : 0,
                 postScore: data.postCount > 0 ? Math.round(data.postTotal / data.postCount) : 0
             }))
@@ -345,120 +347,8 @@ export const getAnalyticsOverview = async (req: AuthRequest, res: Response): Pro
             .sort((a, b) => b.improvement - a.improvement)
             .slice(0, 5);
 
-        // 15. Improvement Trend - Monthly average scores
-        const monthlyScoreMap = new Map<string, { total: number; count: number }>();
+        // 15, 16, 17 - Unused metrics removed (Improvement Trend, At-Risk, Active Learners)
 
-        (postAssessmentsData || []).forEach((item: any) => {
-            if (!item.completed) return;
-            // We need created_at from original data
-            const createdAt = (item as any).created_at;
-            if (!createdAt) return;
-
-            const date = new Date(createdAt);
-            const monthKey = date.toLocaleString('default', { month: 'short' });
-            const current = monthlyScoreMap.get(monthKey) || { total: 0, count: 0 };
-            current.total += item.score || 0;
-            current.count += 1;
-            monthlyScoreMap.set(monthKey, current);
-        });
-
-        // Also get created_at from assessments with scores
-        const { data: assessmentTrendData, error: trendError } = await supabase
-            .from('assessments')
-            .select('score, created_at')
-            .eq('completed', true)
-            .gte('created_at', sixMonthsAgo.toISOString());
-
-        if (!trendError && assessmentTrendData) {
-            assessmentTrendData.forEach((item: any) => {
-                const date = new Date(item.created_at);
-                const monthKey = date.toLocaleString('default', { month: 'short' });
-                const current = monthlyScoreMap.get(monthKey) || { total: 0, count: 0 };
-                current.total += item.score || 0;
-                current.count += 1;
-                monthlyScoreMap.set(monthKey, current);
-            });
-        }
-
-        const improvementTrend = Array.from(monthlyScoreMap.entries())
-            .map(([month, data]) => ({
-                month,
-                avgScore: data.count > 0 ? Math.round(data.total / data.count) : 0
-            }));
-
-        // 16. At-Risk Employees - Employees with low scores or declining performance
-        const employeeScoresMap = new Map<string, { name: string; department: string; scores: number[]; id: string }>();
-
-        (employees || []).forEach((emp: any) => {
-            employeeScoresMap.set(emp.id, {
-                id: emp.id,
-                name: emp.name,
-                department: emp.department || 'Unknown',
-                scores: []
-            });
-        });
-
-        (postAssessmentsData || []).forEach((item: any) => {
-            const empData = employeeScoresMap.get(item.user_id);
-            if (empData) {
-                empData.scores.push(item.score || 0);
-            }
-        });
-
-        const atRiskEmployees = Array.from(employeeScoresMap.values())
-            .filter(emp => emp.scores.length > 0)
-            .map(emp => {
-                const avgScore = emp.scores.length > 0
-                    ? Math.round(emp.scores.reduce((a, b) => a + b, 0) / emp.scores.length)
-                    : 0;
-
-                // Check if declining (last score lower than first)
-                const isDecline = emp.scores.length >= 2 && emp.scores[emp.scores.length - 1] < emp.scores[0];
-
-                return {
-                    id: emp.id,
-                    name: emp.name,
-                    department: emp.department,
-                    avgScore,
-                    trend: isDecline ? 'declining' : 'stable'
-                };
-            })
-            .filter(emp => emp.avgScore < 60) // At-risk threshold
-            .sort((a, b) => a.avgScore - b.avgScore)
-            .slice(0, 10);
-
-        // 17. Active Learners (In Training)
-        // Users who have completed pre-assessment but NOT the final assessment for a module
-        const activeLearnersSet = new Set<string>(); // "userId-scenarioId"
-        const completedAssessmentsSet = new Set<string>();
-
-        (postAssessmentsData || []).forEach((item: any) => {
-            completedAssessmentsSet.add(`${item.user_id}-${item.scenario_id}`);
-        });
-
-        const activeLearnersList: any[] = [];
-        (preAssessmentsData || []).forEach((item: any) => {
-            const key = `${item.user_id}-${item.scenario_id}`;
-            // If they did pre-assessment but haven't finished post-assessment, they are "Undergoing Training"
-            if (!completedAssessmentsSet.has(key)) {
-                // To avoid duplicates if multiple pre-assessments (shouldn't happen with unique constraint but safe to check)
-                if (!activeLearnersSet.has(key)) {
-                    activeLearnersSet.add(key);
-                    activeLearnersList.push({
-                        id: item.user_id,
-                        name: `Employee ${item.user_id.substring(0, 4)}`, // Ideally we have name join, check preAssessment select
-                        // preAssessmentsData select doesn't join employees name, only department. 
-                        // We can map from employees list if available or just use ID. 
-                        // Wait, employees list IS available in 'employees' var (line 16).
-                        employeeName: (employees || []).find((e: any) => e.id === item.user_id)?.name || 'Unknown Employee',
-                        department: (item.employees as any)?.department || 'Unknown',
-                        module: item.scenarios?.title || 'Unknown Module',
-                        startedAt: item.created_at, // Pre-assessment time
-                        progress: 50 // Generic "In Progress"
-                    });
-                }
-            }
-        });
 
         // 18. Skill Heatmap (Department x Skill Adoption)
         // Adoption = % of employees in dept who have "Proficient" score (>70) in that skill?
@@ -531,13 +421,7 @@ export const getAnalyticsOverview = async (req: AuthRequest, res: Response): Pro
             : 0;
 
 
-        console.log('Analytics data prepared:', {
-            preVsPostAssessment: preVsPostAssessment.length,
-            skillsGap: skillsGap.length,
-            moduleEffectiveness: moduleEffectiveness.length,
-            improvementTrend: improvementTrend.length,
-            atRiskEmployees: atRiskEmployees.length
-        });
+        console.log('Analytics data prepared: Success');
 
         res.status(200).json({
             success: true,
@@ -557,10 +441,7 @@ export const getAnalyticsOverview = async (req: AuthRequest, res: Response): Pro
                 preVsPostAssessment,
                 skillsGap,
                 moduleEffectiveness,
-                improvementTrend,
-                atRiskEmployees,
                 // New additions for Enhanced Admin Dashboard
-                activeLearners: activeLearnersList.slice(0, 20), // Top 20 active learners
                 skillHeatmap,
                 trainingROI
             }
@@ -571,3 +452,153 @@ export const getAnalyticsOverview = async (req: AuthRequest, res: Response): Pro
         res.status(500).json({ success: false, message: 'Failed to fetch analytics' });
     }
 };
+
+export const getOperativeDetails = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        if (!req.user || req.user.role !== 'admin') {
+            res.status(403).json({ success: false, message: 'Admin access required' });
+            return;
+        }
+
+        const { curriculum } = req.query;
+        if (!curriculum) {
+            res.status(400).json({ success: false, message: 'Curriculum ID required' });
+            return;
+        }
+
+        const { data: preData, error: preError } = await supabase
+            .from('pre_assessments')
+            .select(`
+                user_id,
+                baseline_score,
+                employees (id, name, department)
+            `)
+            .eq('scenario_id', curriculum)
+            .eq('completed', true);
+
+        if (preError) throw preError;
+
+        const { data: postData, error: postError } = await supabase
+            .from('assessments')
+            .select(`
+                user_id,
+                score,
+                employees (id, name, department)
+            `)
+            .eq('scenario_id', curriculum)
+            .eq('completed', true);
+
+        if (postError) throw postError;
+
+        const operativeMap = new Map<string, any>();
+
+        preData?.forEach((item: any) => {
+            const emp = item.employees;
+            if (!emp) return;
+            const current = operativeMap.get(emp.id) || {
+                id: emp.id,
+                name: emp.name,
+                department: emp.department || 'Unknown',
+                preScore: 0,
+                postScore: 0
+            };
+            current.preScore = item.baseline_score;
+            operativeMap.set(emp.id, current);
+        });
+
+        postData?.forEach((item: any) => {
+            const emp = item.employees;
+            if (!emp) return;
+            const current = operativeMap.get(emp.id) || {
+                id: emp.id,
+                name: emp.name,
+                department: emp.department || 'Unknown',
+                preScore: 0,
+                postScore: 0
+            };
+            current.postScore = item.score;
+            operativeMap.set(emp.id, current);
+        });
+
+        const operatives = Array.from(operativeMap.values())
+            .filter(op => op.preScore > 0 || op.postScore > 0);
+
+        res.status(200).json({ success: true, data: operatives });
+
+    } catch (error: any) {
+        console.error('Operative details error:', error);
+        res.status(500).json({ success: false, message: 'Failed to fetch operative details' });
+    }
+
+    export const getCompetencyPredictions = async (req: AuthRequest, res: Response): Promise<void> => {
+        try {
+            const { department } = req.query;
+
+            // Fetch employees
+            let query = supabase
+                .from('employees')
+                .select('id, name, department, win_rate, streak, elo_rating, last_login_at');
+
+            if (department && department !== 'all') {
+                query = query.eq('department', department);
+            }
+
+            const { data: employees, error } = await query;
+
+            if (error) {
+                console.error('Error fetching employees for prediction:', error);
+                res.status(500).json({ success: false, message: error.message });
+                return;
+            }
+
+            const predictions = employees?.map((emp: any) => {
+                let status = 'Stable';
+                let riskFactors = [];
+                let growthFactors = [];
+
+                // Heuristic Logic
+                const winRate = emp.win_rate || 0;
+                const streak = emp.streak || 0;
+                const elo = emp.elo_rating || 1000;
+
+                // 1. Check for At Risk
+                if (winRate < 0.45) riskFactors.push('Low Win Rate');
+                if (streak === 0) riskFactors.push('Inactive Streak');
+
+                if (riskFactors.length > 0) {
+                    status = 'At Risk';
+                }
+
+                // 2. Check for Accelerating (overrides At Risk if conflicting)
+                if (winRate > 0.70) growthFactors.push('High Win Rate');
+                if (streak > 3) growthFactors.push('Consistent Learning');
+                if (elo > 1200) growthFactors.push('Top ELO Tier');
+
+                if (growthFactors.length >= 2) {
+                    status = 'Accelerating';
+                }
+
+                // Projected ELO (Simple Linear Projection)
+                let projectedElo = elo;
+                if (status === 'Accelerating') projectedElo += 30;
+                else if (status === 'At Risk') projectedElo -= 20;
+                else projectedElo += 10;
+
+                return {
+                    id: emp.id,
+                    name: emp.name,
+                    department: emp.department || 'Unknown',
+                    currentElo: elo,
+                    projectedElo,
+                    status,
+                    factors: status === 'Accelerating' ? growthFactors : riskFactors
+                };
+            });
+
+            res.status(200).json({ success: true, data: predictions });
+
+        } catch (error: any) {
+            console.error('Prediction error:', error);
+            res.status(500).json({ success: false, message: 'Failed to generate predictions' });
+        }
+    };

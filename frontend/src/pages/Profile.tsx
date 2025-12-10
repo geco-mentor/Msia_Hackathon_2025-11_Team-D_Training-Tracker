@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer } from 'recharts';
-import { Terminal, Shield, Target, Cpu, Database, Lock, Activity, LogOut, User, Briefcase, CheckCircle, AlertTriangle, Lightbulb, Sparkles, X, Loader, Award, Code, Network, Brain, Ghost } from 'lucide-react';
+import { Terminal, Shield, Target, Cpu, Database, Lock, Activity, LogOut, User, Briefcase, CheckCircle, AlertTriangle, Lightbulb, Sparkles, X, Loader, Award, Code, Network, Brain, Ghost, TrendingUp, Zap } from 'lucide-react';
 import { API_BASE_URL, getRankFromElo } from '../config';
 import { CertificationManager } from '../components/CertificationManager';
 
@@ -259,7 +259,7 @@ export const Profile: React.FC = () => {
 
                             {/* Updated Rank Display */}
                             <div className="flex items-center gap-4 mt-3">
-                                <RankBadge elo={profile?.elo_rating || 1200} />
+                                <RankBadge elo={profile?.elo_rating || 1000} />
                             </div>
                         </div>
                     </div>
@@ -462,32 +462,51 @@ export const Profile: React.FC = () => {
                 </div>
 
                 {/* Performance Stats */}
-                <div className="theme-bg-secondary border border-white/5 rounded-lg p-6">
-                    <h2 className="text-lg font-bold text-amber-400 tracking-wider mb-6">PERFORMANCE STATS</h2>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="p-4 theme-bg-tertiary border border-white/5 rounded">
-                            <p className="text-xs theme-text-secondary uppercase">Win Rate</p>
-                            <p className="text-2xl font-bold text-emerald-400">{profile?.win_rate || 0}%</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="theme-bg-secondary border border-white/5 rounded-lg p-6">
+                        <h2 className="text-lg font-bold text-amber-400 tracking-wider mb-6 flex items-center gap-2">
+                            <TrendingUp size={18} />
+                            PERFORMANCE STATS
+                        </h2>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="p-4 bg-black/40 border border-emerald-500/20 rounded-lg group hover:border-emerald-500/50 transition-colors">
+                                <div className="flex items-center justify-between mb-2">
+                                    <p className="text-xs theme-text-secondary uppercase tracking-wider">Win Rate</p>
+                                    <Activity size={14} className="text-emerald-500" />
+                                </div>
+                                <p className="text-2xl font-bold text-emerald-400">{profile?.win_rate || 0}%</p>
+                            </div>
+                            <div className="p-4 bg-black/40 border border-orange-500/20 rounded-lg group hover:border-orange-500/50 transition-colors">
+                                <div className="flex items-center justify-between mb-2">
+                                    <p className="text-xs theme-text-secondary uppercase tracking-wider">Streak</p>
+                                    <Zap size={14} className="text-orange-500" />
+                                </div>
+                                <p className="text-2xl font-bold text-orange-400">{profile?.streak || 0}</p>
+                            </div>
+                            <div className="p-4 bg-black/40 border border-purple-500/20 rounded-lg group hover:border-purple-500/50 transition-colors">
+                                <div className="flex items-center justify-between mb-2">
+                                    <p className="text-xs theme-text-secondary uppercase tracking-wider">Avg Score</p>
+                                    <Target size={14} className="text-purple-500" />
+                                </div>
+                                <p className="text-2xl font-bold text-purple-400">{profile?.stats.averageScore || 0}%</p>
+                            </div>
+                            <div className="p-4 bg-black/40 border border-cyan-500/20 rounded-lg group hover:border-cyan-500/50 transition-colors">
+                                <div className="flex items-center justify-between mb-2">
+                                    <p className="text-xs theme-text-secondary uppercase tracking-wider">Rank</p>
+                                    <Award size={14} className="text-cyan-500" />
+                                </div>
+                                <p className="text-2xl font-bold text-cyan-400">#{profile?.ranking || '-'}</p>
+                            </div>
                         </div>
-                        <div className="p-4 theme-bg-tertiary border border-white/5 rounded">
-                            <p className="text-xs theme-text-secondary uppercase">Current Streak</p>
-                            <p className="text-2xl font-bold text-orange-400">{profile?.streak || 0}</p>
-                        </div>
-                        <div className="p-4 theme-bg-tertiary border border-white/5 rounded">
-                            <p className="text-xs theme-text-secondary uppercase">Avg. Score</p>
-                            <p className="text-2xl font-bold text-purple-400">{profile?.stats.averageScore || 0}%</p>
-                        </div>
-                        <div className="p-4 theme-bg-tertiary border border-white/5 rounded">
-                            <p className="text-xs theme-text-secondary uppercase">Leaderboard</p>
-                            <p className="text-2xl font-bold text-cyan-400">#{profile?.ranking || '-'}</p>
-                        </div>
+                    </div>
+
+                    {/* Certifications Section Wrapper to align grid */}
+                    <div className="theme-bg-secondary border border-white/5 rounded-lg p-6">
+                        <CertificationManager userId={user?.id} />
                     </div>
                 </div>
 
-                {/* Certifications Section */}
-                <div className="theme-bg-secondary border border-white/5 rounded-lg p-6">
-                    <CertificationManager userId={user?.id} />
-                </div>
+
             </div>
 
 
