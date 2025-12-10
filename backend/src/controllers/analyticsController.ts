@@ -219,7 +219,7 @@ export const getAnalyticsOverview = async (req: AuthRequest, res: Response): Pro
                 scenario_id,
                 user_id,
                 completed,
-                scenarios (id, title, category),
+                scenarios (id, title, category, rubric),
                 employees!inner (department)
             `)
             .eq('completed', true);
@@ -268,15 +268,35 @@ export const getAnalyticsOverview = async (req: AuthRequest, res: Response): Pro
             }))
             .slice(0, 6);
 
-        // 13. Skills Gap Analysis - Average score per skill category
+        // 13. Skills Gap Analysis - Average score per skill from rubric.module
         const skillsGapMap = new Map<string, { total: number; count: number }>();
 
         (postAssessmentsData || []).forEach((item: any) => {
-            const skill = item.scenarios?.category || item.scenarios?.title || 'General';
-            const current = skillsGapMap.get(skill) || { total: 0, count: 0 };
-            current.total += item.score || 0;
-            current.count += 1;
-            skillsGapMap.set(skill, current);
+            const scenarioId = item.scenario_id;
+            const dept = (item.employees as any)?.department;
+
+            // Apply filters (same as Pre vs Post Assessment)
+            if (filterDepartment && filterDepartment !== 'all' && dept !== filterDepartment) return;
+            if (filterCurriculum && filterCurriculum !== 'all' && scenarioId !== filterCurriculum) return;
+
+            // Extract module skills from rubric (AI-generated topic keywords)
+            const rubric = item.scenarios?.rubric;
+            let skills: string[] = [];
+
+            if (rubric?.module && Array.isArray(rubric.module) && rubric.module.length > 0) {
+                skills = rubric.module;
+            } else {
+                // Fallback to title if no module rubrics
+                skills = [item.scenarios?.title || 'General'];
+            }
+
+            // Add the score to each skill category
+            skills.forEach((skill: string) => {
+                const current = skillsGapMap.get(skill) || { total: 0, count: 0 };
+                current.total += item.score || 0;
+                current.count += 1;
+                skillsGapMap.set(skill, current);
+            });
         });
 
         const skillsGap = Array.from(skillsGapMap.entries())

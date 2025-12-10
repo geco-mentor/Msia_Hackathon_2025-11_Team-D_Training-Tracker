@@ -78,7 +78,8 @@ create table if not exists public.scenarios (
   creator_id uuid references public.employees(id) on delete set null,
   source_file text, -- S3 key of the original uploaded file
   extracted_text_file text, -- S3 key of the extracted text file
-  department_id uuid references public.departments(id) on delete set null,
+  department_id uuid references public.departments(id) on delete set null, -- DEPRECATED: Use department_ids instead
+  department_ids uuid[] default '{}', -- Array of department IDs this training is for
   post_assessment_date timestamp with time zone,
   status text default 'draft', -- 'draft', 'published', etc.
   solves int default 0,
@@ -105,6 +106,37 @@ create table if not exists public.goals (
   completed boolean default false,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
+
+-- 7. Departments Table
+create table if not exists public.departments (
+  id uuid primary key default gen_random_uuid(),
+  name text not null unique,
+  rubrics text[] default '{}',  -- Array of department-specific evaluation criteria
+  created_at timestamp with time zone default now()
+);
+
+-- 8. General Rubrics Table (Static generic criteria for all assessments)
+create table if not exists public.general_rubrics (
+  id uuid primary key default gen_random_uuid(),
+  name text not null unique,
+  description text,
+  display_order integer default 0,
+  created_at timestamp with time zone default now()
+);
+
+-- Initial Generic Rubrics Data
+INSERT INTO general_rubrics (name, description, display_order) VALUES
+  ('Communication', 'Ability to clearly express ideas', 1),
+  ('Critical Thinking', 'Ability to analyze and evaluate information', 2),
+  ('Problem Solving', 'Ability to identify and resolve issues', 3)
+ON CONFLICT (name) DO NOTHING;
+
+-- Department Rubrics Data
+UPDATE departments SET rubrics = ARRAY['Sales Strategy', 'Customer Focus', 'Revenue Generation'] WHERE LOWER(name) = 'sales';
+UPDATE departments SET rubrics = ARRAY['Technical Excellence', 'Innovation', 'System Design'] WHERE LOWER(name) = 'engineering';
+UPDATE departments SET rubrics = ARRAY['Financial Analysis', 'Risk Management', 'Compliance'] WHERE LOWER(name) = 'finance';
+UPDATE departments SET rubrics = ARRAY['Employee Relations', 'Policy Knowledge', 'Talent Management'] WHERE LOWER(name) = 'hr';
+UPDATE departments SET rubrics = ARRAY['Brand Awareness', 'Campaign Strategy', 'Market Analysis'] WHERE LOWER(name) = 'marketing';
 
 -- 7. Leaderboard View
 create or replace view public.leaderboard as

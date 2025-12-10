@@ -145,7 +145,7 @@ const AIQuestionBubble: React.FC<{ message: ConversationMessage; accent: string 
 
                 {/* Scenario (if present) */}
                 {message.metadata?.scenario && (
-                    <div className={`p-3 bg-${accent}-900/20 border border-${accent}-500/20 rounded-lg text-sm text-gray-300 relative`}>
+                    <div className={`p-3 bg-${accent}-900/20 border border-${accent}-500/20 rounded-lg text-sm theme-text-secondary relative`}>
                         <div className="absolute top-1 right-2 text-xs text-gray-500 font-mono">SITUATION</div>
                         {message.metadata.scenario}
                     </div>
@@ -153,7 +153,7 @@ const AIQuestionBubble: React.FC<{ message: ConversationMessage; accent: string 
 
                 {/* Question */}
                 <div className={`p-3 bg-${accent}-500/10 border border-${accent}-500/30 rounded-lg rounded-tl-none shadow-lg shadow-${accent}-500/5`}>
-                    <p className="text-sm text-gray-200">❓ {message.content}</p>
+                    <p className="text-sm theme-text-primary">❓ {message.content}</p>
                 </div>
             </div>
         </div>
@@ -176,7 +176,7 @@ const UserAnswerBubble: React.FC<{ message: ConversationMessage }> = ({ message 
 
                 {/* Answer */}
                 <div className="p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg rounded-tr-none shadow-lg shadow-purple-500/5">
-                    <p className="text-sm text-gray-200">{message.content}</p>
+                    <p className="text-sm theme-text-primary">{message.content}</p>
                 </div>
             </div>
 
@@ -233,7 +233,7 @@ const EvaluationCard: React.FC<{ message: ConversationMessage }> = ({ message })
 
                 {/* Feedback */}
                 {feedback && (
-                    <p className="text-xs text-gray-300">{feedback}</p>
+                    <p className="text-xs theme-text-secondary">{feedback}</p>
                 )}
 
                 {/* Stars (for high scores) */}

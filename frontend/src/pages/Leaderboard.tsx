@@ -63,7 +63,7 @@ export const Leaderboard: React.FC = () => {
         if (rank === 1) return 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20';
         if (rank === 2) return 'text-gray-300 bg-gray-300/10 border-gray-300/20';
         if (rank === 3) return 'text-amber-600 bg-amber-600/10 border-amber-600/20';
-        return 'text-gray-400 bg-white/5 border-white/10';
+        return 'text-gray-400 bg-white/5 theme-border';
     };
 
     const getRankIcon = (rank: number) => {
@@ -79,16 +79,16 @@ export const Leaderboard: React.FC = () => {
     );
 
     return (
-        <div className="min-h-screen bg-[#0a0a0a] text-cyan-50 font-mono selection:bg-cyan-500/30">
+        <div className="min-h-screen theme-bg-primary text-cyan-50 font-mono selection:bg-cyan-500/30">
             {/* Top Bar */}
-            <div className="border-b border-white/10 bg-black/50 backdrop-blur-md px-6 py-3 flex justify-between items-center sticky top-0 z-40">
+            <div className="border-b theme-border theme-bg-nav backdrop-blur-md px-6 py-3 flex justify-between items-center sticky top-0 z-40">
                 <div className="flex items-center gap-2 text-sm font-bold tracking-wider text-gray-400">
                     <Trophy size={16} className="text-yellow-500" />
                     <span>GLOBAL RANKINGS</span>
                 </div>
                 <button
                     onClick={() => navigate(-1)}
-                    className="flex items-center gap-2 px-3 py-1 border border-white/10 rounded hover:bg-white/5 transition-colors text-xs text-gray-400"
+                    className="flex items-center gap-2 px-3 py-1 border theme-border rounded hover:bg-white/5 transition-colors text-xs text-gray-400"
                 >
                     <ArrowLeft size={14} /> BACK
                 </button>
@@ -110,7 +110,7 @@ export const Leaderboard: React.FC = () => {
                         placeholder="Search operative or department..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full bg-[#111] border border-white/10 rounded-full py-2 pl-10 pr-4 text-sm text-white focus:border-cyan-500/50 focus:outline-none"
+                        className="w-full theme-bg-secondary border theme-border rounded-full py-2 pl-10 pr-4 text-sm theme-text-primary focus:border-cyan-500/50 focus:outline-none"
                     />
                 </div>
 
@@ -119,10 +119,10 @@ export const Leaderboard: React.FC = () => {
                         <div className="w-10 h-10 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin"></div>
                     </div>
                 ) : (
-                    <div className="bg-[#111] border border-white/10 rounded-xl overflow-hidden shadow-2xl">
+                    <div className="theme-bg-secondary border theme-border rounded-xl overflow-hidden shadow-2xl">
                         <table className="w-full text-left text-sm">
                             <thead>
-                                <tr className="bg-white/5 text-gray-500 uppercase text-xs tracking-wider border-b border-white/10">
+                                <tr className="bg-white/5 text-gray-500 uppercase text-xs tracking-wider border-b theme-border">
                                     <th className="px-6 py-4 font-medium w-24 text-center">Rank</th>
                                     <th className="px-6 py-4 font-medium">Operative</th>
                                     <th className="px-6 py-4 font-medium">Rank Title</th>
@@ -147,11 +147,11 @@ export const Leaderboard: React.FC = () => {
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center text-xs font-bold text-gray-300 border border-white/10">
+                                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center text-xs font-bold text-gray-300 border theme-border">
                                                     {entry.name.charAt(0)}
                                                 </div>
                                                 <div>
-                                                    <div className={`font-bold ${entry.id === user?.id ? 'text-cyan-400' : 'text-gray-200'}`}>
+                                                    <div className={`font-bold ${entry.id === user?.id ? 'text-cyan-400' : 'theme-text-primary'}`}>
                                                         {entry.name}
                                                         {entry.id === user?.id && <span className="ml-2 text-[10px] bg-cyan-500/20 text-cyan-400 px-1.5 py-0.5 rounded">YOU</span>}
                                                     </div>
@@ -171,7 +171,7 @@ export const Leaderboard: React.FC = () => {
                                             {entry.win_rate}%
                                         </td>
                                         <td className="px-6 py-4 text-right">
-                                            <div className="inline-flex items-center gap-2 font-mono font-bold text-lg text-white">
+                                            <div className="inline-flex items-center gap-2 font-mono font-bold text-lg theme-text-primary">
                                                 <Activity size={14} className="text-cyan-500" />
                                                 {entry.elo_rating}
                                             </div>

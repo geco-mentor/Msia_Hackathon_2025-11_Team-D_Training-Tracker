@@ -254,13 +254,13 @@ export const PostAssessmentModal: React.FC<PostAssessmentModalProps> = ({ scenar
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-            <div className="bg-[#0a0a0a] border border-purple-500/30 rounded-lg w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col relative animate-in fade-in zoom-in-95 duration-200 shadow-[0_0_30px_rgba(168,85,247,0.15)]">
+            <div className="theme-bg-primary border border-purple-500/30 rounded-lg w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col relative animate-in fade-in zoom-in-95 duration-200 shadow-[0_0_30px_rgba(168,85,247,0.15)]">
 
                 {/* Header - Gamified */}
-                <div className="p-4 border-b border-purple-500/20 flex justify-between items-start bg-[#0a0a0a] z-10">
+                <div className="p-4 border-b border-purple-500/20 flex justify-between items-start theme-bg-primary z-10">
                     <div className="flex items-center gap-3">
                         <div className="p-2 bg-gradient-to-br from-purple-600 to-pink-600 rounded-lg animate-pulse">
-                            <Trophy className="text-white" size={24} />
+                            <Trophy className="theme-text-primary" size={24} />
                         </div>
                         <div>
                             <h2 className="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">
@@ -282,7 +282,7 @@ export const PostAssessmentModal: React.FC<PostAssessmentModalProps> = ({ scenar
                                 {totalXPEarned} XP
                             </div>
                         )}
-                        <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors">
+                        <button onClick={onClose} className="text-gray-500 hover:theme-text-primary transition-colors">
                             <X size={24} />
                         </button>
                     </div>
@@ -362,13 +362,13 @@ export const PostAssessmentModal: React.FC<PostAssessmentModalProps> = ({ scenar
                                 {currentScenario && (
                                     <div className="p-4 bg-gradient-to-r from-purple-900/30 to-pink-900/30 border border-purple-500/30 rounded-lg relative overflow-hidden">
                                         <div className="absolute top-2 right-2 text-xs text-purple-400/50 font-mono">SITUATION</div>
-                                        <p className="text-gray-200">{currentScenario}</p>
+                                        <p className="theme-text-primary">{currentScenario}</p>
                                     </div>
                                 )}
 
                                 {/* Question */}
-                                <div className="p-4 bg-white/5 border border-white/20 rounded-lg">
-                                    <p className="text-white font-medium text-lg">❓ {currentQuestion}</p>
+                                <div className="p-4 theme-bg-tertiary border theme-border rounded-lg">
+                                    <p className="theme-text-primary font-medium text-lg">❓ {currentQuestion}</p>
                                 </div>
 
                                 {/* Text Input */}
@@ -376,7 +376,7 @@ export const PostAssessmentModal: React.FC<PostAssessmentModalProps> = ({ scenar
                                     value={answer}
                                     onChange={e => setAnswer(e.target.value)}
                                     placeholder="Deploy your response here, Agent..."
-                                    className="w-full p-4 bg-black/50 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 focus:shadow-[0_0_15px_rgba(168,85,247,0.2)] resize-none transition-all"
+                                    className="w-full p-4 theme-bg-tertiary border theme-border rounded-lg theme-text-primary placeholder-gray-500 dark:placeholder-gray-500 focus:outline-none focus:border-purple-500 focus:shadow-[0_0_15px_rgba(168,85,247,0.2)] resize-none transition-all"
                                     rows={3}
                                 />
 
@@ -514,7 +514,7 @@ export const PostAssessmentModal: React.FC<PostAssessmentModalProps> = ({ scenar
                     </div>
 
                     {/* Right Panel - Conversation History */}
-                    <div className="w-80 flex-shrink-0 bg-[#050505] border-l border-purple-500/20 h-full">
+                    <div className="w-80 flex-shrink-0 theme-bg-tertiary border-l border-purple-500/20 h-full">
                         <ConversationPanel
                             messages={conversationMessages}
                             isLoading={loading}

@@ -43,13 +43,13 @@ export const EmployeeDetailsModal: React.FC<EmployeeDetailsModalProps> = ({ isOp
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-[#111] border border-white/10 rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="theme-bg-secondary border border-white/10 rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
                 {/* Header */}
                 <div className="p-6 border-b border-white/10 flex items-start justify-between bg-white/5">
                     <div>
-                        <h2 className="text-2xl font-bold text-white mb-1">{employee.name}</h2>
-                        <div className="flex items-center gap-3 text-sm text-white/60">
-                            <span className="px-2 py-0.5 rounded bg-white/10 border border-white/10 text-white/80">
+                        <h2 className="text-2xl font-bold theme-text-primary mb-1">{employee.name}</h2>
+                        <div className="flex items-center gap-3 text-sm theme-text-primary/60">
+                            <span className="px-2 py-0.5 rounded bg-white/10 border border-white/10 theme-text-primary/80">
                                 {employee.job_title}
                             </span>
                             <span>{employee.department}</span>
@@ -57,7 +57,7 @@ export const EmployeeDetailsModal: React.FC<EmployeeDetailsModalProps> = ({ isOp
                     </div>
                     <button
                         onClick={onClose}
-                        className="p-2 hover:bg-white/10 rounded-lg transition-colors text-white/60 hover:text-white"
+                        className="p-2 hover:bg-white/10 rounded-lg transition-colors theme-text-primary/60 hover:theme-text-primary"
                     >
                         <X size={20} />
                     </button>
@@ -69,30 +69,30 @@ export const EmployeeDetailsModal: React.FC<EmployeeDetailsModalProps> = ({ isOp
                         <div className="bg-black/40 border border-purple-500/20 p-4 rounded-lg">
                             <div className="flex items-center gap-3 mb-2">
                                 <Trophy className="text-purple-400" size={20} />
-                                <span className="text-sm text-white/60">Global Ranking</span>
+                                <span className="text-sm theme-text-primary/60">Global Ranking</span>
                             </div>
-                            <div className="text-2xl font-bold text-white">#{employee.ranking}</div>
+                            <div className="text-2xl font-bold theme-text-primary">#{employee.ranking}</div>
                         </div>
                         <div className="bg-black/40 border border-cyan-500/20 p-4 rounded-lg">
                             <div className="flex items-center gap-3 mb-2">
                                 <Activity className="text-cyan-400" size={20} />
-                                <span className="text-sm text-white/60">Win Rate</span>
+                                <span className="text-sm theme-text-primary/60">Win Rate</span>
                             </div>
-                            <div className="text-2xl font-bold text-white">{employee.win_rate}%</div>
+                            <div className="text-2xl font-bold theme-text-primary">{employee.win_rate}%</div>
                         </div>
                         <div className="bg-black/40 border border-green-500/20 p-4 rounded-lg">
                             <div className="flex items-center gap-3 mb-2">
                                 <Award className="text-green-400" size={20} />
-                                <span className="text-sm text-white/60">Current Streak</span>
+                                <span className="text-sm theme-text-primary/60">Current Streak</span>
                             </div>
-                            <div className="text-2xl font-bold text-white">{employee.streak} Days</div>
+                            <div className="text-2xl font-bold theme-text-primary">{employee.streak} Days</div>
                         </div>
                         <div className="bg-black/40 border border-yellow-500/20 p-4 rounded-lg">
                             <div className="flex items-center gap-3 mb-2">
                                 <TrendingUp className="text-yellow-400" size={20} />
-                                <span className="text-sm text-white/60">Elo Rating</span>
+                                <span className="text-sm theme-text-primary/60">Elo Rating</span>
                             </div>
-                            <div className="text-2xl font-bold text-white">{employee.elo_rating || 1200}</div>
+                            <div className="text-2xl font-bold theme-text-primary">{employee.elo_rating || 1200}</div>
                         </div>
                     </div>
 
@@ -101,7 +101,7 @@ export const EmployeeDetailsModal: React.FC<EmployeeDetailsModalProps> = ({ isOp
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                             {/* Skill Heatmap */}
                             <div className="bg-black/40 border border-white/10 p-6 rounded-lg">
-                                <h3 className="text-sm font-bold text-white mb-6 flex items-center gap-2">
+                                <h3 className="text-sm font-bold theme-text-primary mb-6 flex items-center gap-2">
                                     <Target size={16} className="text-purple-400" />
                                     SKILL_PROFICIENCY_HEATMAP
                                 </h3>
@@ -131,17 +131,17 @@ export const EmployeeDetailsModal: React.FC<EmployeeDetailsModalProps> = ({ isOp
                             {/* Progress Chart */}
                             <div className="bg-black/40 border border-white/10 p-6 rounded-lg">
                                 <div className="flex items-center justify-between mb-6">
-                                    <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                                    <h3 className="text-sm font-bold theme-text-primary flex items-center gap-2">
                                         <TrendingUp size={16} className="text-cyan-400" />
                                         PROGRESSION_TRACKER
                                     </h3>
                                     <div className="flex gap-4 text-xs">
                                         <div>
-                                            <span className="text-white/40 block">PRE-TRAINING</span>
-                                            <span className="text-white font-mono">{employee.analytics.preTrainingAvg}%</span>
+                                            <span className="theme-text-primary/40 block">PRE-TRAINING</span>
+                                            <span className="theme-text-primary font-mono">{employee.analytics.preTrainingAvg}%</span>
                                         </div>
                                         <div>
-                                            <span className="text-white/40 block">CURRENT</span>
+                                            <span className="theme-text-primary/40 block">CURRENT</span>
                                             <span className="text-cyan-400 font-mono">{employee.analytics.currentAvg}%</span>
                                         </div>
                                     </div>
@@ -173,7 +173,7 @@ export const EmployeeDetailsModal: React.FC<EmployeeDetailsModalProps> = ({ isOp
 
                     {/* Recent Activity */}
                     <div>
-                        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                        <h3 className="text-lg font-bold theme-text-primary mb-4 flex items-center gap-2">
                             <Calendar size={18} className="text-cyan-400" />
                             Recent Activity
                         </h3>
@@ -183,10 +183,10 @@ export const EmployeeDetailsModal: React.FC<EmployeeDetailsModalProps> = ({ isOp
                                     <div key={assessment.id} className="bg-white/5 border border-white/10 rounded-lg p-4 hover:border-cyan-500/30 transition-colors">
                                         <div className="flex items-start justify-between mb-2">
                                             <div>
-                                                <h4 className="font-medium text-white mb-1">{assessment.scenario?.title || 'Untitled Challenge'}</h4>
+                                                <h4 className="font-medium theme-text-primary mb-1">{assessment.scenario?.title || 'Untitled Challenge'}</h4>
                                                 <div className="flex items-center gap-2 text-xs">
                                                     <span className="text-cyan-400">{assessment.scenario?.skill}</span>
-                                                    <span className="text-white/40">•</span>
+                                                    <span className="theme-text-primary/40">•</span>
                                                     <span className={`capitalize ${assessment.difficulty === 'Hard' ? 'text-red-400' :
                                                         assessment.difficulty === 'Medium' ? 'text-yellow-400' :
                                                             'text-green-400'

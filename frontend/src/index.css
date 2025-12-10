@@ -3,18 +3,68 @@
 @tailwind utilities;
 
 @layer base {
+  /* Theme CSS Variables */
+  :root {
+    /* Light mode (default) */
+    --bg-primary: #f8fafc;
+    --bg-secondary: #ffffff;
+    --bg-tertiary: #f1f5f9;
+    --bg-nav: rgba(255, 255, 255, 0.8);
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #64748b;
+    --border-primary: #e2e8f0;
+    --border-secondary: #cbd5e1;
+    --accent-cyan: #0891b2;
+    --accent-purple: #7c3aed;
+    --accent-green: #16a34a;
+    --accent-yellow: #ca8a04;
+    --accent-red: #dc2626;
+    --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  }
+
+  .dark {
+    /* Dark mode */
+    --bg-primary: #0a0a0a;
+    --bg-secondary: #111111;
+    --bg-tertiary: #1a1a1a;
+    --bg-nav: rgba(0, 0, 0, 0.8);
+    --text-primary: #ecfeff;
+    --text-secondary: #9ca3af;
+    --text-muted: #6b7280;
+    --border-primary: rgba(255, 255, 255, 0.1);
+    --border-secondary: rgba(255, 255, 255, 0.05);
+    --accent-cyan: #06b6d4;
+    --accent-purple: #a855f7;
+    --accent-green: #22c55e;
+    --accent-yellow: #eab308;
+    --accent-red: #ef4444;
+    --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+  }
+
   html {
     scroll-behavior: smooth;
   }
 
   body {
-    @apply bg-slate-50 text-slate-900 font-sans antialiased;
+    @apply font-sans antialiased;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+  }
+
+  /* Light mode background gradient */
+  :root body {
     background-image:
-      radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
-      radial-gradient(at 100% 0%, rgba(168, 85, 247, 0.15) 0px, transparent 50%),
-      radial-gradient(at 100% 100%, rgba(56, 189, 248, 0.15) 0px, transparent 50%),
-      radial-gradient(at 0% 100%, rgba(236, 72, 153, 0.15) 0px, transparent 50%);
+      radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.08) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, rgba(168, 85, 247, 0.08) 0px, transparent 50%),
+      radial-gradient(at 100% 100%, rgba(56, 189, 248, 0.08) 0px, transparent 50%),
+      radial-gradient(at 0% 100%, rgba(236, 72, 153, 0.08) 0px, transparent 50%);
     background-attachment: fixed;
+  }
+
+  /* Dark mode - no gradient, pure dark */
+  .dark body {
+    background-image: none;
   }
 
   /* Custom Scrollbar */
@@ -28,11 +78,53 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-slate-300 rounded-full hover:bg-slate-400 transition-colors;
+    background-color: var(--text-muted);
+    @apply rounded-full;
+  }
+
+  .dark ::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.2);
   }
 }
 
 @layer components {
+
+  /* Theme-aware utility classes */
+  .theme-bg-primary {
+    background-color: var(--bg-primary);
+  }
+
+  .theme-bg-secondary {
+    background-color: var(--bg-secondary);
+  }
+
+  .theme-bg-tertiary {
+    background-color: var(--bg-tertiary);
+  }
+
+  .theme-bg-nav {
+    background-color: var(--bg-nav);
+  }
+
+  .theme-text-primary {
+    color: var(--text-primary);
+  }
+
+  .theme-text-secondary {
+    color: var(--text-secondary);
+  }
+
+  .theme-text-muted {
+    color: var(--text-muted);
+  }
+
+  .theme-border {
+    border-color: var(--border-primary);
+  }
+
+  .theme-border-secondary {
+    border-color: var(--border-secondary);
+  }
 
   /* Buttons */
   .btn {
@@ -44,11 +136,24 @@
   }
 
   .btn-secondary {
-    @apply btn bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 hover:border-slate-300 shadow-sm focus:ring-slate-200;
+    @apply btn border;
+    background-color: var(--bg-secondary);
+    color: var(--text-secondary);
+    border-color: var(--border-primary);
+  }
+
+  .btn-secondary:hover {
+    background-color: var(--bg-tertiary);
   }
 
   .btn-ghost {
-    @apply btn bg-transparent text-slate-600 hover:bg-slate-100 hover:text-slate-900;
+    @apply btn bg-transparent;
+    color: var(--text-secondary);
+  }
+
+  .btn-ghost:hover {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
   }
 
   /* Inputs */
@@ -57,29 +162,51 @@
   }
 
   .input-label {
-    @apply block text-sm font-medium text-slate-700;
+    @apply block text-sm font-medium;
+    color: var(--text-secondary);
   }
 
   .input-field {
-    @apply w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all duration-200 shadow-sm hover:border-slate-300;
+    @apply w-full px-4 py-2.5 border rounded-xl outline-none transition-all duration-200 shadow-sm;
+    background-color: var(--bg-secondary);
+    border-color: var(--border-primary);
+    color: var(--text-primary);
+  }
+
+  .input-field::placeholder {
+    color: var(--text-muted);
+  }
+
+  .input-field:hover {
+    border-color: var(--border-secondary);
+  }
+
+  .input-field:focus {
+    @apply border-indigo-500 ring-2 ring-indigo-500/20;
   }
 
   /* Cards */
   .card {
-    @apply bg-white rounded-2xl border border-slate-100 shadow-xl shadow-slate-200/50 p-6 transition-all duration-300;
+    @apply rounded-2xl border p-6 transition-all duration-300;
+    background-color: var(--bg-secondary);
+    border-color: var(--border-primary);
+    box-shadow: var(--card-shadow);
   }
 
-  .card-hover {
-    @apply hover:shadow-2xl hover:shadow-slate-200/60 hover:-translate-y-1;
+  .card-hover:hover {
+    transform: translateY(-4px);
   }
 
   /* Glassmorphism */
   .glass {
-    @apply bg-white/70 backdrop-blur-lg border border-white/20 shadow-glass;
+    @apply backdrop-blur-lg border;
+    background-color: var(--bg-nav);
+    border-color: var(--border-primary);
+    box-shadow: var(--card-shadow);
   }
 
   .glass-dark {
-    @apply bg-slate-900/80 backdrop-blur-lg border border-white/10 shadow-glass text-white;
+    @apply bg-slate-900/80 backdrop-blur-lg border border-white/10 text-white;
   }
 
   /* Badges */
@@ -91,8 +218,28 @@
     @apply bg-indigo-50 text-indigo-700 border border-indigo-100;
   }
 
+  .dark .badge-primary {
+    @apply bg-indigo-900/30 text-indigo-400 border-indigo-500/30;
+  }
+
   .badge-success {
     @apply bg-emerald-50 text-emerald-700 border border-emerald-100;
+  }
+
+  .dark .badge-success {
+    @apply bg-emerald-900/30 text-emerald-400 border-emerald-500/30;
+  }
+
+  /* Theme Toggle Button */
+  .theme-toggle {
+    @apply p-2 rounded-lg transition-all duration-200;
+    background-color: var(--bg-tertiary);
+    color: var(--text-secondary);
+  }
+
+  .theme-toggle:hover {
+    background-color: var(--border-primary);
+    color: var(--text-primary);
   }
 }
 

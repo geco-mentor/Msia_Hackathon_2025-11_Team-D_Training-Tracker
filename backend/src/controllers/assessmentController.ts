@@ -49,11 +49,11 @@ export const processFile = async (req: Request, res: Response) => {
     try {
         console.log('=== PROCESS FILE START ===');
         console.log('DEBUG: processFile called with body:', JSON.stringify(req.body));
-        const { key, userId, departmentId, postAssessmentDate } = req.body;
+        const { key, userId, departmentIds, postAssessmentDate } = req.body;
 
-        if (!key || !userId || !departmentId || !postAssessmentDate) {
+        if (!key || !userId || !departmentIds || !Array.isArray(departmentIds) || departmentIds.length === 0 || !postAssessmentDate) {
             console.log('DEBUG: Missing required fields');
-            return res.status(400).json({ message: 'Missing required fields: key, userId, departmentId, postAssessmentDate' });
+            return res.status(400).json({ message: 'Missing required fields: key, userId, departmentIds (array), postAssessmentDate' });
         }
 
         const bucket = process.env.AWS_S3_BUCKET_NAME;
@@ -84,8 +84,9 @@ export const processFile = async (req: Request, res: Response) => {
         console.log('DEBUG: Step 2 COMPLETE - Saved extracted text to S3');
 
         // Step 3: Generate rubrics ONLY (no full scenario)
+        // Pass all department IDs for combined rubrics from all selected departments
         console.log('DEBUG: Step 3 - Generating rubrics with AI...');
-        const rubric = await generateRubricsFromText(text, departmentId);
+        const rubric = await generateRubricsFromText(text, departmentIds);
         console.log('DEBUG: Step 3 COMPLETE - Generated rubrics:', JSON.stringify(rubric, null, 2));
 
         // Step 4: Check if userId is an employee (creator_id FK references employees)
@@ -101,8 +102,17 @@ export const processFile = async (req: Request, res: Response) => {
 
         // Step 5: Insert into database
         console.log('DEBUG: Step 5 - Inserting into database...');
+        // Generate unique title from filename: remove timestamp prefix (e.g., "1765289516887-genai" -> "genai")
+        // Then add a short unique suffix to ensure uniqueness
+        const cleanFileName = originalFileName
+            .replace(/^\d+-/, '')  // Remove leading timestamp prefix like "1765289516887-"
+            .replace(/_/g, ' ')    // Replace underscores with spaces
+            .trim();
+        const uniqueSuffix = Date.now().toString(36).slice(-4);  // Short 4-char suffix
+        const title = `${cleanFileName || 'Training Module'} (${uniqueSuffix})`;
+
         const insertData = {
-            title: originalFileName.replace(/_/g, ' ').replace(/\d+\s*/, '').trim() || 'Training Module',  // Use filename as title
+            title: title,
             scenario_text: text.substring(0, 5000),  // Store first 5000 chars of extracted text
             task: '',
             difficulty: 'Normal',
@@ -115,7 +125,7 @@ export const processFile = async (req: Request, res: Response) => {
             type: 'text',
             category: 'Training',
             skill: 'General',
-            department_id: departmentId,
+            department_ids: departmentIds,  // Array of department IDs
             post_assessment_date: postAssessmentDate
         };
         console.log('DEBUG: Insert data:', JSON.stringify(insertData, null, 2));
@@ -141,7 +151,7 @@ export const processFile = async (req: Request, res: Response) => {
                 rubric: data.rubric,
                 extracted_text_file: data.extracted_text_file,
                 source_file: data.source_file,
-                department_id: data.department_id,
+                department_ids: data.department_ids,
                 post_assessment_date: data.post_assessment_date
             }
         });

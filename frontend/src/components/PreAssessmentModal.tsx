@@ -282,13 +282,13 @@ export const PreAssessmentModal: React.FC<PreAssessmentModalProps> = ({ scenario
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-            <div className="bg-[#0a0a0a] border border-cyan-500/30 rounded-lg w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col relative animate-in fade-in zoom-in-95 duration-200 shadow-[0_0_30px_rgba(6,182,212,0.15)]">
+            <div className="theme-bg-primary border border-cyan-500/30 rounded-lg w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col relative animate-in fade-in zoom-in-95 duration-200 shadow-[0_0_30px_rgba(6,182,212,0.15)]">
 
                 {/* Header - Gamified */}
-                <div className="p-4 border-b border-cyan-500/20 flex justify-between items-start bg-[#0a0a0a] z-10">
+                <div className="p-4 border-b border-cyan-500/20 flex justify-between items-start theme-bg-primary z-10">
                     <div className="flex items-center gap-3">
                         <div className="p-2 bg-gradient-to-br from-purple-600 to-cyan-600 rounded-lg animate-pulse">
-                            <Target className="text-white" size={24} />
+                            <Target className="theme-text-primary" size={24} />
                         </div>
                         <div>
                             <h2 className="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400">
@@ -304,7 +304,7 @@ export const PreAssessmentModal: React.FC<PreAssessmentModalProps> = ({ scenario
                                 {totalXPEarned} XP
                             </div>
                         )}
-                        <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors">
+                        <button onClick={onClose} className="text-gray-500 hover:theme-text-primary transition-colors">
                             <X size={24} />
                         </button>
                     </div>
@@ -347,8 +347,8 @@ export const PreAssessmentModal: React.FC<PreAssessmentModalProps> = ({ scenario
                                 </div>
 
                                 <div>
-                                    <h3 className="text-xl font-bold text-white mb-2">⚡ INTEL CHECK</h3>
-                                    <p className="text-gray-300">
+                                    <h3 className="text-xl font-bold theme-text-primary mb-2">⚡ INTEL CHECK</h3>
+                                    <p className="theme-text-secondary">
                                         Agent, do you have prior knowledge of <span className="text-cyan-400 font-bold">{topicName}</span>?
                                     </p>
                                 </div>
@@ -357,7 +357,7 @@ export const PreAssessmentModal: React.FC<PreAssessmentModalProps> = ({ scenario
                                     <button
                                         onClick={() => submitFamiliarity(false)}
                                         disabled={loading}
-                                        className="px-6 py-3 bg-gray-800 hover:bg-gray-700 border border-gray-600 text-white font-bold rounded-lg transition-all disabled:opacity-50 group"
+                                        className="px-6 py-3 theme-bg-secondary hover:bg-white/10 border theme-border theme-text-primary font-bold rounded-lg transition-all disabled:opacity-50 group"
                                     >
                                         <span className="group-hover:scale-105 inline-block transition-transform">
                                             🆕 New Territory
@@ -366,7 +366,7 @@ export const PreAssessmentModal: React.FC<PreAssessmentModalProps> = ({ scenario
                                     <button
                                         onClick={() => submitFamiliarity(true)}
                                         disabled={loading}
-                                        className="px-6 py-3 bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 text-white font-bold rounded-lg transition-all disabled:opacity-50 group shadow-lg shadow-cyan-500/20"
+                                        className="px-6 py-3 bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 theme-text-primary font-bold rounded-lg transition-all disabled:opacity-50 group shadow-lg shadow-cyan-500/20"
                                     >
                                         <span className="group-hover:scale-105 inline-block transition-transform">
                                             💪 Ready for Action
@@ -376,7 +376,7 @@ export const PreAssessmentModal: React.FC<PreAssessmentModalProps> = ({ scenario
 
                                 {loading && <Loader className="animate-spin mx-auto text-purple-400" size={24} />}
 
-                                <p className="text-xs text-gray-500">This calibrates your starting difficulty level</p>
+                                <p className="text-xs theme-text-secondary">This calibrates your starting difficulty level</p>
                             </div>
                         )}
 
@@ -416,13 +416,13 @@ export const PreAssessmentModal: React.FC<PreAssessmentModalProps> = ({ scenario
                                 {currentScenario && (
                                     <div className="p-4 bg-gradient-to-r from-cyan-900/30 to-purple-900/30 border border-cyan-500/30 rounded-lg relative overflow-hidden">
                                         <div className="absolute top-2 right-2 text-xs text-cyan-400/50 font-mono">SITUATION</div>
-                                        <p className="text-gray-200">{currentScenario}</p>
+                                        <p className="theme-text-primary">{currentScenario}</p>
                                     </div>
                                 )}
 
                                 {/* Question */}
-                                <div className="p-4 bg-white/5 border border-white/20 rounded-lg">
-                                    <p className="text-white font-medium text-lg">❓ {currentQuestion}</p>
+                                <div className="p-4 theme-bg-tertiary border theme-border rounded-lg">
+                                    <p className="theme-text-primary font-medium text-lg">❓ {currentQuestion}</p>
                                 </div>
 
                                 {/* MCQ Options */}
@@ -434,7 +434,7 @@ export const PreAssessmentModal: React.FC<PreAssessmentModalProps> = ({ scenario
                                                 onClick={() => setSelectedOption(idx)}
                                                 className={`w-full p-3 text-left rounded-lg border transition-all ${selectedOption === idx
                                                     ? 'bg-cyan-600/20 border-cyan-500 text-cyan-300 shadow-lg shadow-cyan-500/10'
-                                                    : 'bg-white/5 border-white/10 text-gray-300 hover:border-white/30'
+                                                    : 'bg-white/5 border-white/10 theme-text-secondary hover:border-white/30'
                                                     }`}
                                             >
                                                 <span className="font-bold mr-2">{String.fromCharCode(65 + idx)}.</span>
@@ -450,7 +450,7 @@ export const PreAssessmentModal: React.FC<PreAssessmentModalProps> = ({ scenario
                                         value={answer}
                                         onChange={e => setAnswer(e.target.value)}
                                         placeholder="Deploy your response here, Agent..."
-                                        className="w-full p-4 bg-black/50 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500 focus:shadow-[0_0_15px_rgba(6,182,212,0.2)] resize-none transition-all"
+                                        className="w-full p-4 theme-bg-tertiary border theme-border rounded-lg theme-text-primary placeholder-gray-500 dark:placeholder-gray-500 focus:outline-none focus:border-cyan-500 focus:shadow-[0_0_15px_rgba(6,182,212,0.2)] resize-none transition-all"
                                         rows={3}
                                     />
                                 )}
@@ -505,7 +505,7 @@ export const PreAssessmentModal: React.FC<PreAssessmentModalProps> = ({ scenario
                                     <h3 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400 mb-2">
                                         🎮 MISSION COMPLETE!
                                     </h3>
-                                    <p className="text-gray-300">
+                                    <p className="theme-text-secondary">
                                         Baseline knowledge calibrated, Agent.
                                     </p>
 
@@ -530,7 +530,7 @@ export const PreAssessmentModal: React.FC<PreAssessmentModalProps> = ({ scenario
                                 {/* Personalized Feedback */}
                                 {personalizedFeedback && (
                                     <div className="text-left space-y-4 p-4 bg-white/5 rounded-lg border border-white/10">
-                                        <p className="text-gray-300 text-sm">{personalizedFeedback.summary}</p>
+                                        <p className="theme-text-secondary text-sm">{personalizedFeedback.summary}</p>
 
                                         {personalizedFeedback.strengths?.length > 0 && (
                                             <div>
@@ -574,7 +574,7 @@ export const PreAssessmentModal: React.FC<PreAssessmentModalProps> = ({ scenario
                     </div>
 
                     {/* Right Panel - Conversation History */}
-                    <div className="w-80 flex-shrink-0 bg-[#050505] border-l border-cyan-500/20 h-full">
+                    <div className="w-80 flex-shrink-0 theme-bg-tertiary border-l border-cyan-500/20 h-full">
                         <ConversationPanel
                             messages={conversationMessages}
                             isLoading={loading}

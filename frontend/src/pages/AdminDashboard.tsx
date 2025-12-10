@@ -1,12 +1,14 @@
 import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { useNavigate } from 'react-router-dom';
-import { Users, Activity, Trophy, Search, Filter, LogOut, Shield, Terminal, AlertCircle, Target, Briefcase, TrendingUp, Award, BarChart3 } from 'lucide-react';
+import { Users, Activity, Trophy, Search, Filter, LogOut, Shield, Terminal, AlertCircle, Target, Briefcase, TrendingUp, Award, BarChart3, Sun, Moon } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell, Legend } from 'recharts';
 import { EmployeeDetailsModal } from '../components/EmployeeDetailsModal';
 
 export const AdminDashboard: React.FC = () => {
     const { logout, token } = useAuth();
+    const { toggleTheme, isDark } = useTheme();
     const navigate = useNavigate();
     const [employees, setEmployees] = React.useState<any[]>([]);
     const [analytics, setAnalytics] = React.useState<any>(null);
@@ -70,31 +72,40 @@ export const AdminDashboard: React.FC = () => {
     };
 
     return (
-        <div className="min-h-screen bg-[#0a0a0a] text-cyan-50 font-mono selection:bg-cyan-500/30">
+        <div className="min-h-screen theme-bg-primary theme-text-primary font-mono selection:bg-cyan-500/30 dark:selection:bg-cyan-500/30">
             {/* Top Bar */}
-            <div className="h-14 border-b border-white/10 bg-[#0a0a0a]/80 backdrop-blur-md flex items-center justify-between px-6 sticky top-0 z-50">
+            <div className="h-14 border-b theme-border theme-bg-nav backdrop-blur-md flex items-center justify-between px-6 sticky top-0 z-50">
                 <div className="flex items-center gap-2">
-                    <Shield className="text-purple-500" size={20} />
-                    <span className="font-bold tracking-wider text-purple-500">ADMIN ACCESS</span>
-                    <span className="text-xs text-white/40">|</span>
-                    <span className="text-xs text-white/60">SYSTEM OVERVIEW</span>
+                    <Shield className="text-purple-600 dark:text-purple-500" size={20} />
+                    <span className="font-bold tracking-wider text-purple-600 dark:text-purple-500">ADMIN ACCESS</span>
+                    <span className="text-xs theme-text-muted">|</span>
+                    <span className="text-xs theme-text-secondary">SYSTEM OVERVIEW</span>
                 </div>
                 <div className="flex items-center gap-4">
+                    {/* Theme Toggle */}
+                    <button
+                        onClick={toggleTheme}
+                        className="theme-toggle"
+                        title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+                    >
+                        {isDark ? <Sun size={16} /> : <Moon size={16} />}
+                    </button>
+
                     <button
                         onClick={() => navigate('/leaderboard')}
-                        className="flex items-center gap-2 px-3 py-1 border border-yellow-500/30 text-yellow-500 rounded hover:bg-yellow-500/10 transition-colors text-xs font-mono"
+                        className="flex items-center gap-2 px-3 py-1 border border-yellow-500/30 text-yellow-600 dark:text-yellow-500 rounded hover:bg-yellow-500/10 transition-colors text-xs font-mono"
                     >
                         <Trophy size={12} />
                         RANKINGS
                     </button>
 
-                    <div className="flex items-center gap-2 px-3 py-1 bg-red-500/10 border border-red-500/20 rounded text-xs text-red-400">
+                    <div className="flex items-center gap-2 px-3 py-1 bg-red-100 dark:bg-red-500/10 border border-red-500/20 rounded text-xs text-red-600 dark:text-red-400">
                         <AlertCircle size={12} />
                         <span>LIVE MONITORING</span>
                     </div>
                     <button
                         onClick={handleLogout}
-                        className="ml-2 flex items-center gap-2 px-3 py-1 border border-red-500/30 text-red-400 rounded hover:bg-red-500/10 transition-colors text-xs font-mono"
+                        className="flex items-center gap-2 px-3 py-1 border border-red-500/30 text-red-600 dark:text-red-400 rounded hover:bg-red-500/10 transition-colors text-xs font-mono"
                     >
                         <LogOut size={12} />
                         LOGOUT
@@ -104,12 +115,12 @@ export const AdminDashboard: React.FC = () => {
 
             <div className="max-w-7xl mx-auto p-6 space-y-8 animate-enter">
                 {/* Header Section */}
-                <div className="flex items-end justify-between border-b border-white/10 pb-6">
+                <div className="flex items-end justify-between border-b theme-border pb-6">
                     <div>
-                        <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-cyan-400 mb-2">
+                        <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 dark:from-purple-400 to-cyan-600 dark:to-cyan-400 mb-2">
                             COMMAND CENTER
                         </h1>
-                        <p className="text-white/60 text-sm flex items-center gap-2">
+                        <p className="theme-text-secondary text-sm flex items-center gap-2">
                             <Terminal size={14} />
                             Manage operatives and track system-wide performance.
                         </p>
@@ -117,7 +128,7 @@ export const AdminDashboard: React.FC = () => {
                     <div className="flex gap-3">
                         <button
                             onClick={() => navigate('/admin/create-assessment')}
-                            className="flex items-center gap-2 px-4 py-2 bg-[#111] border border-white/10 hover:border-blue-500/50 text-blue-400 text-sm rounded transition-all"
+                            className="flex items-center gap-2 px-4 py-2 theme-bg-secondary border theme-border hover:border-blue-500/50 text-blue-600 dark:text-blue-400 text-sm rounded transition-all"
                         >
                             <Briefcase size={16} />
                             CREATE_ASSESSMENT
@@ -128,14 +139,14 @@ export const AdminDashboard: React.FC = () => {
                 {/* Analytics Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {/* Card 1: Active Operatives */}
-                    <div className="bg-[#111] border border-purple-500/30 p-6 rounded-lg relative overflow-hidden group">
+                    <div className="theme-bg-secondary border border-purple-500/30 p-6 rounded-lg relative overflow-hidden group">
                         <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                             <Users size={64} />
                         </div>
-                        <p className="text-purple-400 text-xs font-bold tracking-wider mb-1">ACTIVE OPERATIVES</p>
-                        <h3 className="text-4xl font-bold text-white mb-4">{employees.length}</h3>
-                        <div className="flex items-center text-xs text-white/60">
-                            <span className="text-green-400 flex items-center gap-1 bg-green-400/10 px-1.5 py-0.5 rounded mr-2">
+                        <p className="text-purple-600 dark:text-purple-400 text-xs font-bold tracking-wider mb-1">ACTIVE OPERATIVES</p>
+                        <h3 className="text-4xl font-bold theme-text-primary mb-4">{employees.length}</h3>
+                        <div className="flex items-center text-xs theme-text-secondary">
+                            <span className="text-green-600 dark:text-green-400 flex items-center gap-1 bg-green-100 dark:bg-green-400/10 px-1.5 py-0.5 rounded mr-2">
                                 <Activity size={10} /> +12%
                             </span>
                             vs last cycle
@@ -143,14 +154,14 @@ export const AdminDashboard: React.FC = () => {
                     </div>
 
                     {/* Card 2: Avg Completion Rate */}
-                    <div className="bg-[#111] border border-cyan-500/30 p-6 rounded-lg relative overflow-hidden group">
+                    <div className="theme-bg-secondary border border-cyan-500/30 p-6 rounded-lg relative overflow-hidden group">
                         <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                             <Target size={64} />
                         </div>
-                        <p className="text-cyan-400 text-xs font-bold tracking-wider mb-1">AVG. COMPLETION RATE</p>
-                        <h3 className="text-4xl font-bold text-white mb-4">{analytics?.avgCompletionRate || 0}%</h3>
-                        <div className="flex items-center text-xs text-white/60">
-                            <span className="text-green-400 flex items-center gap-1 bg-green-400/10 px-1.5 py-0.5 rounded mr-2">
+                        <p className="text-cyan-600 dark:text-cyan-400 text-xs font-bold tracking-wider mb-1">AVG. COMPLETION RATE</p>
+                        <h3 className="text-4xl font-bold theme-text-primary mb-4">{analytics?.avgCompletionRate || 0}%</h3>
+                        <div className="flex items-center text-xs theme-text-secondary">
+                            <span className="text-green-600 dark:text-green-400 flex items-center gap-1 bg-green-100 dark:bg-green-400/10 px-1.5 py-0.5 rounded mr-2">
                                 <Activity size={10} /> +5%
                             </span>
                             vs last cycle
@@ -158,14 +169,14 @@ export const AdminDashboard: React.FC = () => {
                     </div>
 
                     {/* Card 3: Total Assessments */}
-                    <div className="bg-[#111] border border-green-500/30 p-6 rounded-lg relative overflow-hidden group">
+                    <div className="theme-bg-secondary border border-green-500/30 p-6 rounded-lg relative overflow-hidden group">
                         <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                             <Trophy size={64} />
                         </div>
-                        <p className="text-green-400 text-xs font-bold tracking-wider mb-1">TOTAL ASSESSMENTS</p>
-                        <h3 className="text-4xl font-bold text-white mb-4">{analytics?.totalAssessments || 0}</h3>
-                        <div className="flex items-center text-xs text-white/60">
-                            <span className="text-green-400 flex items-center gap-1 bg-green-400/10 px-1.5 py-0.5 rounded mr-2">
+                        <p className="text-green-600 dark:text-green-400 text-xs font-bold tracking-wider mb-1">TOTAL ASSESSMENTS</p>
+                        <h3 className="text-4xl font-bold theme-text-primary mb-4">{analytics?.totalAssessments || 0}</h3>
+                        <div className="flex items-center text-xs theme-text-secondary">
+                            <span className="text-green-600 dark:text-green-400 flex items-center gap-1 bg-green-100 dark:bg-green-400/10 px-1.5 py-0.5 rounded mr-2">
                                 <Activity size={10} /> +8%
                             </span>
                             vs last cycle
@@ -176,8 +187,8 @@ export const AdminDashboard: React.FC = () => {
                 {/* Charts Section */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* Activity Timeline */}
-                    <div className="bg-[#111] border border-white/10 p-6 rounded-lg">
-                        <h3 className="text-sm font-bold text-white mb-6 flex items-center gap-2">
+                    <div className="theme-bg-secondary border theme-border p-6 rounded-lg">
+                        <h3 className="text-sm font-bold theme-text-primary mb-6 flex items-center gap-2">
                             <Activity size={16} className="text-cyan-400" />
                             ACTIVITY_TIMELINE
                         </h3>
@@ -204,9 +215,9 @@ export const AdminDashboard: React.FC = () => {
                     </div>
 
                     {/* Pre vs Post Assessment */}
-                    <div className="bg-[#111] border border-white/10 p-6 rounded-lg">
+                    <div className="theme-bg-secondary border theme-border p-6 rounded-lg">
                         <div className="mb-4">
-                            <h3 className="text-sm font-bold text-white flex items-center gap-2 mb-3">
+                            <h3 className="text-sm font-bold theme-text-primary flex items-center gap-2 mb-3">
                                 <Target size={16} className="text-purple-400" />
                                 PRE_VS_POST_ASSESSMENT
                             </h3>
@@ -215,7 +226,7 @@ export const AdminDashboard: React.FC = () => {
                                 <select
                                     value={selectedDepartment}
                                     onChange={(e) => setSelectedDepartment(e.target.value)}
-                                    className="bg-black/50 border border-white/10 rounded px-3 py-1.5 text-xs text-white focus:outline-none focus:border-purple-500/50 min-w-[140px]"
+                                    className="bg-black/50 border theme-border rounded px-3 py-1.5 text-xs theme-text-primary focus:outline-none focus:border-purple-500/50 min-w-[140px]"
                                 >
                                     <option value="all">All Departments</option>
                                     {(analytics?.departments || []).map((dept: any) => (
@@ -226,7 +237,7 @@ export const AdminDashboard: React.FC = () => {
                                 <select
                                     value={selectedCurriculum}
                                     onChange={(e) => setSelectedCurriculum(e.target.value)}
-                                    className="bg-black/50 border border-white/10 rounded px-3 py-1.5 text-xs text-white focus:outline-none focus:border-purple-500/50 min-w-[140px]"
+                                    className="bg-black/50 border theme-border rounded px-3 py-1.5 text-xs theme-text-primary focus:outline-none focus:border-purple-500/50 min-w-[140px]"
                                 >
                                     <option value="all">All Curriculums</option>
                                     {(analytics?.curriculums || []).map((curr: any) => (
@@ -260,7 +271,7 @@ export const AdminDashboard: React.FC = () => {
                                     </BarChart>
                                 </ResponsiveContainer>
                             ) : (
-                                <div className="h-full flex items-center justify-center text-white/40 text-sm">
+                                <div className="h-full flex items-center justify-center theme-text-primary/40 text-sm">
                                     No assessment data available
                                 </div>
                             )}
@@ -271,8 +282,8 @@ export const AdminDashboard: React.FC = () => {
                 {/* Second Row of Charts */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* Department Performance */}
-                    <div className="bg-[#111] border border-white/10 p-6 rounded-lg">
-                        <h3 className="text-sm font-bold text-white mb-6 flex items-center gap-2">
+                    <div className="theme-bg-secondary border theme-border p-6 rounded-lg">
+                        <h3 className="text-sm font-bold theme-text-primary mb-6 flex items-center gap-2">
                             <BarChart3 size={16} className="text-green-400" />
                             DEPARTMENT_PERFORMANCE
                         </h3>
@@ -294,8 +305,8 @@ export const AdminDashboard: React.FC = () => {
                     </div>
 
                     {/* Skills Gap Analysis */}
-                    <div className="bg-[#111] border border-white/10 p-6 rounded-lg">
-                        <h3 className="text-sm font-bold text-white mb-6 flex items-center gap-2">
+                    <div className="theme-bg-secondary border theme-border p-6 rounded-lg">
+                        <h3 className="text-sm font-bold theme-text-primary mb-6 flex items-center gap-2">
                             <Target size={16} className="text-orange-400" />
                             SKILLS_GAP_ANALYSIS
                         </h3>
@@ -331,7 +342,7 @@ export const AdminDashboard: React.FC = () => {
                                     </BarChart>
                                 </ResponsiveContainer>
                             ) : (
-                                <div className="h-full flex items-center justify-center text-white/40 text-sm">
+                                <div className="h-full flex items-center justify-center theme-text-primary/40 text-sm">
                                     No skills data available
                                 </div>
                             )}
@@ -339,8 +350,8 @@ export const AdminDashboard: React.FC = () => {
                     </div>
 
                     {/* Module Effectiveness */}
-                    <div className="bg-[#111] border border-white/10 p-6 rounded-lg">
-                        <h3 className="text-sm font-bold text-white mb-6 flex items-center gap-2">
+                    <div className="theme-bg-secondary border theme-border p-6 rounded-lg">
+                        <h3 className="text-sm font-bold theme-text-primary mb-6 flex items-center gap-2">
                             <TrendingUp size={16} className="text-blue-400" />
                             MODULE_EFFECTIVENESS
                         </h3>
@@ -371,7 +382,7 @@ export const AdminDashboard: React.FC = () => {
                                     </BarChart>
                                 </ResponsiveContainer>
                             ) : (
-                                <div className="h-full flex items-center justify-center text-white/40 text-sm">
+                                <div className="h-full flex items-center justify-center theme-text-primary/40 text-sm">
                                     No module effectiveness data
                                 </div>
                             )}
@@ -382,8 +393,8 @@ export const AdminDashboard: React.FC = () => {
                 {/* Third Row: Improvement Trend + At-Risk Employees */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* Improvement Trend */}
-                    <div className="bg-[#111] border border-white/10 p-6 rounded-lg">
-                        <h3 className="text-sm font-bold text-white mb-6 flex items-center gap-2">
+                    <div className="theme-bg-secondary border theme-border p-6 rounded-lg">
+                        <h3 className="text-sm font-bold theme-text-primary mb-6 flex items-center gap-2">
                             <TrendingUp size={16} className="text-cyan-400" />
                             IMPROVEMENT_TREND
                         </h3>
@@ -409,7 +420,7 @@ export const AdminDashboard: React.FC = () => {
                                     </AreaChart>
                                 </ResponsiveContainer>
                             ) : (
-                                <div className="h-full flex items-center justify-center text-white/40 text-sm">
+                                <div className="h-full flex items-center justify-center theme-text-primary/40 text-sm">
                                     No trend data available
                                 </div>
                             )}
@@ -417,8 +428,8 @@ export const AdminDashboard: React.FC = () => {
                     </div>
 
                     {/* At-Risk Employees */}
-                    <div className="bg-[#111] border border-red-500/30 p-6 rounded-lg">
-                        <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
+                    <div className="theme-bg-secondary border border-red-500/30 p-6 rounded-lg">
+                        <h3 className="text-sm font-bold theme-text-primary mb-4 flex items-center gap-2">
                             <AlertCircle size={16} className="text-red-400" />
                             AT_RISK_EMPLOYEES
                             {(analytics?.atRiskEmployees?.length || 0) > 0 && (
@@ -435,11 +446,11 @@ export const AdminDashboard: React.FC = () => {
                                         className="flex items-center justify-between p-3 bg-black/30 border border-white/5 rounded hover:border-red-500/30 transition-colors"
                                     >
                                         <div>
-                                            <p className="text-white font-medium text-sm">{emp.name}</p>
-                                            <p className="text-white/40 text-xs">{emp.department}</p>
+                                            <p className="theme-text-primary font-medium text-sm">{emp.name}</p>
+                                            <p className="theme-text-primary/40 text-xs">{emp.department}</p>
                                         </div>
                                         <div className="flex items-center gap-3">
-                                            <span className={`text-xs px-2 py-0.5 rounded ${emp.trend === 'declining' ? 'bg-red-500/20 text-red-400' : 'bg-white/10 text-white/60'
+                                            <span className={`text-xs px-2 py-0.5 rounded ${emp.trend === 'declining' ? 'bg-red-500/20 text-red-400' : 'bg-white/10 theme-text-primary/60'
                                                 }`}>
                                                 {emp.trend === 'declining' ? '↓ Declining' : 'Low Score'}
                                             </span>
@@ -460,9 +471,9 @@ export const AdminDashboard: React.FC = () => {
                 </div>
 
                 {/* Top Performers Section */}
-                <div className="bg-[#111] border border-white/10 rounded-lg overflow-hidden">
-                    <div className="p-4 border-b border-white/10 bg-white/5">
-                        <h2 className="text-sm font-bold text-white flex items-center gap-2">
+                <div className="theme-bg-secondary border theme-border rounded-lg overflow-hidden">
+                    <div className="p-4 border-b theme-border bg-white/5">
+                        <h2 className="text-sm font-bold theme-text-primary flex items-center gap-2">
                             <Award size={16} className="text-yellow-400" />
                             TOP_PERFORMERS
                         </h2>
@@ -475,22 +486,22 @@ export const AdminDashboard: React.FC = () => {
                                     className={`p-4 rounded-lg border transition-all hover:scale-105 ${index === 0 ? 'bg-yellow-500/10 border-yellow-500/30' :
                                         index === 1 ? 'bg-gray-300/10 border-gray-300/30' :
                                             index === 2 ? 'bg-orange-500/10 border-orange-500/30' :
-                                                'bg-white/5 border-white/10'
+                                                'bg-white/5 theme-border'
                                         }`}
                                 >
                                     <div className="flex items-center gap-3 mb-2">
                                         <span className={`text-2xl font-bold ${index === 0 ? 'text-yellow-400' :
                                             index === 1 ? 'text-gray-300' :
                                                 index === 2 ? 'text-orange-400' :
-                                                    'text-white/60'
+                                                    'theme-text-primary/60'
                                             }`}>#{index + 1}</span>
                                         <div>
-                                            <p className="font-bold text-white truncate">{performer.name}</p>
-                                            <p className="text-xs text-white/40">{performer.department}</p>
+                                            <p className="font-bold theme-text-primary truncate">{performer.name}</p>
+                                            <p className="text-xs theme-text-primary/40">{performer.department}</p>
                                         </div>
                                     </div>
                                     <div className="flex justify-between items-center text-xs">
-                                        <span className="text-white/60">Points</span>
+                                        <span className="theme-text-primary/60">Points</span>
                                         <span className="text-cyan-400 font-bold">{performer.total_points}</span>
                                     </div>
                                 </div>
@@ -500,29 +511,29 @@ export const AdminDashboard: React.FC = () => {
                 </div>
 
                 {/* Users Table Section */}
-                <div className="bg-[#111] border border-white/10 rounded-lg overflow-hidden">
-                    <div className="p-4 border-b border-white/10 flex items-center justify-between bg-white/5">
-                        <h2 className="text-sm font-bold text-white flex items-center gap-2">
+                <div className="theme-bg-secondary border theme-border rounded-lg overflow-hidden">
+                    <div className="p-4 border-b theme-border flex items-center justify-between bg-white/5">
+                        <h2 className="text-sm font-bold theme-text-primary flex items-center gap-2">
                             <Activity size={16} className="text-cyan-400" />
                             OPERATIVE_PERFORMANCE_LOG
                         </h2>
                         <div className="flex gap-2">
                             <div className="relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" size={14} />
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 theme-text-primary/40" size={14} />
                                 <input
                                     type="text"
                                     placeholder="SEARCH_ID..."
-                                    className="pl-9 pr-4 py-1.5 bg-black/50 border border-white/10 rounded text-xs text-white focus:outline-none focus:border-cyan-500/50 w-64 placeholder:text-white/20"
+                                    className="pl-9 pr-4 py-1.5 bg-black/50 border theme-border rounded text-xs theme-text-primary focus:outline-none focus:border-cyan-500/50 w-64 placeholder:theme-text-primary/20"
                                 />
                             </div>
-                            <button className="p-1.5 border border-white/10 rounded hover:bg-white/5 text-white/60">
+                            <button className="p-1.5 border theme-border rounded hover:bg-white/5 theme-text-primary/60">
                                 <Filter size={14} />
                             </button>
                         </div>
                     </div>
                     <div className="overflow-x-auto">
                         <table className="w-full text-left text-xs">
-                            <thead className="bg-black/40 text-white/40 uppercase font-mono">
+                            <thead className="bg-black/40 theme-text-primary/40 uppercase font-mono">
                                 <tr>
                                     <th className="px-6 py-3 font-medium">Operative</th>
                                     <th className="px-6 py-3 font-medium">Role</th>
@@ -535,7 +546,7 @@ export const AdminDashboard: React.FC = () => {
                             <tbody className="divide-y divide-white/5">
                                 {employees.map((emp) => (
                                     <tr key={emp.id} className="hover:bg-white/5 transition-colors group">
-                                        <td className="px-6 py-4 font-medium text-white group-hover:text-cyan-400 transition-colors">
+                                        <td className="px-6 py-4 font-medium theme-text-primary group-hover:text-cyan-400 transition-colors">
                                             {emp.name}
                                         </td>
                                         <td className="px-6 py-4 text-white/60">{emp.role}</td>

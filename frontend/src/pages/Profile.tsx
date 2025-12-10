@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer } from 'recharts';
-import { Terminal, Shield, Target, Cpu, MessageSquare, Database, Lock, Activity, LogOut, User, Briefcase, CheckCircle, AlertTriangle, Lightbulb, Sparkles, X, Loader, Award, Code, Network, Brain, Ghost } from 'lucide-react';
+import { Terminal, Shield, Target, Cpu, Database, Lock, Activity, LogOut, User, Briefcase, CheckCircle, AlertTriangle, Lightbulb, Sparkles, X, Loader, Award, Code, Network, Brain, Ghost } from 'lucide-react';
 import { API_BASE_URL, getRankFromElo } from '../config';
 
 interface SkillData {
@@ -87,7 +87,7 @@ const RankBadge = ({ elo }: { elo: number }) => {
                 <span className={`text-xs font-bold uppercase tracking-wider ${rank.color}`}>
                     {rank.title}
                 </span>
-                <span className="text-[10px] text-white/60 font-mono">
+                <span className="text-[10px] theme-text-primary/60 font-mono">
                     {elo} ELO
                 </span>
             </div>
@@ -180,7 +180,7 @@ export const Profile: React.FC = () => {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-[#0a0a0a] text-cyan-50 font-mono flex items-center justify-center">
+            <div className="min-h-screen theme-bg-primary text-cyan-50 font-mono flex items-center justify-center">
                 <div className="text-center">
                     <div className="w-16 h-16 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
                     <p className="text-gray-400">Loading profile...</p>
@@ -190,14 +190,14 @@ export const Profile: React.FC = () => {
     }
 
     return (
-        <div className="min-h-screen bg-[#0a0a0a] text-cyan-50 font-mono selection:bg-cyan-500/30">
+        <div className="min-h-screen theme-bg-primary text-cyan-50 font-mono selection:bg-cyan-500/30">
             {/* Top Navigation Bar Mimic */}
-            <div className="border-b border-white/10 bg-black/50 backdrop-blur-md px-6 py-3 flex justify-between items-center sticky top-0 z-50">
-                <div className="flex items-center gap-2 text-sm font-bold tracking-wider text-gray-400">
+            <div className="border-b theme-border theme-bg-nav backdrop-blur-md px-6 py-3 flex justify-between items-center sticky top-0 z-50">
+                <div className="flex items-center gap-2 text-sm font-bold tracking-wider theme-text-secondary">
                     <Terminal size={16} />
                     <span>GenAI CTF Academy</span>
                 </div>
-                <div className="flex items-center gap-4 text-xs text-gray-500">
+                <div className="flex items-center gap-4 text-xs theme-text-secondary">
                     <div className="flex items-center gap-2">
                         <Cpu size={14} />
                         <span>DEVICE_CONNECTED</span>
@@ -223,10 +223,10 @@ export const Profile: React.FC = () => {
                 {/* Header Section */}
                 <div className="space-y-2">
                     <div className="flex items-center gap-3">
-                        <h1 className="text-2xl font-bold tracking-widest text-white">OPERATIVE STATUS:</h1>
+                        <h1 className="text-2xl font-bold tracking-widest theme-text-primary">OPERATIVE STATUS:</h1>
                         <span className="text-2xl font-bold text-green-500 animate-pulse">ACTIVE</span>
                     </div>
-                    <p className="text-gray-400 max-w-2xl">
+                    <p className="theme-text-secondary max-w-2xl">
                         Welcome to the GenAI CTF Academy, {profile?.name || user?.name || 'Operative'}. Select a module to begin training.
                     </p>
                 </div>
@@ -238,14 +238,14 @@ export const Profile: React.FC = () => {
                 )}
 
                 {/* Profile Info Card */}
-                <div className="bg-[#111] border border-white/5 rounded-lg p-6">
+                <div className="theme-bg-secondary border border-white/5 rounded-lg p-6">
                     <div className="flex items-start gap-6">
                         <div className="w-20 h-20 rounded-full bg-gradient-to-br from-cyan-500 to-purple-600 flex items-center justify-center text-3xl font-bold">
                             {(profile?.name || user?.name || 'U').charAt(0).toUpperCase()}
                         </div>
                         <div className="flex-1">
-                            <h2 className="text-xl font-bold text-white">{profile?.name || user?.name}</h2>
-                            <div className="flex items-center gap-4 mt-2 text-sm text-gray-400">
+                            <h2 className="text-xl font-bold theme-text-primary">{profile?.name || user?.name}</h2>
+                            <div className="flex items-center gap-4 mt-2 text-sm theme-text-secondary">
                                 <div className="flex items-center gap-1">
                                     <Briefcase size={14} />
                                     <span>{profile?.job_title || 'Employee'}</span>
@@ -267,46 +267,46 @@ export const Profile: React.FC = () => {
                 {/* Stats Row */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                     {/* Total Score */}
-                    <div className="bg-[#111] border border-white/5 rounded-lg p-6 relative overflow-hidden group hover:border-cyan-500/30 transition-colors">
+                    <div className="theme-bg-secondary border border-white/5 rounded-lg p-6 relative overflow-hidden group hover:border-cyan-500/30 transition-colors">
                         <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                             <Target size={64} />
                         </div>
-                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Total Score</p>
-                        <p className="text-4xl font-bold text-white font-mono">{profile?.stats.totalScore || 0}</p>
+                        <p className="text-xs font-bold theme-text-secondary uppercase tracking-wider mb-1">Total Score</p>
+                        <p className="text-4xl font-bold theme-text-primary font-mono">{profile?.stats.totalScore || 0}</p>
                     </div>
 
                     {/* Missions Complete */}
-                    <div className="bg-[#111] border border-white/5 rounded-lg p-6 relative overflow-hidden group hover:border-green-500/30 transition-colors">
+                    <div className="theme-bg-secondary border border-white/5 rounded-lg p-6 relative overflow-hidden group hover:border-green-500/30 transition-colors">
                         <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                             <Shield size={64} />
                         </div>
-                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Missions Complete</p>
-                        <p className="text-4xl font-bold text-white font-mono">{profile?.stats.completedMissions || 0}</p>
+                        <p className="text-xs font-bold theme-text-secondary uppercase tracking-wider mb-1">Missions Complete</p>
+                        <p className="text-4xl font-bold theme-text-primary font-mono">{profile?.stats.completedMissions || 0}</p>
                     </div>
 
                     {/* Total Assessments */}
-                    <div className="bg-[#111] border border-white/5 rounded-lg p-6 relative overflow-hidden group hover:border-blue-500/30 transition-colors">
+                    <div className="theme-bg-secondary border border-white/5 rounded-lg p-6 relative overflow-hidden group hover:border-blue-500/30 transition-colors">
                         <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                             <Activity size={64} />
                         </div>
-                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Total Assessed</p>
-                        <p className="text-4xl font-bold text-white font-mono">{profile?.stats.totalAssessments || 0}</p>
+                        <p className="text-xs font-bold theme-text-secondary uppercase tracking-wider mb-1">Total Assessed</p>
+                        <p className="text-4xl font-bold theme-text-primary font-mono">{profile?.stats.totalAssessments || 0}</p>
                     </div>
 
                     {/* Rank */}
-                    <div className="bg-[#111] border border-white/5 rounded-lg p-6 relative overflow-hidden group hover:border-purple-500/30 transition-colors">
+                    <div className="theme-bg-secondary border border-white/5 rounded-lg p-6 relative overflow-hidden group hover:border-purple-500/30 transition-colors">
                         <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                             <Lock size={64} />
                         </div>
-                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Rank</p>
-                        <p className="text-4xl font-bold text-white font-mono">{profile?.rankTitle || 'RECRUIT'}</p>
+                        <p className="text-xs font-bold theme-text-secondary uppercase tracking-wider mb-1">Rank</p>
+                        <p className="text-4xl font-bold theme-text-primary font-mono">{profile?.rankTitle || 'RECRUIT'}</p>
                     </div>
                 </div>
 
                 {/* Assessment Feedback Section */}
                 {profile?.assessmentFeedback && (profile.assessmentFeedback.strengths.length > 0 || profile.assessmentFeedback.weaknesses.length > 0 || profile.assessmentFeedback.recommendations.length > 0) && (
-                    <div className="bg-[#111] border border-white/5 rounded-lg p-6">
-                        <h2 className="text-lg font-bold text-white tracking-wider mb-6 flex items-center gap-2">
+                    <div className="theme-bg-secondary border border-white/5 rounded-lg p-6">
+                        <h2 className="text-lg font-bold theme-text-primary tracking-wider mb-6 flex items-center gap-2">
                             <Target size={18} className="text-cyan-400" />
                             ASSESSMENT FEEDBACK
                         </h2>
@@ -384,7 +384,7 @@ export const Profile: React.FC = () => {
                 {/* Main Content Grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* Skill Matrix */}
-                    <div className="bg-[#111] border border-white/5 rounded-lg p-6">
+                    <div className="theme-bg-secondary border border-white/5 rounded-lg p-6">
                         <div className="flex items-center justify-between mb-6">
                             <h2 className="text-lg font-bold text-cyan-400 tracking-wider flex items-center gap-2">
                                 <Activity size={18} />
@@ -416,7 +416,7 @@ export const Profile: React.FC = () => {
                     </div>
 
                     {/* Available Modules */}
-                    <div className="bg-[#111] border border-white/5 rounded-lg p-6">
+                    <div className="theme-bg-secondary border border-white/5 rounded-lg p-6">
                         <div className="flex items-center justify-between mb-6">
                             <h2 className="text-lg font-bold text-green-400 tracking-wider flex items-center gap-2">
                                 <Database size={18} />
@@ -429,7 +429,7 @@ export const Profile: React.FC = () => {
                                     <div key={idx} className="bg-black/40 border border-white/5 p-4 rounded flex items-center justify-between hover:bg-white/5 transition-colors group">
                                         <div className="space-y-2 flex-1 mr-4">
                                             <div className="flex justify-between text-sm">
-                                                <span className="font-bold text-gray-200 group-hover:text-white transition-colors">{module.name}</span>
+                                                <span className="font-bold theme-text-primary group-hover:text-cyan-500 transition-colors">{module.name}</span>
                                                 <span className="text-gray-500">{module.progress}%</span>
                                             </div>
                                             <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden">
@@ -461,47 +461,43 @@ export const Profile: React.FC = () => {
                 </div>
 
                 {/* Performance Stats */}
-                <div className="bg-[#111] border border-white/5 rounded-lg p-6">
+                <div className="theme-bg-secondary border border-white/5 rounded-lg p-6">
                     <h2 className="text-lg font-bold text-amber-400 tracking-wider mb-6">PERFORMANCE STATS</h2>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="p-4 bg-black/40 border border-white/5 rounded">
-                            <p className="text-xs text-gray-500 uppercase">Win Rate</p>
+                        <div className="p-4 theme-bg-tertiary border border-white/5 rounded">
+                            <p className="text-xs theme-text-secondary uppercase">Win Rate</p>
                             <p className="text-2xl font-bold text-emerald-400">{profile?.win_rate || 0}%</p>
                         </div>
-                        <div className="p-4 bg-black/40 border border-white/5 rounded">
-                            <p className="text-xs text-gray-500 uppercase">Current Streak</p>
+                        <div className="p-4 theme-bg-tertiary border border-white/5 rounded">
+                            <p className="text-xs theme-text-secondary uppercase">Current Streak</p>
                             <p className="text-2xl font-bold text-orange-400">{profile?.streak || 0}</p>
                         </div>
-                        <div className="p-4 bg-black/40 border border-white/5 rounded">
-                            <p className="text-xs text-gray-500 uppercase">Avg. Score</p>
+                        <div className="p-4 theme-bg-tertiary border border-white/5 rounded">
+                            <p className="text-xs theme-text-secondary uppercase">Avg. Score</p>
                             <p className="text-2xl font-bold text-purple-400">{profile?.stats.averageScore || 0}%</p>
                         </div>
-                        <div className="p-4 bg-black/40 border border-white/5 rounded">
-                            <p className="text-xs text-gray-500 uppercase">Leaderboard</p>
+                        <div className="p-4 theme-bg-tertiary border border-white/5 rounded">
+                            <p className="text-xs theme-text-secondary uppercase">Leaderboard</p>
                             <p className="text-2xl font-bold text-cyan-400">#{profile?.ranking || '-'}</p>
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* Floating Action Button */}
-            <button className="fixed bottom-8 right-8 w-14 h-14 bg-cyan-500 rounded-full flex items-center justify-center text-black shadow-[0_0_20px_rgba(6,182,212,0.5)] hover:scale-110 transition-transform z-50">
-                <MessageSquare size={24} />
-            </button>
 
             {/* Self-Assessment Modal */}
             {showSelfAssessmentModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-                    <div className="bg-[#111] border border-white/10 rounded-lg w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+                    <div className="theme-bg-secondary border theme-border rounded-lg w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
                         {/* Modal Header */}
-                        <div className="flex items-center justify-between p-4 border-b border-white/10">
-                            <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                        <div className="flex items-center justify-between p-4 border-b theme-border">
+                            <h2 className="text-lg font-bold theme-text-primary flex items-center gap-2">
                                 <Sparkles size={18} className="text-orange-400" />
                                 Self-Improvement Plan
                             </h2>
                             <button
                                 onClick={() => setShowSelfAssessmentModal(false)}
-                                className="text-gray-400 hover:text-white transition-colors"
+                                className="text-gray-400 hover:theme-text-primary transition-colors"
                             >
                                 <X size={20} />
                             </button>
@@ -519,7 +515,7 @@ export const Profile: React.FC = () => {
                                 <>
                                     {/* Plan Title & Overview */}
                                     <div>
-                                        <h3 className="text-xl font-bold text-white mb-2">{selfAssessmentPlan.title}</h3>
+                                        <h3 className="text-xl font-bold theme-text-primary mb-2">{selfAssessmentPlan.title}</h3>
                                         <p className="text-gray-400">{selfAssessmentPlan.overview}</p>
                                     </div>
 
@@ -528,12 +524,12 @@ export const Profile: React.FC = () => {
                                         <h4 className="text-sm font-bold text-cyan-400 uppercase tracking-wider mb-3">Action Steps</h4>
                                         <div className="space-y-3">
                                             {selfAssessmentPlan.steps.map((step, idx) => (
-                                                <div key={idx} className="bg-white/5 border border-white/10 rounded-lg p-4">
+                                                <div key={idx} className="bg-white/5 border theme-border rounded-lg p-4">
                                                     <div className="flex items-center gap-3 mb-2">
                                                         <span className="w-6 h-6 rounded-full bg-cyan-500/20 text-cyan-400 text-sm font-bold flex items-center justify-center">
                                                             {step.step}
                                                         </span>
-                                                        <span className="font-bold text-white flex-1">{step.title}</span>
+                                                        <span className="font-bold theme-text-primary flex-1">{step.title}</span>
                                                         <span className="text-xs text-gray-500 bg-white/5 px-2 py-1 rounded">{step.timeEstimate}</span>
                                                     </div>
                                                     <p className="text-sm text-gray-400 ml-9">{step.description}</p>

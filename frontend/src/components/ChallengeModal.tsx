@@ -45,10 +45,10 @@ export const ChallengeModal: React.FC<ChallengeModalProps> = ({ challenge, onClo
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-            <div className="bg-[#111] border border-white/10 rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto flex flex-col relative animate-in fade-in zoom-in-95 duration-200">
+            <div className="theme-bg-secondary border theme-border rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto flex flex-col relative animate-in fade-in zoom-in-95 duration-200">
 
                 {/* Header */}
-                <div className="p-6 border-b border-white/10 flex justify-between items-start sticky top-0 bg-[#111] z-10">
+                <div className="p-6 border-b theme-border flex justify-between items-start sticky top-0 theme-bg-secondary z-10">
                     <div>
                         <div className="flex items-center gap-2 mb-2">
                             <span className="text-xs font-mono text-cyan-400 uppercase tracking-wider px-2 py-0.5 bg-cyan-900/20 rounded border border-cyan-500/20">
@@ -58,9 +58,9 @@ export const ChallengeModal: React.FC<ChallengeModalProps> = ({ challenge, onClo
                                 {challenge.difficulty}
                             </span>
                         </div>
-                        <h2 className="text-xl font-bold text-white">{challenge.title || challenge.skill}</h2>
+                        <h2 className="text-xl font-bold theme-text-primary">{challenge.title || challenge.skill}</h2>
                     </div>
-                    <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors">
+                    <button onClick={onClose} className="text-gray-500 hover:theme-text-primary transition-colors">
                         <X size={24} />
                     </button>
                 </div>
@@ -75,7 +75,7 @@ export const ChallengeModal: React.FC<ChallengeModalProps> = ({ challenge, onClo
 
                     <div className="space-y-2">
                         <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Mission Objective</h3>
-                        <p className="text-white font-medium">{challenge.task}</p>
+                        <p className="theme-text-primary font-medium">{challenge.task}</p>
                     </div>
 
                     {feedback ? (
@@ -93,7 +93,7 @@ export const ChallengeModal: React.FC<ChallengeModalProps> = ({ challenge, onClo
                             </p>
                             <button
                                 onClick={onClose}
-                                className="px-6 py-2 bg-white/10 hover:bg-white/20 text-white rounded transition-colors"
+                                className="px-6 py-2 bg-white/10 hover:bg-white/20 theme-text-primary rounded transition-colors"
                             >
                                 Close Mission
                             </button>
@@ -103,7 +103,7 @@ export const ChallengeModal: React.FC<ChallengeModalProps> = ({ challenge, onClo
                             {challenge.type === 'multiple_choice' && challenge.options ? (
                                 <div className="space-y-2">
                                     {challenge.options.map((option: string, idx: number) => (
-                                        <label key={idx} className={`flex items-center gap-3 p-3 rounded border cursor-pointer transition-all ${response === option ? 'bg-cyan-900/20 border-cyan-500/50 text-cyan-100' : 'bg-white/5 border-white/10 hover:bg-white/10 text-gray-300'}`}>
+                                        <label key={idx} className={`flex items-center gap-3 p-3 rounded border cursor-pointer transition-all ${response === option ? 'bg-cyan-900/20 border-cyan-500/50 text-cyan-100' : 'bg-white/5 theme-border hover:bg-white/10 text-gray-300'}`}>
                                             <input
                                                 type="radio"
                                                 name="option"
@@ -124,11 +124,11 @@ export const ChallengeModal: React.FC<ChallengeModalProps> = ({ challenge, onClo
                                     value={response}
                                     onChange={(e) => setResponse(e.target.value)}
                                     placeholder="Type your solution here..."
-                                    className="w-full h-40 bg-black/50 border border-white/10 rounded p-4 text-sm font-mono text-gray-300 focus:border-cyan-500/50 focus:outline-none resize-none"
+                                    className="w-full h-40 bg-black/50 border theme-border rounded p-4 text-sm font-mono text-gray-300 focus:border-cyan-500/50 focus:outline-none resize-none"
                                 />
                             )}
 
-                            <div className="flex justify-between items-center pt-4 border-t border-white/10">
+                            <div className="flex justify-between items-center pt-4 border-t theme-border">
                                 <button
                                     onClick={() => setShowHint(!showHint)}
                                     className="text-xs text-gray-500 hover:text-cyan-400 flex items-center gap-1 transition-colors"

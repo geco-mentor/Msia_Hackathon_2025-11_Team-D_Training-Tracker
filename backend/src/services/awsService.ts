@@ -320,20 +320,37 @@ Example: ["Password Security", "Phishing Recognition", "Data Encryption"]`;
 };
 
 // Main function called by assessmentController - generates ONLY rubrics, not full scenario
-export const generateRubricsFromText = async (text: string, departmentId?: string) => {
+export const generateRubricsFromText = async (text: string, departmentIds?: string[]) => {
     console.log('DEBUG: Generating rubrics from text...');
     const genericRubrics = await fetchGenericRubrics();
 
-    let departmentRubrics: string[] = [];
-    if (departmentId) {
-        departmentRubrics = await fetchDepartmentRubrics(departmentId);
+    // Fetch rubrics from ALL selected departments and combine them
+    let departmentRubrics: { deptName: string; criteria: string[] }[] = [];
+    if (departmentIds && departmentIds.length > 0) {
+        // Fetch department names and rubrics for each selected department
+        for (const deptId of departmentIds) {
+            const { data, error } = await supabase
+                .from('departments')
+                .select('name, rubrics')
+                .eq('id', deptId)
+                .single();
+
+            if (!error && data) {
+                const criteria = data.rubrics || ['Department Knowledge', 'Process Compliance', 'Best Practices'];
+                departmentRubrics.push({
+                    deptName: data.name || 'Unknown',
+                    criteria: criteria
+                });
+                console.log(`DEBUG: Fetched rubrics for ${data.name}:`, criteria);
+            }
+        }
     }
 
     const moduleRubrics = await generateModuleRubrics(text);
 
     const rubric = {
         generic: genericRubrics,
-        department: departmentRubrics,
+        department: departmentRubrics,  // Now an array of {deptName, criteria} objects
         module: moduleRubrics
     };
 

@@ -3,6 +3,7 @@ import { Upload, FileText, AlertCircle, Loader2, Calendar, Building, ChevronRigh
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
 import { useAuth } from '../contexts/AuthContext';
+import { fetchWithRetry } from '../api/apiRetry';
 
 interface AssessmentUploaderProps {
     onUploadComplete: (scenario: any) => void;
@@ -12,6 +13,41 @@ interface Department {
     id: string;
     name: string;
 }
+
+// Axios request with retry logic (10 retries, 1.5s interval)
+const axiosWithRetry = async (config: {
+    method: 'GET' | 'POST';
+    url: string;
+    data?: any;
+    headers?: Record<string, string>;
+}, maxRetries = 10, delay = 1500): Promise<any> => {
+    let lastError: any = null;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            console.log(`API call attempt ${attempt}/${maxRetries}: ${config.url}`);
+            const response = await axios({
+                method: config.method,
+                url: config.url,
+                data: config.data,
+                headers: config.headers
+            });
+            return response;
+        } catch (error: any) {
+            lastError = error;
+            const status = error.response?.status;
+
+            // Only retry on 5xx server errors or network errors
+            if ((status >= 500 || !status) && attempt < maxRetries) {
+                console.warn(`Server error (${status || 'network'}), retrying in ${delay}ms...`);
+                await new Promise(r => setTimeout(r, delay));
+                continue;
+            }
+            throw error;
+        }
+    }
+    throw lastError;
+};
 
 const AssessmentUploader: React.FC<AssessmentUploaderProps> = ({ onUploadComplete }) => {
     const { user, token } = useAuth();
@@ -23,7 +59,7 @@ const AssessmentUploader: React.FC<AssessmentUploaderProps> = ({ onUploadComplet
 
     // New State Fields
     const [departments, setDepartments] = useState<Department[]>([]);
-    const [selectedDepartment, setSelectedDepartment] = useState<string>('');
+    const [selectedDepartments, setSelectedDepartments] = useState<string[]>([]);
     const [postAssessmentDate, setPostAssessmentDate] = useState<string>('');
 
     // Custom Dropdown State
@@ -69,8 +105,8 @@ const AssessmentUploader: React.FC<AssessmentUploaderProps> = ({ onUploadComplet
     };
 
     const handleUpload = async () => {
-        if (!file || !selectedDepartment || !postAssessmentDate) {
-            setError('Please fill in all fields and select a file.');
+        if (!file || selectedDepartments.length === 0 || !postAssessmentDate) {
+            setError('Please fill in all fields, select at least one department, and upload a file.');
             return;
         }
 
@@ -79,23 +115,26 @@ const AssessmentUploader: React.FC<AssessmentUploaderProps> = ({ onUploadComplet
         setProgress(10);
 
         try {
-            // 1. Get Upload URL
+            // 1. Get Upload URL (with retry)
             if (!user?.id || !token) {
                 throw new Error('User not authenticated');
             }
 
-            const { data: { uploadUrl, key } } = await axios.post(`${API_BASE_URL}/api/assessments/upload-url`, {
-                fileName: file.name,
-                contentType: file.type,
-                userId: user.id
-            }, {
+            const { data: { uploadUrl, key } } = await axiosWithRetry({
+                method: 'POST',
+                url: `${API_BASE_URL}/api/assessments/upload-url`,
+                data: {
+                    fileName: file.name,
+                    contentType: file.type,
+                    userId: user.id
+                },
                 headers: { Authorization: `Bearer ${token}` }
             });
 
             setProgress(40);
 
-            // 2. Upload to S3 (using fetch to avoid axios default headers interfering)
-            const s3Response = await fetch(uploadUrl, {
+            // 2. Upload to S3 (with retry using fetchWithRetry)
+            const s3Response = await fetchWithRetry(uploadUrl, {
                 method: 'PUT',
                 headers: { 'Content-Type': file.type },
                 body: file
@@ -109,13 +148,16 @@ const AssessmentUploader: React.FC<AssessmentUploaderProps> = ({ onUploadComplet
             setUploading(false);
             setProcessing(true);
 
-            // 3. Process File
-            const { data: { scenario } } = await axios.post(`${API_BASE_URL}/api/assessments/process`, {
-                key,
-                userId: user.id,
-                departmentId: selectedDepartment,
-                postAssessmentDate: new Date(postAssessmentDate).toISOString()
-            }, {
+            // 3. Process File (with retry)
+            const { data: { scenario } } = await axiosWithRetry({
+                method: 'POST',
+                url: `${API_BASE_URL}/api/assessments/process`,
+                data: {
+                    key,
+                    userId: user.id,
+                    departmentIds: selectedDepartments,
+                    postAssessmentDate: new Date(postAssessmentDate).toISOString()
+                },
                 headers: { Authorization: `Bearer ${token}` }
             });
 
@@ -125,17 +167,27 @@ const AssessmentUploader: React.FC<AssessmentUploaderProps> = ({ onUploadComplet
 
         } catch (err: any) {
             console.error('Upload failed:', err);
-            setError(err.response?.data?.message || err.message || 'Upload failed');
+            setError(err.response?.data?.message || err.message || 'Upload failed after multiple retries');
             setUploading(false);
             setProcessing(false);
         }
     };
 
-    const selectedDeptName = departments.find(d => d.id === selectedDepartment)?.name || 'Select Department';
+    const selectedDeptNames = selectedDepartments.length > 0
+        ? departments.filter(d => selectedDepartments.includes(d.id)).map(d => d.name).join(', ')
+        : 'Select Departments';
+
+    const toggleDepartment = (deptId: string) => {
+        setSelectedDepartments(prev =>
+            prev.includes(deptId)
+                ? prev.filter(id => id !== deptId)
+                : [...prev, deptId]
+        );
+    };
 
     return (
-        <div className="bg-[#111] p-6 rounded-xl border border-white/5 space-y-6">
-            <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2 tracking-wider">
+        <div className="theme-bg-secondary p-6 rounded-xl border border-white/5 space-y-6">
+            <h3 className="text-xl font-bold theme-text-primary mb-4 flex items-center gap-2 tracking-wider">
                 <Upload className="w-5 h-5 text-cyan-400" />
                 UPLOAD TRAINING MATERIAL
             </h3>
@@ -149,7 +201,7 @@ const AssessmentUploader: React.FC<AssessmentUploaderProps> = ({ onUploadComplet
 
                 <div
                     onClick={() => setIsDeptDropdownOpen(!isDeptDropdownOpen)}
-                    className="w-full bg-black/50 border border-white/10 rounded px-4 py-3 text-white cursor-pointer hover:bg-white/5 transition-colors flex items-center justify-between group"
+                    className="w-full theme-bg-tertiary border theme-border rounded px-4 py-3 theme-text-primary cursor-pointer hover:bg-white/5 transition-colors flex items-center justify-between group"
                 >
                     <div className="flex items-center gap-2">
                         {isDeptDropdownOpen ? (
@@ -157,27 +209,34 @@ const AssessmentUploader: React.FC<AssessmentUploaderProps> = ({ onUploadComplet
                         ) : (
                             <ChevronRight className="w-4 h-4 text-gray-400" />
                         )}
-                        <span className={!selectedDepartment ? 'text-gray-500' : 'text-white'}>
-                            {selectedDeptName}
+                        <span className={selectedDepartments.length === 0 ? 'text-gray-500' : 'theme-text-primary'}>
+                            {selectedDeptNames}
                         </span>
                     </div>
+                    {selectedDepartments.length > 0 && (
+                        <span className="text-xs bg-cyan-500/20 text-cyan-400 px-2 py-0.5 rounded-full">
+                            {selectedDepartments.length} selected
+                        </span>
+                    )}
                 </div>
 
                 {isDeptDropdownOpen && (
-                    <div className="absolute z-10 w-full mt-1 bg-[#1a1a1a] border border-white/10 rounded-lg shadow-xl max-h-60 overflow-y-auto animate-in fade-in slide-in-from-top-2">
+                    <div className="absolute z-10 w-full mt-1 theme-bg-tertiary border theme-border rounded-lg shadow-xl max-h-60 overflow-y-auto animate-in fade-in slide-in-from-top-2">
                         {departments.map(dept => (
                             <div
                                 key={dept.id}
-                                onClick={() => {
-                                    setSelectedDepartment(dept.id);
-                                    setIsDeptDropdownOpen(false);
-                                }}
-                                className="px-4 py-2.5 hover:bg-white/5 cursor-pointer flex items-center justify-between group transition-colors"
+                                onClick={() => toggleDepartment(dept.id)}
+                                className="px-4 py-2.5 hover:bg-white/5 cursor-pointer flex items-center gap-3 group transition-colors"
                             >
-                                <span className="text-gray-300 group-hover:text-white transition-colors">{dept.name}</span>
-                                {selectedDepartment === dept.id && (
-                                    <Check className="w-4 h-4 text-cyan-400" />
-                                )}
+                                <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${selectedDepartments.includes(dept.id)
+                                    ? 'bg-cyan-500 border-cyan-500'
+                                    : 'border-gray-500 group-hover:border-gray-400'
+                                    }`}>
+                                    {selectedDepartments.includes(dept.id) && (
+                                        <Check className="w-3 h-3 text-black" />
+                                    )}
+                                </div>
+                                <span className="text-gray-300 group-hover:theme-text-primary transition-colors">{dept.name}</span>
                             </div>
                         ))}
                         {departments.length === 0 && (
@@ -199,12 +258,12 @@ const AssessmentUploader: React.FC<AssessmentUploaderProps> = ({ onUploadComplet
                     type="datetime-local"
                     value={postAssessmentDate}
                     onChange={(e) => setPostAssessmentDate(e.target.value)}
-                    className="w-full bg-black/50 border border-white/10 rounded px-4 py-3 text-white focus:outline-none focus:border-cyan-500/50 [color-scheme:dark]"
+                    className="w-full theme-bg-tertiary border theme-border rounded px-4 py-3 theme-text-primary focus:outline-none focus:border-cyan-500/50 [color-scheme:dark]"
                 />
             </div>
 
             {/* File Upload */}
-            <div className="border-2 border-dashed border-white/10 rounded-lg p-8 text-center hover:border-cyan-500/50 transition-colors group">
+            <div className="border-2 border-dashed theme-border rounded-lg p-8 text-center hover:border-cyan-500/50 transition-colors group">
                 <input
                     type="file"
                     id="file-upload"
@@ -214,7 +273,7 @@ const AssessmentUploader: React.FC<AssessmentUploaderProps> = ({ onUploadComplet
                 />
                 <label htmlFor="file-upload" className="cursor-pointer flex flex-col items-center gap-2">
                     <FileText className="w-12 h-12 text-gray-600 group-hover:text-cyan-400 transition-colors" />
-                    <span className="text-gray-300 font-medium group-hover:text-white transition-colors">
+                    <span className="text-gray-300 font-medium group-hover:theme-text-primary transition-colors">
                         {file ? file.name : 'Click to upload PDF or Text file'}
                     </span>
                     <span className="text-gray-600 text-sm">
@@ -247,11 +306,11 @@ const AssessmentUploader: React.FC<AssessmentUploaderProps> = ({ onUploadComplet
 
             <button
                 onClick={handleUpload}
-                disabled={!file || !selectedDepartment || !postAssessmentDate || uploading || processing}
+                disabled={!file || selectedDepartments.length === 0 || !postAssessmentDate || uploading || processing}
                 className={`w-full py-3 rounded-lg font-bold flex items-center justify-center gap-2 transition-all tracking-wider
-                    ${!file || !selectedDepartment || !postAssessmentDate || uploading || processing
+                    ${!file || selectedDepartments.length === 0 || !postAssessmentDate || uploading || processing
                         ? 'bg-white/5 text-gray-600 cursor-not-allowed'
-                        : 'bg-cyan-600 hover:bg-cyan-500 text-white shadow-lg shadow-cyan-500/20'
+                        : 'bg-cyan-600 hover:bg-cyan-500 theme-text-primary shadow-lg shadow-cyan-500/20'
                     }`}
             >
                 {processing ? (

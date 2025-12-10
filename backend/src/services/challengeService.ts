@@ -93,12 +93,24 @@ export const getMainChallenges = async (userId?: string) => {
         return allScenarios;
     }
 
+    // Get user's department and department ID
     const userDept = employee.department?.toLowerCase() || '';
     console.log(`DEBUG: Filtering scenarios for department: ${userDept}`);
 
+    // Also get the department ID for matching against department_ids array
+    let userDeptId: string | null = null;
+    if (userDept) {
+        const { data: deptData } = await supabase
+            .from('departments')
+            .select('id')
+            .ilike('name', userDept)
+            .single();
+        userDeptId = deptData?.id || null;
+    }
+
     // Filter scenarios:
     // - GENERAL category: visible to all
-    // - TRAINING category: only if matches user's department
+    // - TRAINING category: only if matches user's department (by name or department_ids)
     // - Check both category and title for department matching
     const filteredScenarios = (allScenarios || []).filter((scenario: any) => {
         const category = (scenario.category || '').toLowerCase();
@@ -109,7 +121,13 @@ export const getMainChallenges = async (userId?: string) => {
             return true;
         }
 
-        // TRAINING category - check if it's for user's department
+        // Check if scenario's department_ids includes the user's department
+        const scenarioDeptIds = scenario.department_ids || [];
+        if (userDeptId && Array.isArray(scenarioDeptIds) && scenarioDeptIds.includes(userDeptId)) {
+            return true;
+        }
+
+        // TRAINING category - check if it's for user's department by name matching
         if (category.startsWith('training')) {
             // Check if the category or title contains the user's department
             // e.g., "TRAINING -sales" should only show for Sales department
@@ -125,9 +143,7 @@ export const getMainChallenges = async (userId?: string) => {
             return false;
         }
 
-        // For other categories, check department_id if available
-        // If scenario has a department_id, we could match against it
-        // For now, show all other categories
+        // For other categories, show all
         return true;
     });
 
