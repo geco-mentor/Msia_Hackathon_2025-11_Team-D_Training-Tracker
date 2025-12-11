@@ -5,6 +5,8 @@ import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer } fro
 import { Terminal, Shield, Target, Cpu, Database, Lock, Activity, LogOut, User, Briefcase, CheckCircle, AlertTriangle, Lightbulb, Sparkles, X, Loader, Award, Code, Network, Brain, Ghost, TrendingUp, Zap } from 'lucide-react';
 import { API_BASE_URL, getRankFromElo } from '../config';
 import { CertificationManager } from '../components/CertificationManager';
+import { SkillManager } from '../components/SkillManager';
+import { fetchWithRetry } from '../utils/fetchWithRetry';
 
 interface SkillData {
     subject: string;
@@ -142,7 +144,8 @@ export const Profile: React.FC = () => {
                 setLoading(true);
                 setError(null);
                 const token = localStorage.getItem('token');
-                const response = await fetch(`${API_BASE_URL}/api/employees/profile`, {
+                console.log('[Profile] Fetching profile with retry...');
+                const response = await fetchWithRetry(`${API_BASE_URL}/api/employees/profile`, {
                     headers: {
                         'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json'
@@ -150,7 +153,7 @@ export const Profile: React.FC = () => {
                 });
 
                 const data = await response.json();
-                console.log('Profile data:', data);
+                console.log('[Profile] Profile data:', data);
 
                 if (data.success) {
                     setProfile(data.profile);
@@ -158,7 +161,7 @@ export const Profile: React.FC = () => {
                     setError(data.message || 'Failed to load profile');
                 }
             } catch (err) {
-                console.error('Error fetching profile:', err);
+                console.error('[Profile] Error fetching profile:', err);
                 setError('Failed to load profile data');
             } finally {
                 setLoading(false);
@@ -427,7 +430,7 @@ export const Profile: React.FC = () => {
                         <div className="space-y-4">
                             {modules.length > 0 ? (
                                 modules.map((module, idx) => (
-                                    <div key={idx} className="bg-black/40 border border-white/5 p-4 rounded flex items-center justify-between hover:bg-white/5 transition-colors group">
+                                    <div key={idx} className="bg-white dark:bg-black/40 border border-gray-200 dark:border-white/5 p-4 rounded flex items-center justify-between hover:bg-gray-50 dark:hover:bg-white/5 transition-colors group shadow-sm">
                                         <div className="space-y-2 flex-1 mr-4">
                                             <div className="flex justify-between text-sm">
                                                 <span className="font-bold theme-text-primary group-hover:text-cyan-500 transition-colors">{module.name}</span>
@@ -469,28 +472,28 @@ export const Profile: React.FC = () => {
                             PERFORMANCE STATS
                         </h2>
                         <div className="grid grid-cols-2 gap-4">
-                            <div className="p-4 bg-black/40 border border-emerald-500/20 rounded-lg group hover:border-emerald-500/50 transition-colors">
+                            <div className="p-4 bg-white dark:bg-black/40 border border-emerald-200 dark:border-emerald-500/20 rounded-lg group hover:border-emerald-500/50 transition-colors shadow-sm">
                                 <div className="flex items-center justify-between mb-2">
                                     <p className="text-xs theme-text-secondary uppercase tracking-wider">Win Rate</p>
                                     <Activity size={14} className="text-emerald-500" />
                                 </div>
                                 <p className="text-2xl font-bold text-emerald-400">{profile?.win_rate || 0}%</p>
                             </div>
-                            <div className="p-4 bg-black/40 border border-orange-500/20 rounded-lg group hover:border-orange-500/50 transition-colors">
+                            <div className="p-4 bg-white dark:bg-black/40 border border-orange-200 dark:border-orange-500/20 rounded-lg group hover:border-orange-500/50 transition-colors shadow-sm">
                                 <div className="flex items-center justify-between mb-2">
                                     <p className="text-xs theme-text-secondary uppercase tracking-wider">Streak</p>
                                     <Zap size={14} className="text-orange-500" />
                                 </div>
                                 <p className="text-2xl font-bold text-orange-400">{profile?.streak || 0}</p>
                             </div>
-                            <div className="p-4 bg-black/40 border border-purple-500/20 rounded-lg group hover:border-purple-500/50 transition-colors">
+                            <div className="p-4 bg-white dark:bg-black/40 border border-purple-200 dark:border-purple-500/20 rounded-lg group hover:border-purple-500/50 transition-colors shadow-sm">
                                 <div className="flex items-center justify-between mb-2">
                                     <p className="text-xs theme-text-secondary uppercase tracking-wider">Avg Score</p>
                                     <Target size={14} className="text-purple-500" />
                                 </div>
                                 <p className="text-2xl font-bold text-purple-400">{profile?.stats.averageScore || 0}%</p>
                             </div>
-                            <div className="p-4 bg-black/40 border border-cyan-500/20 rounded-lg group hover:border-cyan-500/50 transition-colors">
+                            <div className="p-4 bg-white dark:bg-black/40 border border-cyan-200 dark:border-cyan-500/20 rounded-lg group hover:border-cyan-500/50 transition-colors shadow-sm">
                                 <div className="flex items-center justify-between mb-2">
                                     <p className="text-xs theme-text-secondary uppercase tracking-wider">Rank</p>
                                     <Award size={14} className="text-cyan-500" />
@@ -504,6 +507,11 @@ export const Profile: React.FC = () => {
                     <div className="theme-bg-secondary border border-white/5 rounded-lg p-6">
                         <CertificationManager userId={user?.id} />
                     </div>
+                </div>
+
+                {/* Skills Section - Full Width */}
+                <div className="theme-bg-secondary border border-white/5 rounded-lg p-6">
+                    <SkillManager />
                 </div>
 
 

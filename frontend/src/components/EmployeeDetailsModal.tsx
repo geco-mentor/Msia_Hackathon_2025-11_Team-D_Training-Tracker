@@ -145,11 +145,11 @@ export const EmployeeDetailsModal: React.FC<EmployeeDetailsModalProps> = ({ isOp
                                 <div className="flex items-center justify-between mb-6">
                                     <h3 className="text-sm font-bold theme-text-primary flex items-center gap-2">
                                         <TrendingUp size={16} className="text-cyan-400" />
-                                        PROGRESSION_TRACKER
+                                        PERFORMANCE_HISTORY
                                     </h3>
                                     <div className="flex gap-4 text-xs">
                                         <div>
-                                            <span className="theme-text-primary/40 block">PRE-TRAINING</span>
+                                            <span className="theme-text-primary/40 block">BASELINE</span>
                                             <span className="theme-text-primary font-mono">{employee.analytics.preTrainingAvg}%</span>
                                         </div>
                                         <div>
@@ -179,6 +179,17 @@ export const EmployeeDetailsModal: React.FC<EmployeeDetailsModalProps> = ({ isOp
                                             />
                                         </LineChart>
                                     </ResponsiveContainer>
+                                </div>
+                                {/* Methodology Note */}
+                                <div className="mt-4 p-3 rounded-lg bg-white/5 border border-dashed border-white/10">
+                                    <p className="text-[10px] theme-text-secondary leading-relaxed">
+                                        <strong className="theme-text-primary">📊 Methodology:</strong>
+                                    </p>
+                                    <ul className="list-disc list-inside mt-1 space-y-1 text-[10px] theme-text-secondary/80">
+                                        <li><strong className="theme-text-primary/90">Baseline:</strong> Avg score of first 3 assessments.</li>
+                                        <li><strong className="theme-text-primary/90">Current:</strong> Avg score of 3 most recent assessments.</li>
+                                        <li className="italic text-white/40 mt-1 list-none ml-2 text-[9px]">* Note: Scores may vary based on scenario difficulty (e.g. Hard vs Easy).</li>
+                                    </ul>
                                 </div>
                             </div>
                         </div>
@@ -232,6 +243,6 @@ export const EmployeeDetailsModal: React.FC<EmployeeDetailsModalProps> = ({ isOp
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     );
 };

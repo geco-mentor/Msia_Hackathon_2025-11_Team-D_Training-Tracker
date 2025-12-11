@@ -11,6 +11,16 @@ import { GrowthTab } from '../components/GrowthTab';
 import { CareerPath, CareerData } from '../components/CareerPath';
 import { API_BASE_URL } from '../config';
 import { Zap, Target, Star } from 'lucide-react';
+import { fetchWithRetry } from '../utils/fetchWithRetry';
+
+// Interface for profile stats fetched from API
+interface ProfileStats {
+    eloRating: number;
+    completedMissions: number;
+    totalAssessments: number;
+    totalScore: number;
+    jobTitle: string;
+}
 
 type DashboardTab = 'challenges' | 'progress' | 'career' | 'growth';
 
@@ -29,20 +39,52 @@ export const EmployeeDashboard: React.FC = () => {
     const [preAssessmentStatuses, setPreAssessmentStatuses] = useState<Record<string, boolean>>({});
     const [postAssessmentStatuses, setPostAssessmentStatuses] = useState<Record<string, boolean>>({});
 
+    // New state for fresh profile stats (fetched directly from API with retry)
+    const [profileStats, setProfileStats] = useState<ProfileStats | null>(null);
+
     const handleLogout = () => {
         logout();
         navigate('/login');
     };
 
+    // Fetch fresh profile stats from /api/employees/profile with retry logic
+    const fetchProfileStats = async () => {
+        if (!user?.id) return;
+        try {
+            const token = localStorage.getItem('token');
+            console.log('[EmployeeDashboard] Fetching profile stats with retry...');
+            const response = await fetchWithRetry(`${API_BASE_URL}/api/employees/profile`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            const data = await response.json();
+            console.log('[EmployeeDashboard] Profile stats response:', data);
+            if (data.success && data.profile) {
+                setProfileStats({
+                    eloRating: data.profile.elo_rating || 1000,
+                    completedMissions: data.profile.stats?.completedMissions || 0,
+                    totalAssessments: data.profile.stats?.totalAssessments || 0,
+                    totalScore: data.profile.stats?.totalScore || 0,
+                    jobTitle: data.profile.job_title || 'Employee'
+                });
+            }
+        } catch (err) {
+            console.error('[EmployeeDashboard] Error fetching profile stats:', err);
+        }
+    };
+
     const fetchChallenges = async () => {
         try {
             // Fetch Main Challenges - now filtered by department via userId
-            const mainRes = await fetch(`${API_BASE_URL}/api/challenges/main${user?.id ? `?userId=${user.id}` : ''}`);
+            console.log('[EmployeeDashboard] Fetching challenges with retry...');
+            const mainRes = await fetchWithRetry(`${API_BASE_URL}/api/challenges/main${user?.id ? `?userId=${user.id}` : ''}`);
             const mainData = await mainRes.json();
-            console.log('DEBUG: fetchChallenges - received', mainData.data?.length, 'main challenges');
+            console.log('[EmployeeDashboard] Received', mainData.data?.length, 'main challenges');
             if (mainData.success) setMainChallenges(mainData.data);
         } catch (error) {
-            console.error('Failed to fetch challenges', error);
+            console.error('[EmployeeDashboard] Failed to fetch challenges:', error);
         }
     };
 
@@ -50,7 +92,8 @@ export const EmployeeDashboard: React.FC = () => {
         if (!user?.id) return;
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch(`${API_BASE_URL}/api/career/progress/${user.id}`, {
+            console.log('[EmployeeDashboard] Fetching career progress with retry...');
+            const response = await fetchWithRetry(`${API_BASE_URL}/api/career/progress/${user.id}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const data = await response.json();
@@ -58,7 +101,7 @@ export const EmployeeDashboard: React.FC = () => {
                 setCareerData(data.data);
             }
         } catch (err) {
-            console.error('Error fetching career progress:', err);
+            console.error('[EmployeeDashboard] Error fetching career progress:', err);
         }
     };
 
@@ -114,37 +157,41 @@ export const EmployeeDashboard: React.FC = () => {
         fetchChallenges(); // Refresh to update UI
     };
 
-    // Fetch all assessment statuses for all challenges
+    // Fetch all assessment statuses for all challenges with retry logic
     const fetchAllAssessmentStatuses = async (challenges: any[]) => {
         if (!user?.id || challenges.length === 0) return;
 
+        console.log('[EmployeeDashboard] Fetching assessment statuses with retry...');
         const preStatuses: Record<string, boolean> = {};
         const postStatuses: Record<string, boolean> = {};
 
         for (const challenge of challenges) {
             try {
-                // Check pre-assessment status
-                const preRes = await fetch(`${API_BASE_URL}/api/assessments/pre-assessment/status/${user.id}/${challenge.id}`);
+                // Check pre-assessment status with retry
+                const preRes = await fetchWithRetry(`${API_BASE_URL}/api/assessments/pre-assessment/status/${user.id}/${challenge.id}`);
                 const preData = await preRes.json();
                 preStatuses[challenge.id] = preData.completed || false;
 
-                // Check post-assessment status (completed post-assessments)
-                const postRes = await fetch(`${API_BASE_URL}/api/assessments/post-assessment/status/${user.id}/${challenge.id}`);
+                // Check post-assessment status (completed post-assessments) with retry
+                const postRes = await fetchWithRetry(`${API_BASE_URL}/api/assessments/post-assessment/status/${user.id}/${challenge.id}`);
                 const postData = await postRes.json();
                 postStatuses[challenge.id] = postData.completed || false;
             } catch (error) {
-                console.error('Failed to check status for challenge', challenge.id, error);
+                console.error('[EmployeeDashboard] Failed to check status for challenge', challenge.id, error);
                 preStatuses[challenge.id] = false;
                 postStatuses[challenge.id] = false;
             }
         }
 
+        console.log('[EmployeeDashboard] Assessment statuses fetched:', { preStatuses, postStatuses });
         setPreAssessmentStatuses(preStatuses);
         setPostAssessmentStatuses(postStatuses);
     };
 
     useEffect(() => {
         const loadData = async () => {
+            // Fetch profile stats first to get accurate ELO and completion counts
+            await fetchProfileStats();
             await fetchChallenges();
             await fetchCareerProgress();
         };
@@ -243,9 +290,10 @@ export const EmployeeDashboard: React.FC = () => {
                 {activeTab === 'growth' && (
                     <GrowthTab
                         userName={user?.name?.split(' ')[0]}
-                        completedTrainings={Object.values(postAssessmentStatuses).filter(Boolean).length}
-                        eloRating={(user as any)?.elo_rating || 1000}
+                        completedTrainings={profileStats?.completedMissions || Object.values(postAssessmentStatuses).filter(Boolean).length}
+                        eloRating={profileStats?.eloRating || 1000}
                         userId={user?.id}
+                        userJobTitle={profileStats?.jobTitle || 'Employee'}
                     />
                 )}
 
@@ -259,7 +307,7 @@ export const EmployeeDashboard: React.FC = () => {
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                             <div className="theme-bg-secondary border theme-border rounded-lg p-6 text-center">
                                 <p className="text-xs theme-text-muted uppercase tracking-wider mb-1">ELO Rating</p>
-                                <p className="text-3xl font-bold text-cyan-400">{(user as any)?.elo_rating || 1000}</p>
+                                <p className="text-3xl font-bold text-cyan-400">{profileStats?.eloRating || 1000}</p>
                             </div>
                             <div className="theme-bg-secondary border theme-border rounded-lg p-6 text-center">
                                 <p className="text-xs theme-text-muted uppercase tracking-wider mb-1">Completed</p>
@@ -359,7 +407,7 @@ export const EmployeeDashboard: React.FC = () => {
                                                 <p className="text-xs theme-text-muted uppercase tracking-wider mb-1">Skill Rating</p>
                                                 <div className="flex items-center gap-2 justify-end">
                                                     <Star size={16} className="text-yellow-400 fill-yellow-400" />
-                                                    <span className="text-2xl font-bold text-white">{(user as any)?.elo_rating || 1000}</span>
+                                                    <span className="text-2xl font-bold text-white">{profileStats?.eloRating || 1000}</span>
                                                 </div>
                                             </div>
                                         </div>

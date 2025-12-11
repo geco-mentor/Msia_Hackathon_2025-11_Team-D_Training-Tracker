@@ -735,6 +735,117 @@ export const evaluatePreAssessmentAnswer = async (
 };
 
 // ============================================
+// PERSONALIZED ASSESSMENT - Job & Goal Based
+// ============================================
+
+export const generatePersonalizedQuestions = async (
+    jobTitle: string,
+    goalDescription: string,
+    format: 'mcq' | 'text',
+    difficulty: 'Easy' | 'Normal' | 'Hard',
+    existingSkills?: Record<string, number>
+): Promise<{
+    questions: Array<{
+        question: string;
+        type: 'text' | 'multiple_choice';
+        options?: string[];
+        correctAnswer?: string;
+        skill: string;
+        hint: string;
+    }>;
+    assessmentTitle: string;
+    targetSkills: string[];
+}> => {
+    console.log(`[AWS Service] Generating personalized ${format} assessment for ${jobTitle} with goal: ${goalDescription}`);
+
+    const prompt = `
+    You are an expert technical interviewer and career mentor.
+    
+    CANDIDATE PROFILE:
+    Job Title: ${jobTitle}
+    Career Goal: ${goalDescription}
+    Current Level: ${difficulty}
+    
+    TASK:
+    Generate a personalized skill assessment with exactly 5 questions.
+    Format: ${format === 'mcq' ? 'Multiple Choice (4 options)' : 'Short Answer / Open-ended text'}
+    
+    REQUIREMENTS:
+    1. Focus on skills needed to reach the Career Goal from the current Job Title.
+    2. Questions should match the "${difficulty}" difficulty level.
+    3. Identify the specific technical skill tested by each question.
+    4. Create a catchy Title for this assessment module.
+    5. List the top 3 target skills this assessment covers.
+    
+    OUTPUT FORMAT (JSON ONLY):
+    {
+        "assessmentTitle": "Title of Assessment",
+        "targetSkills": ["Skill A", "Skill B", "Skill C"],
+        "questions": [
+            {
+                "question": "Question text...",
+                "type": "${format === 'mcq' ? 'multiple_choice' : 'text'}",
+                "options": ["A", "B", "C", "D"], // Only for MCQ (include exactly 4)
+                "correctAnswer": "The correct option text", // Only for MCQ
+                "skill": "Specific skill being tested",
+                "hint": "A helpful hint without giving away the answer"
+            }
+        ]
+    }
+    
+    IMPORTANT: Return ONLY valid JSON.
+    `;
+
+    const command = new ConverseCommand({
+        modelId: "qwen.qwen3-235b-a22b-2507-v1:0",
+        messages: [{ role: "user", content: [{ text: prompt }] }],
+        inferenceConfig: { maxTokens: 2500, temperature: 0.7 }
+    });
+
+    try {
+        const response = await withBedrockRetry(
+            () => getBedrockClient().send(command),
+            'generatePersonalizedQuestions'
+        );
+
+        const content = response.output?.message?.content?.[0]?.text || "{}";
+
+        // Parse JSON safely
+        let parsedData;
+        try {
+            const firstOpen = content.indexOf('{');
+            const lastClose = content.lastIndexOf('}');
+            if (firstOpen !== -1 && lastClose !== -1) {
+                parsedData = JSON.parse(content.substring(firstOpen, lastClose + 1));
+            } else {
+                parsedData = JSON.parse(content.replace(/```json/g, '').replace(/```/g, '').trim());
+            }
+        } catch (parseError) {
+            console.error('[AWS Service] Failed to parse AI response:', content);
+            throw new Error('Failed to parse generated assessment data');
+        }
+
+        // Validate structure
+        if (!parsedData.questions || !Array.isArray(parsedData.questions)) {
+            throw new Error('Invalid assessment structure returned by AI');
+        }
+
+        // Ensure type consistency
+        parsedData.questions = parsedData.questions.map((q: any) => ({
+            ...q,
+            type: format === 'mcq' ? 'multiple_choice' : 'text'
+        }));
+
+        console.log(`[AWS Service] Successfully generated ${parsedData.questions.length} questions`);
+        return parsedData;
+
+    } catch (error: any) {
+        console.error('[AWS Service] Error generating personalized assessment:', error);
+        throw error;
+    }
+};
+
+// ============================================
 // ENHANCED ASSESSMENT - Micro-Scenarios & Adaptive
 // ============================================
 
@@ -1379,4 +1490,44 @@ Be specific to the ${department} department context.`;
     }
 
     throw new Error(`Failed to generate career roadmap after ${maxRetries} attempts: ${lastError}`);
+};
+
+// Generate a "Why this goal?" reason
+export const generateCareerGoalReason = async (
+    jobTitle: string,
+    goal: string,
+    skills: any
+): Promise<string> => {
+    const prompt = `
+    Generate a short, motivating "Why this goal?" statement for an employee.
+
+    Current Role: ${jobTitle}
+    Target Goal: ${goal}
+    Skills: ${JSON.stringify(skills)}
+
+    The statement should describe what motivates someone to move from their current role to the target goal, referencing their skills or growth.
+    First person perspective ("I want...").
+    Keep it under 50 words.
+    
+    IMPORTANT: Return ONLY the text of the statement.
+    `;
+
+    const command = new ConverseCommand({
+        modelId: "qwen.qwen3-235b-a22b-2507-v1:0",
+        messages: [{ role: "user", content: [{ text: prompt }] }],
+        inferenceConfig: { maxTokens: 100, temperature: 0.7 }
+    });
+
+    try {
+        console.log('DEBUG: Generating career goal reason...');
+        const response = await getBedrockClient().send(command);
+        let text = response.output?.message?.content?.[0]?.text || "";
+
+        // Cleanup
+        text = text.replace(/["']/g, '').trim();
+        return text;
+    } catch (error) {
+        console.error('Failed to generate career goal reason:', error);
+        return `I want to advance my career and become a ${goal} to make a bigger impact.`;
+    }
 };

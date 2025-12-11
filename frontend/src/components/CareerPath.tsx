@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { TrendingUp, Lock, CheckCircle, Award, Target, Plus, Sparkles } from 'lucide-react';
-import { API_BASE_URL } from '../config';
-import { fetchWithRetry } from '../utils/apiRetry';
+
+import api from '../api/auth';
 import { useAuth } from '../contexts/AuthContext';
 import { CareerGoalModal } from './CareerGoalModal';
 import { CareerRoadmap } from './CareerRoadmap';
@@ -83,12 +83,12 @@ export const CareerPath: React.FC<CareerPathProps> = ({
         try {
             setLoading(true);
             const token = localStorage.getItem('token');
-            const response = await fetch(`${API_BASE_URL}/api/career/progress/${targetUserId}`, {
+            const response = await api.get(`/career/progress/${targetUserId}`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
             });
-            const data = await response.json();
+            const data = response.data;
 
             if (data.success) {
                 setCareerData(data.data);
@@ -109,12 +109,12 @@ export const CareerPath: React.FC<CareerPathProps> = ({
         try {
             setGoalsLoading(true);
             const token = localStorage.getItem('token');
-            const response = await fetch(`${API_BASE_URL}/api/career-goals/${targetUserId}`, {
+            const response = await api.get(`/career-goals/${targetUserId}`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
             });
-            const data = await response.json();
+            const data = response.data;
 
             if (data.success) {
                 setCareerGoals(data.data || []);
@@ -134,19 +134,16 @@ export const CareerPath: React.FC<CareerPathProps> = ({
         setIsGenerating(true);
         try {
             const token = localStorage.getItem('token');
-            const data = await fetchWithRetry(`${API_BASE_URL}/api/career-goals/generate-assessment`, {
-                method: 'POST',
+            const response = await api.post('/career-goals/generate-assessment', {
+                userId: targetUserId,
+                topic,
+                description: `Self-assessment for career goal: ${topic}`
+            }, {
                 headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    userId: targetUserId,
-                    topic,
-                    description: `Self-assessment for career goal: ${topic}`
-                })
+                    'Authorization': `Bearer ${token}`
+                }
             });
-            const json = await data.json();
+            const json = response.data;
             if (json.success) {
                 alert(`Assessment created! Scenario ID: ${json.data.scenarioId}. Navigate to Challenges to find it, or it will appear in your dashboard.`);
             } else {

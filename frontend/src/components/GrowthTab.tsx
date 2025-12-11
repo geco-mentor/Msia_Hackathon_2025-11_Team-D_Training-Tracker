@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Target, Compass, Lightbulb, Zap, TrendingUp, Award, Sparkles, Loader } from 'lucide-react';
+import { Target, Compass, Lightbulb, Zap, TrendingUp, Award, Sparkles, Loader, Brain } from 'lucide-react';
 import { API_BASE_URL } from '../config';
+import { PersonalizedAssessmentModal } from './PersonalizedAssessmentModal';
+import { fetchWithRetry } from '../utils/fetchWithRetry';
 
 interface GrowthTabProps {
     userName?: string;
     completedTrainings?: number;
     eloRating?: number;
     userId?: string;
+    userJobTitle?: string;
 }
 
 interface ActionItems {
@@ -20,10 +23,12 @@ export const GrowthTab: React.FC<GrowthTabProps> = ({
     userName = 'Operative',
     completedTrainings = 0,
     eloRating = 1000,
-    userId
+    userId,
+    userJobTitle = 'Employee'
 }) => {
     const [actionItems, setActionItems] = useState<ActionItems | null>(null);
     const [loadingItems, setLoadingItems] = useState(false);
+    const [showAssessmentModal, setShowAssessmentModal] = useState(false);
 
     useEffect(() => {
         if (userId) {
@@ -37,17 +42,19 @@ export const GrowthTab: React.FC<GrowthTabProps> = ({
         try {
             setLoadingItems(true);
             const token = localStorage.getItem('token');
-            const response = await fetch(`${API_BASE_URL}/api/career-goals/growth/action-items/${userId}`, {
+            console.log('[GrowthTab] Fetching action items with retry...');
+            const response = await fetchWithRetry(`${API_BASE_URL}/api/career-goals/growth/action-items/${userId}`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
             });
             const data = await response.json();
+            console.log('[GrowthTab] Action items response:', data);
             if (data.success) {
                 setActionItems(data.data);
             }
         } catch (err) {
-            console.error('Error fetching action items:', err);
+            console.error('[GrowthTab] Error fetching action items:', err);
         } finally {
             setLoadingItems(false);
         }
@@ -146,10 +153,21 @@ export const GrowthTab: React.FC<GrowthTabProps> = ({
                         GROWTH MINDSET
                     </span>
                 </div>
-                <p className="theme-text-secondary max-w-xl mx-auto">
+                <p className="theme-text-secondary max-w-xl mx-auto mb-6">
                     Welcome, <span className="text-cyan-400 font-bold">{userName}</span>!
                     Embrace continuous learning and watch your career flourish.
                 </p>
+
+                {/* Personalized Assessment Button */}
+                <button
+                    onClick={() => setShowAssessmentModal(true)}
+                    className="group relative inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-cyan-600 to-purple-600 text-white font-bold rounded-xl shadow-lg hover:shadow-cyan-500/25 hover:scale-105 transition-all duration-300"
+                >
+                    <div className="absolute inset-0 bg-white/20 rounded-xl blur opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    <Brain className="animate-pulse" size={20} />
+                    <span>Take Personalized Assessment</span>
+                    <span className="bg-white/20 px-2 py-0.5 rounded text-xs">New</span>
+                </button>
             </div>
 
             {/* Motivational Quote */}
@@ -219,6 +237,20 @@ export const GrowthTab: React.FC<GrowthTabProps> = ({
                     );
                 })}
             </div>
+
+            {/* Assessment Modal */}
+            {showAssessmentModal && userId && (
+                <PersonalizedAssessmentModal
+                    userId={userId}
+                    userJobTitle={userJobTitle}
+                    onClose={() => setShowAssessmentModal(false)}
+                    onComplete={(score, skills) => {
+                        console.log('Assessment completed', score, skills);
+                        // Optional: Trigger a refresh of the dashboard
+                        setShowAssessmentModal(false);
+                    }}
+                />
+            )}
         </div>
     );
 };

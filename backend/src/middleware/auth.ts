@@ -11,7 +11,7 @@ export interface AuthRequest extends Request {
     user?: {
         id: string;
         username: string;
-        role: 'employee' | 'admin';
+        role: 'employee' | 'admin' | 'manager';
     };
 }
 
@@ -30,7 +30,7 @@ export const verifyToken = (req: AuthRequest, res: Response, next: NextFunction)
         const decoded = jwt.verify(token, JWT_SECRET) as {
             id: string;
             username: string;
-            role: 'employee' | 'admin';
+            role: 'employee' | 'admin' | 'manager';
         };
 
         console.log('Token verified for user:', decoded.username);

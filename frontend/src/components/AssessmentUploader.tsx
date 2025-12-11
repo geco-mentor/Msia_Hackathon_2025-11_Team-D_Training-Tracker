@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Upload, FileText, AlertCircle, Loader2, Calendar, Building, ChevronRight, ChevronDown, Check } from 'lucide-react';
-import axios from 'axios';
-import { API_BASE_URL } from '../config';
+import api from '../api/auth';
+
 import { useAuth } from '../contexts/AuthContext';
 import { fetchWithRetry } from '../api/apiRetry';
 
@@ -14,40 +14,7 @@ interface Department {
     name: string;
 }
 
-// Axios request with retry logic (10 retries, 1.5s interval)
-const axiosWithRetry = async (config: {
-    method: 'GET' | 'POST';
-    url: string;
-    data?: any;
-    headers?: Record<string, string>;
-}, maxRetries = 10, delay = 1500): Promise<any> => {
-    let lastError: any = null;
 
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-        try {
-            console.log(`API call attempt ${attempt}/${maxRetries}: ${config.url}`);
-            const response = await axios({
-                method: config.method,
-                url: config.url,
-                data: config.data,
-                headers: config.headers
-            });
-            return response;
-        } catch (error: any) {
-            lastError = error;
-            const status = error.response?.status;
-
-            // Only retry on 5xx server errors or network errors
-            if ((status >= 500 || !status) && attempt < maxRetries) {
-                console.warn(`Server error (${status || 'network'}), retrying in ${delay}ms...`);
-                await new Promise(r => setTimeout(r, delay));
-                continue;
-            }
-            throw error;
-        }
-    }
-    throw lastError;
-};
 
 const AssessmentUploader: React.FC<AssessmentUploaderProps> = ({ onUploadComplete }) => {
     const { user, token } = useAuth();
@@ -71,7 +38,7 @@ const AssessmentUploader: React.FC<AssessmentUploaderProps> = ({ onUploadComplet
         const fetchDepartments = async () => {
             try {
                 if (!token) return;
-                const response = await axios.get(`${API_BASE_URL}/api/assessments/departments`, {
+                const response = await api.get('/assessments/departments', {
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 setDepartments(response.data);
@@ -121,16 +88,15 @@ const AssessmentUploader: React.FC<AssessmentUploaderProps> = ({ onUploadComplet
                 throw new Error('User not authenticated');
             }
 
-            const { data: { uploadUrl, key } } = await axiosWithRetry({
-                method: 'POST',
-                url: `${API_BASE_URL}/api/assessments/upload-url`,
-                data: {
+            const { data: { uploadUrl, key } } = await api.post(
+                '/assessments/upload-url',
+                {
                     fileName: file.name,
                     contentType: file.type,
                     userId: user.id
                 },
-                headers: { Authorization: `Bearer ${token}` }
-            });
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
 
             setProgress(40);
 
@@ -150,18 +116,17 @@ const AssessmentUploader: React.FC<AssessmentUploaderProps> = ({ onUploadComplet
             setProcessing(true);
 
             // 3. Process File (with retry)
-            const { data: { scenario } } = await axiosWithRetry({
-                method: 'POST',
-                url: `${API_BASE_URL}/api/assessments/process`,
-                data: {
+            const { data: { scenario } } = await api.post(
+                '/assessments/process',
+                {
                     key,
                     userId: user.id,
                     departmentIds: selectedDepartments,
                     postAssessmentDate: new Date(postAssessmentDate).toISOString(),
                     moduleName: moduleName.trim()
                 },
-                headers: { Authorization: `Bearer ${token}` }
-            });
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
 
             setProgress(100);
             setProcessing(false);

@@ -89,13 +89,13 @@ export const ManagerDashboard: React.FC = () => {
         }
     };
 
-    // Helper to get color for skill score
+    // Helper to get color for skill score - consistent cyan color scheme
     const getScoreColor = (score: number) => {
-        if (score >= 90) return 'bg-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.6)]';
-        if (score >= 75) return 'bg-cyan-600/80';
-        if (score >= 60) return 'bg-cyan-800/60';
-        if (score >= 40) return 'bg-cyan-900/40';
-        return 'bg-gray-800/30';
+        if (score >= 90) return 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.6)]'; // Excellent - green glow
+        if (score >= 75) return 'bg-cyan-500'; // Good - bright cyan
+        if (score >= 60) return 'bg-cyan-600'; // Average - medium cyan
+        if (score >= 40) return 'bg-slate-500'; // Below average - gray
+        return 'bg-slate-600'; // Low - dark gray
     };
 
     // Skills needed for the matrix
@@ -191,14 +191,14 @@ export const ManagerDashboard: React.FC = () => {
                     {topPerformer ? (
                         <div className="theme-bg-secondary rounded-xl p-1 relative overflow-hidden shadow-xl shadow-yellow-500/10 border border-yellow-500/20">
                             <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/10 to-transparent pointer-events-none" />
-                            <div className="bg-black/40 h-full w-full rounded-lg p-5 relative z-10 flex flex-col justify-center">
+                            <div className="bg-gray-900 dark:bg-black/40 h-full w-full rounded-lg p-5 relative z-10 flex flex-col justify-center">
                                 <div className="flex items-start justify-between mb-4">
                                     <div>
                                         <p className="text-yellow-500 text-xs font-bold tracking-widest flex items-center gap-2">
                                             <Crown size={14} /> TOP OPERATIVE
                                         </p>
                                         <h3 className="text-2xl font-bold text-white mt-1">{topPerformer.name}</h3>
-                                        <p className="text-xs theme-text-secondary">{topPerformer.job_title}</p>
+                                        <p className="text-xs text-gray-400">{topPerformer.job_title}</p>
                                     </div>
                                     <div className="w-12 h-12 rounded-full bg-gradient-to-br from-yellow-400 to-orange-600 p-[2px]">
                                         <div className="w-full h-full rounded-full bg-black flex items-center justify-center text-yellow-500 font-bold text-lg">
@@ -213,7 +213,7 @@ export const ManagerDashboard: React.FC = () => {
                                     </div>
                                     <div className="bg-white/5 p-2 rounded border border-white/10">
                                         <span className="block text-gray-400">Win Rate</span>
-                                        <span className="block text-lg font-mono text-yellow-400">{(topPerformer.win_rate * 100).toFixed(1)}%</span>
+                                        <span className="block text-lg font-mono text-yellow-400">{topPerformer.win_rate != null ? `${(topPerformer.win_rate * 100).toFixed(0)}%` : 'N/A'}</span>
                                     </div>
                                 </div>
                             </div>
@@ -232,8 +232,8 @@ export const ManagerDashboard: React.FC = () => {
                         <div className="absolute top-0 right-0 p-4 opacity-10">
                             <AlertTriangle size={100} className="text-red-500" />
                         </div>
-                        <div className="p-5 border-b border-red-500/20 flex items-center justify-between bg-red-900/10">
-                            <h3 className="font-bold flex items-center gap-2 text-red-500">
+                        <div className="p-5 border-b border-red-500/20 flex items-center justify-between bg-red-50 dark:bg-red-900/10">
+                            <h3 className="font-bold flex items-center gap-2 text-red-600 dark:text-red-500">
                                 <AlertTriangle size={18} />
                                 RISK RADAR
                             </h3>
@@ -242,28 +242,47 @@ export const ManagerDashboard: React.FC = () => {
                         <div className="p-4 space-y-3">
                             {atRisk.length > 0 ? (
                                 atRisk.map((p: any) => (
-                                    <div key={p.id} className="bg-black/40 border border-red-500/20 p-3 rounded flex items-center justify-between group hover:border-red-500/50 transition-colors">
-                                        <div>
-                                            <div
-                                                className="font-bold text-gray-200 cursor-pointer hover:text-red-400 transition-colors"
-                                                onClick={() => handleViewEmployee(p.id)}
-                                            >
-                                                {p.name}
+                                    <div key={p.id} className="bg-gray-50 dark:bg-black/40 border border-red-500/20 p-3 rounded flex flex-col gap-2 group hover:border-red-500/50 transition-colors shadow-sm">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <div
+                                                    className="font-bold text-gray-200 cursor-pointer hover:text-red-400 transition-colors"
+                                                    onClick={() => handleViewEmployee(p.id)}
+                                                >
+                                                    {p.name}
+                                                </div>
+                                                <div className="text-[10px] text-red-400 mt-1 flex flex-wrap gap-2">
+                                                    {p.factors.map((f: string, i: number) => (
+                                                        <span key={i} className="bg-red-500/10 px-1 rounded">{f}</span>
+                                                    ))}
+                                                </div>
                                             </div>
-                                            <div className="text-[10px] text-red-400 mt-1 flex gap-2">
-                                                {p.factors.map((f: string, i: number) => (
-                                                    <span key={i} className="bg-red-500/10 px-1 rounded">{f}</span>
-                                                ))}
+                                            <div className="text-right">
+                                                <div className="text-xs text-gray-400">Projected ELO</div>
+                                                <div className="font-mono text-red-500 font-bold">{p.projectedElo} <span className="text-[10px]">↓</span></div>
                                             </div>
                                         </div>
-                                        <div className="text-right">
-                                            <div className="text-xs text-gray-400">Projected ELO</div>
-                                            <div className="font-mono text-red-500 font-bold">{p.projectedElo} <span className="text-[10px]">↓</span></div>
-                                        </div>
+
+                                        {/* Actionable Insight: Training Request */}
+                                        {p.factors.includes('Uncertified for Goal') && (
+                                            <div className="pt-2 border-t border-red-500/10 flex items-center justify-between">
+                                                <span className="text-[10px] text-gray-400">Goal: {p.goal || 'Undefined'}</span>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        alert(`Training request sent to HR for ${p.name}'s goal: ${p.goal}`);
+                                                    }}
+                                                    className="flex items-center gap-1 px-2 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-[10px] rounded border border-red-500/20 transition-colors"
+                                                >
+                                                    <Target size={10} />
+                                                    REQ. TRAINING
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
                                 ))
                             ) : (
-                                <div className="text-center py-8 text-gray-500 text-sm">
+                                <div className="text-center py-8 theme-text-secondary text-sm border-2 border-dashed border-gray-200 dark:border-white/5 rounded-lg bg-gray-50 dark:bg-transparent">
                                     No operatives identified as high risk.
                                 </div>
                             )}
@@ -275,8 +294,8 @@ export const ManagerDashboard: React.FC = () => {
                         <div className="absolute top-0 right-0 p-4 opacity-10">
                             <Zap size={100} className="text-green-500" />
                         </div>
-                        <div className="p-5 border-b border-green-500/20 flex items-center justify-between bg-green-900/10">
-                            <h3 className="font-bold flex items-center gap-2 text-green-500">
+                        <div className="p-5 border-b border-green-500/20 flex items-center justify-between bg-green-50 dark:bg-green-900/10">
+                            <h3 className="font-bold flex items-center gap-2 text-green-600 dark:text-green-500">
                                 <Zap size={18} />
                                 GROWTH VELOCITY
                             </h3>
@@ -285,7 +304,7 @@ export const ManagerDashboard: React.FC = () => {
                         <div className="p-4 space-y-3">
                             {accelerating.length > 0 ? (
                                 accelerating.map((p: any) => (
-                                    <div key={p.id} className="bg-black/40 border border-green-500/20 p-3 rounded flex items-center justify-between group hover:border-green-500/50 transition-colors">
+                                    <div key={p.id} className="bg-gray-50 dark:bg-black/40 border border-green-500/20 p-3 rounded flex items-center justify-between group hover:border-green-500/50 transition-colors shadow-sm">
                                         <div>
                                             <div
                                                 className="font-bold text-gray-200 cursor-pointer hover:text-green-400 transition-colors"
@@ -306,7 +325,7 @@ export const ManagerDashboard: React.FC = () => {
                                     </div>
                                 ))
                             ) : (
-                                <div className="text-center py-8 text-gray-500 text-sm">
+                                <div className="text-center py-8 theme-text-secondary text-sm border-2 border-dashed border-gray-200 dark:border-white/5 rounded-lg bg-gray-50 dark:bg-transparent">
                                     No operatives currently accelerating.
                                 </div>
                             )}
@@ -316,15 +335,19 @@ export const ManagerDashboard: React.FC = () => {
 
                 {/* 4. Skill Matrix Heatmap */}
                 <div className="theme-bg-secondary border theme-border rounded-xl overflow-hidden shadow-2xl">
-                    <div className="p-5 border-b theme-border flex items-center justify-between bg-black/20">
+                    <div className="p-5 border-b theme-border flex items-center justify-between bg-gray-50 dark:bg-black/20">
                         <h3 className="font-bold flex items-center gap-2 theme-text-primary">
                             <LayoutGrid className="text-cyan-500" size={18} />
                             UNIT SKILL MATRIX
                         </h3>
+                        <p className="text-xs theme-text-secondary ml-2">
+                            Aggregated average from all completed training scenarios in each skill category.
+                        </p>
                         <div className="flex items-center gap-2 text-[10px] theme-text-secondary">
-                            <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-cyan-900/40"></div> Low</span>
-                            <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-cyan-600/80"></div> Mid</span>
-                            <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-cyan-500 shadow-[0_0_5px_cyan]"></div> High</span>
+                            <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-slate-600"></div> Low</span>
+                            <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-cyan-600"></div> Mid</span>
+                            <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-cyan-500 text-cyan-500 shadow-[0_0_5px_currentColor]"></div> High</span>
+                            <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-emerald-500 text-emerald-500 shadow-[0_0_5px_currentColor]"></div> Elite</span>
                         </div>
                     </div>
 
@@ -332,20 +355,20 @@ export const ManagerDashboard: React.FC = () => {
                         <table className="w-full text-left text-sm border-collapse">
                             <thead>
                                 <tr>
-                                    <th className="p-4 bg-black/30 theme-text-secondary font-medium border-b border-r theme-border sticky left-0 z-10 w-48 backdrop-blur-md">OPERATIVE</th>
+                                    <th className="p-4 bg-gray-100 dark:bg-black/30 theme-text-secondary font-medium border-b border-r theme-border sticky left-0 z-10 w-48 backdrop-blur-md">OPERATIVE</th>
                                     {matrixSkills.map(skill => (
-                                        <th key={skill} className="p-4 bg-black/30 theme-text-secondary font-medium border-b theme-border text-center min-w-[100px]">
+                                        <th key={skill} className="p-4 bg-gray-100 dark:bg-black/30 theme-text-secondary font-medium border-b theme-border text-center min-w-[100px]">
                                             {skill.split(' ').map(w => w[0]).join('')} <br />
                                             <span className="text-[9px] opacity-60 font-normal">{skill}</span>
                                         </th>
                                     ))}
-                                    <th className="p-4 bg-black/30 theme-text-secondary font-medium border-b theme-border text-center">AVG</th>
+                                    <th className="p-4 bg-gray-100 dark:bg-black/30 theme-text-secondary font-medium border-b theme-border text-center">AVG</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {teamMembers.map((emp) => (
-                                    <tr key={emp.id} className="hover:bg-white/5 transition-colors group">
-                                        <td className="p-4 border-b border-r theme-border font-medium theme-text-primary bg-theme-bg-secondary sticky left-0 z-10 group-hover:bg-gray-800/80 transition-colors">
+                                    <tr key={emp.id} className="hover:bg-gray-50 dark:hover:bg-white/5 transition-colors group">
+                                        <td className="p-4 border-b border-r theme-border font-medium theme-text-primary bg-theme-bg-secondary sticky left-0 z-10 group-hover:bg-gray-100 dark:group-hover:bg-gray-800/80 transition-colors">
                                             <div
                                                 className="flex items-center gap-2 cursor-pointer hover:text-cyan-400 transition-colors"
                                                 onClick={() => handleViewEmployee(emp.id)}
@@ -355,7 +378,8 @@ export const ManagerDashboard: React.FC = () => {
                                             </div>
                                         </td>
                                         {matrixSkills.map(skill => {
-                                            const score = emp.skills_profile?.[skill] || 0;
+                                            // skills_profile stores values as 0-100 integers
+                                            const score = Math.round(emp.skills_profile?.[skill] || 0);
                                             return (
                                                 <td key={skill} className="p-3 border-b theme-border text-center relative">
                                                     <div className="flex items-center justify-center">
@@ -364,14 +388,16 @@ export const ManagerDashboard: React.FC = () => {
                                                                 {score}
                                                             </div>
                                                         ) : (
-                                                            <div className="w-2 h-2 rounded-full bg-white/5" />
+                                                            <div className="w-2 h-2 rounded-full bg-gray-200 dark:bg-white/5" />
                                                         )}
                                                     </div>
                                                 </td>
                                             );
                                         })}
-                                        <td className="p-4 border-b theme-border text-center font-mono text-cyan-400">
-                                            {emp.skills_profile ? Math.round((Object.values(emp.skills_profile) as number[]).reduce((a, b) => a + b, 0) / (Object.values(emp.skills_profile).length || 1)) : 0}%
+                                        <td className="p-4 border-b theme-border text-center font-mono text-cyan-600 dark:text-cyan-400 font-bold">
+                                            {emp.skills_profile && Object.keys(emp.skills_profile).length > 0
+                                                ? Math.round((Object.values(emp.skills_profile) as number[]).reduce((a, b) => a + b, 0) / Object.values(emp.skills_profile).length)
+                                                : 0}%
                                         </td>
                                     </tr>
                                 ))}
@@ -386,6 +412,9 @@ export const ManagerDashboard: React.FC = () => {
                         <Activity className="text-cyan-500" size={18} />
                         UNIT TRAJECTORY
                     </h3>
+                    <p className="text-xs theme-text-secondary mb-6 ml-1">
+                        Reflects the daily volume of training missions completed by the unit over the last 30 days.
+                    </p>
                     <div className="h-64 w-full">
                         <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={analytics?.activityTimeline || []}>

@@ -34,6 +34,17 @@ router.post('/post-assessment/answer', submitPostAssessmentAnswer);
 // Self-Assessment Route
 router.post('/self-assessment/generate', generateSelfAssessment);
 
+// Personalized Assessment Routes (NEW)
+import {
+    generatePersonalizedAssessment,
+    startPersonalizedAssessment,
+    submitPersonalizedAnswer
+} from '../controllers/personalizedAssessmentController';
+
+router.post('/personalized/generate', generatePersonalizedAssessment);
+router.post('/personalized/start', startPersonalizedAssessment);
+router.post('/personalized/answer', submitPersonalizedAnswer);
+
 // Legacy Employee Flow Routes (keeping for backwards compatibility)
 router.post('/pre-assessment', handlePreAssessment);
 router.get('/post-assessment/:scenarioId', getPostAssessment);

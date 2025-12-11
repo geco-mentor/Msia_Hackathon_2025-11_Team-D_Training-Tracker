@@ -88,6 +88,7 @@ import ratingRoutes from './routes/rating';
 import careerRoutes from './routes/career';
 import certificationRoutes from './routes/certification';
 import careerGoalsRoutes from './routes/careerGoals';
+import skillsRoutes from './routes/skills';
 
 // API routes
 app.use('/api/auth', authRoutes);
@@ -101,6 +102,7 @@ app.use('/api/ratings', ratingRoutes);
 app.use('/api/career', careerRoutes);
 app.use('/api/certifications', certificationRoutes);
 app.use('/api/career-goals', careerGoalsRoutes);
+app.use('/api/skills', skillsRoutes);
 
 // 404 handler
 // Serve static files from frontend/dist

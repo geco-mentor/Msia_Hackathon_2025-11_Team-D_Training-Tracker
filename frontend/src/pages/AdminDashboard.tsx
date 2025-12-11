@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useNavigate } from 'react-router-dom';
-import { Users, Activity, Trophy, Search, LogOut, Shield, Terminal, Target, Briefcase, Sun, Moon, LayoutGrid, Zap, Download, RefreshCw, Filter, ChevronRight } from 'lucide-react';
+import { Users, Activity, Trophy, Search, LogOut, Shield, Terminal, Target, Briefcase, Sun, Moon, LayoutGrid, Zap, Download } from 'lucide-react';
 import { AreaChart, Area, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { EmployeeDetailsModal } from '../components/EmployeeDetailsModal';
 import { KpiCard } from '../components/KpiCard';
@@ -17,6 +17,7 @@ const TABLE_COLUMNS = [
     { key: 'role', label: 'Role' },
     { key: 'department', label: 'Department' },
     { key: 'status', label: 'Status' },
+    { key: 'goal', label: 'Goal Set' },
 ];
 
 export const AdminDashboard: React.FC = () => {
@@ -51,7 +52,7 @@ export const AdminDashboard: React.FC = () => {
 
     // Filters
     const [departments, setDepartments] = useState<any[]>([]);
-    const [selectedDepartment, setSelectedDepartment] = useState<string>('all');
+    const [selectedDepartment, _setSelectedDepartment] = useState<string>('all');
 
     // Fetch Data
     const fetchData = useCallback(async () => {
@@ -286,6 +287,38 @@ export const AdminDashboard: React.FC = () => {
                     />
                 </div>
 
+                {/* KPI Methodology Info Panel */}
+                <details className="theme-bg-secondary border theme-border rounded-lg p-4 bg-opacity-50 backdrop-blur-sm text-xs">
+                    <summary className="cursor-pointer theme-text-primary font-bold flex items-center gap-2 hover:text-cyan-500 transition-colors">
+                        <Target size={14} className="text-purple-400" />
+                        📖 How are these metrics calculated? (Click to expand)
+                    </summary>
+                    <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 theme-text-secondary">
+                        <div className="p-3 rounded bg-black/10 dark:bg-white/5 border border-dashed theme-border">
+                            <strong className="text-blue-500 dark:text-blue-400">📊 Active Operatives</strong>
+                            <p className="mt-1">Total count of employees in the system.</p>
+                        </div>
+                        <div className="p-3 rounded bg-black/10 dark:bg-white/5 border border-dashed theme-border">
+                            <strong className="text-green-500 dark:text-green-400">🎯 Avg. Completion Rate</strong>
+                            <p className="mt-1 leading-relaxed">
+                                <code className="bg-black/20 px-1 rounded">Unique Completions ÷ (Employees × Scenarios)</code>
+                                <br />Measures how many unique employee-scenario pairs have been completed.
+                            </p>
+                        </div>
+                        <div className="p-3 rounded bg-black/10 dark:bg-white/5 border border-dashed theme-border">
+                            <strong className="text-yellow-500 dark:text-yellow-400">⚡ Training ROI</strong>
+                            <p className="mt-1 leading-relaxed">
+                                <code className="bg-black/20 px-1 rounded">(Post-Avg − Pre-Avg) ÷ Pre-Avg × 100</code>
+                                <br />Compares average post-assessment scores vs pre-assessment baselines.
+                            </p>
+                        </div>
+                        <div className="p-3 rounded bg-black/10 dark:bg-white/5 border border-dashed theme-border">
+                            <strong className="text-purple-500 dark:text-purple-400">🏆 Total Assessments</strong>
+                            <p className="mt-1">Count of all assessment records in the database (pre + post).</p>
+                        </div>
+                    </div>
+                </details>
+
                 {/* Charts Section */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* Activity Timeline (Stacked Area) */}
@@ -340,9 +373,14 @@ export const AdminDashboard: React.FC = () => {
                                 <Target size={16} className="text-purple-400" />
                                 TRAINING_IMPACT_ANALYSIS
                             </h3>
-                            <p className="text-xs theme-text-secondary opacity-70">
-                                Pre vs Post assessment scores. Click on points for details.
+                            <p className="text-xs theme-text-secondary opacity-70 mb-2">
+                                Pre vs Post assessment scores by curriculum. Click on points for details.
                             </p>
+                            <div className="text-[9px] theme-text-secondary/60 p-2 bg-black/10 dark:bg-white/5 rounded border border-dashed theme-border">
+                                <strong className="theme-text-primary">📐 Score Definition:</strong>
+                                <span className="text-purple-400"> Pre-Assessment</span> = baseline knowledge check (before training);
+                                <span className="text-cyan-400"> Post-Assessment</span> = AI-graded scenario-based evaluation (after training). Gap indicates training effectiveness.
+                            </div>
                         </div>
                         <div className="h-64 w-full relative">
                             {isLoading ? (
@@ -392,17 +430,32 @@ export const AdminDashboard: React.FC = () => {
                             <div className="flex items-center gap-4 text-[10px] md:text-xs">
                                 <div className="flex items-center gap-2">
                                     <div className="w-2 h-2 md:w-3 md:h-3 bg-amber-100"></div>
-                                    <span className="theme-text-secondary">Novice</span>
+                                    <span className="theme-text-secondary">&lt;30%</span>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <div className="w-2 h-2 md:w-3 md:h-3 bg-orange-400"></div>
-                                    <span className="theme-text-secondary">Proficient</span>
+                                    <span className="theme-text-secondary">30-70%</span>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <div className="w-2 h-2 md:w-3 md:h-3 bg-red-700"></div>
-                                    <span className="theme-text-primary">Expert</span>
+                                    <span className="theme-text-primary">&gt;70%</span>
                                 </div>
                             </div>
+                        </div>
+                        {/* Methodology Note */}
+                        <div className="mb-4 p-3 rounded-lg bg-black/10 dark:bg-white/5 border border-dashed theme-border">
+                            <p className="text-[10px] theme-text-secondary leading-relaxed mb-2">
+                                <strong className="theme-text-primary">📊 Skill Adoption Methodology:</strong> Values show <strong>Adoption Rate</strong> = % of employees considered "Expert" per skill per department.
+                            </p>
+                            <ul className="text-[10px] theme-text-secondary/80 list-disc list-inside space-y-1">
+                                <li>An employee is classified as an <strong className="text-cyan-500 dark:text-cyan-400">Expert</strong> if they meet <strong>ANY</strong> of these criteria:</li>
+                                <li className="ml-4">✓ <strong>Assessment Score ≥70%</strong> – Passing grade on skill-specific assessments</li>
+                                <li className="ml-4">✓ <strong>Related Certification</strong> – Holds a relevant professional certification (e.g., AWS Cert for Cloud skills)</li>
+                                <li className="ml-4">✓ <strong>Skill Badge</strong> – Has an internal badge recognizing expertise</li>
+                            </ul>
+                            <p className="text-[9px] theme-text-secondary/60 mt-2 italic">
+                                💡 Formula: Adoption Rate = (# of Experts in Dept) ÷ (# of Employees who took the skill assessment in Dept)
+                            </p>
                         </div>
 
                         <div className="overflow-x-auto">
@@ -519,6 +572,7 @@ export const AdminDashboard: React.FC = () => {
                                     {visibleColumns.has('role') && <th className="px-6 py-3 font-medium">Role</th>}
                                     {visibleColumns.has('department') && <th className="px-6 py-3 font-medium">Department</th>}
                                     {visibleColumns.has('status') && <th className="px-6 py-3 font-medium">Status</th>}
+                                    {visibleColumns.has('goal') && <th className="px-6 py-3 font-medium">Goal Set</th>}
                                     <th className="px-6 py-3 font-medium text-right">Actions</th>
                                 </tr>
                             </thead>
@@ -537,6 +591,16 @@ export const AdminDashboard: React.FC = () => {
                                                     : 'bg-black/5 dark:bg-white/5 border-black/10 dark:border-white/10 theme-text-secondary'
                                                     }`}>
                                                     {emp.status ? emp.status.toUpperCase() : 'ACTIVE'}
+                                                </span>
+                                            </td>
+                                        )}
+                                        {visibleColumns.has('goal') && (
+                                            <td className="px-6 py-4">
+                                                <span className={`px-2 py-0.5 rounded text-[10px] border ${emp.hasGoal
+                                                    ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-600 dark:text-cyan-400'
+                                                    : 'bg-orange-500/10 border-orange-500/30 text-orange-600 dark:text-orange-400'
+                                                    }`}>
+                                                    {emp.hasGoal ? 'YES' : 'NO'}
                                                 </span>
                                             </td>
                                         )}

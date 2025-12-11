@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { supabase } from '../config/database';
 import { AuthRequest } from '../middleware/auth';
-import { generateCareerRoadmap } from '../services/awsService';
+import { generateCareerRoadmap, generateCareerGoalReason } from '../services/awsService';
 
 interface CareerGoal {
     id: string;
@@ -75,7 +75,13 @@ export const getCareerGoals = async (req: AuthRequest, res: Response): Promise<v
 // Create a new career goal with AI roadmap
 export const createCareerGoal = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
-        const { userId, goalTitle, goalDescription, targetTimeframe } = req.body;
+        let { userId, goalDescription } = req.body;
+        const { goalTitle, targetTimeframe } = req.body;
+
+        // Use authenticated user ID if available
+        if (req.user?.id) {
+            userId = req.user.id;
+        }
 
         console.log('[CareerGoals] Creating goal for user:', userId, 'Goal:', goalTitle);
 
@@ -93,8 +99,22 @@ export const createCareerGoal = async (req: AuthRequest, res: Response): Promise
 
         if (userError) {
             console.error('[CareerGoals] Error fetching user:', userError);
-            res.status(500).json({ success: false, message: 'Failed to fetch user data' });
+            res.status(500).json({ success: false, message: 'Failed to fetch user data. Please ensure your profile is set up.' });
             return;
+        }
+
+        // Auto-generate "Why this goal?" if missing
+        if (!goalDescription) {
+            console.log('[CareerGoals] Goal description missing. Auto-generating with AI...');
+            goalDescription = await withRetry(
+                () => generateCareerGoalReason(
+                    userData.job_title || 'Employee',
+                    goalTitle,
+                    userData.skills_profile
+                ),
+                'Generate Goal Reason'
+            );
+            console.log('[CareerGoals] Generated reason:', goalDescription);
         }
 
         // Fetch user's assessment feedback for weaknesses
@@ -374,26 +394,26 @@ export const generateSelfAssessment = async (req: AuthRequest, res: Response): P
             return;
         }
 
-        // Use retry helper for supabase operations
-        const existingScenario = await withRetry(
-            async () => {
-                const { data, error } = await supabase
-                    .from('scenarios')
-                    .select('id, title')
-                    .ilike('title', `%${topic}%`)
-                    .limit(1)
-                    .single();
-                if (error) throw error;
-                return data;
-            },
-            'Check existing scenario'
-        );
+        // Check for existing scenario - don't use .single() as 0 results is valid
+        const { data: existingScenarios, error: searchError } = await supabase
+            .from('scenarios')
+            .select('id, title')
+            .ilike('title', `%${topic}%`)
+            .limit(1);
+
+        if (searchError) {
+            console.error('[CareerGoals] Error searching scenarios:', searchError);
+            throw searchError;
+        }
 
         let scenarioId: string;
-        if (existingScenario) {
-            console.log('[CareerGoals] Using existing scenario:', existingScenario.id);
-            scenarioId = existingScenario.id;
+
+        if (existingScenarios && existingScenarios.length > 0) {
+            // Found existing scenario
+            console.log('[CareerGoals] Using existing scenario:', existingScenarios[0].id);
+            scenarioId = existingScenarios[0].id;
         } else {
+            // Create new scenario for this topic
             console.log('[CareerGoals] Creating new scenario for topic:', topic);
             const newScenario = await withRetry(
                 async () => {
@@ -401,14 +421,12 @@ export const generateSelfAssessment = async (req: AuthRequest, res: Response): P
                         .from('scenarios')
                         .insert({
                             title: `Self-Assessment: ${topic}`,
-                            description: description || `Auto-generated assessment for ${topic}`,
-                            video_url: '',
+                            scenario_text: description || `Auto-generated assessment for ${topic}`,
                             category: 'self-assessment',
                             skill: topic,
                             difficulty: 'Intermediate',
-                            points: 50,
-                            time_estimate: 15,
-                            require_post_assessment: true
+                            is_personalized: true,
+                            status: 'published'
                         })
                         .select()
                         .single();

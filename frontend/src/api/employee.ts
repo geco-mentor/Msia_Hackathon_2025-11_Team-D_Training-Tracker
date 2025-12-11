@@ -20,6 +20,7 @@ export interface EmployeeSummary {
     progress: number;
     status: string;
     elo_rating: number;
+    win_rate?: number;
     skills_profile?: Record<string, number>;
 }
 

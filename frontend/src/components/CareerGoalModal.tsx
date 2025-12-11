@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, Target, Loader, Sparkles } from 'lucide-react';
-import { API_BASE_URL } from '../config';
+import api from '../api/auth';
 
 interface CareerGoalModalProps {
     userId: string;
@@ -33,21 +33,18 @@ export const CareerGoalModal: React.FC<CareerGoalModalProps> = ({
             const token = localStorage.getItem('token');
             console.log('[CareerGoalModal] Creating goal:', goalTitle);
 
-            const response = await fetch(`${API_BASE_URL}/api/career-goals`, {
-                method: 'POST',
+            const response = await api.post('/career-goals', {
+                userId,
+                goalTitle: goalTitle.trim(),
+                goalDescription: goalDescription.trim() || null,
+                targetTimeframe
+            }, {
                 headers: {
-                    'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({
-                    userId,
-                    goalTitle: goalTitle.trim(),
-                    goalDescription: goalDescription.trim() || null,
-                    targetTimeframe
-                })
+                }
             });
 
-            const data = await response.json();
+            const data = response.data;
             console.log('[CareerGoalModal] Response:', data);
 
             if (data.success) {
