@@ -44,7 +44,7 @@ export const EmployeeDetailsModal: React.FC<EmployeeDetailsModalProps> = ({ isOp
     if (!employee) {
         return (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-                <div className="theme-bg-secondary border border-white/10 rounded-lg p-8 flex flex-col items-center shadow-2xl">
+                <div className="theme-bg-secondary theme-border rounded-lg p-8 flex flex-col items-center shadow-2xl">
                     <Loader className="animate-spin text-cyan-400 mb-4" size={32} />
                     <p className="theme-text-secondary">Loading employee details...</p>
                 </div>
@@ -54,13 +54,13 @@ export const EmployeeDetailsModal: React.FC<EmployeeDetailsModalProps> = ({ isOp
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="theme-bg-secondary border border-white/10 rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="theme-bg-secondary theme-border rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
                 {/* Header */}
-                <div className="p-6 border-b border-white/10 flex items-start justify-between bg-white/5">
+                <div className="p-6 theme-border-secondary border-b flex items-start justify-between theme-bg-tertiary">
                     <div>
                         <h2 className="text-2xl font-bold theme-text-primary mb-1">{employee.name}</h2>
                         <div className="flex items-center gap-3 text-sm theme-text-primary/60">
-                            <span className="px-2 py-0.5 rounded bg-white/10 border border-white/10 theme-text-primary/80">
+                            <span className="px-2 py-0.5 rounded theme-bg-tertiary theme-border border theme-text-primary/80">
                                 {employee.job_title}
                             </span>
                             <span>{employee.department}</span>
@@ -68,7 +68,7 @@ export const EmployeeDetailsModal: React.FC<EmployeeDetailsModalProps> = ({ isOp
                     </div>
                     <button
                         onClick={onClose}
-                        className="p-2 hover:bg-white/10 rounded-lg transition-colors theme-text-primary/60 hover:theme-text-primary"
+                        className="p-2 hover:theme-bg-tertiary rounded-lg transition-colors theme-text-primary/60 hover:theme-text-primary"
                     >
                         <X size={20} />
                     </button>
@@ -77,28 +77,28 @@ export const EmployeeDetailsModal: React.FC<EmployeeDetailsModalProps> = ({ isOp
                 <div className="overflow-y-auto flex-1 p-6 space-y-8">
                     {/* Stats Grid */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div className="bg-black/40 border border-purple-500/20 p-4 rounded-lg">
+                        <div className="theme-bg-tertiary border border-purple-500/20 p-4 rounded-lg">
                             <div className="flex items-center gap-3 mb-2">
                                 <Trophy className="text-purple-400" size={20} />
                                 <span className="text-sm theme-text-primary/60">Global Ranking</span>
                             </div>
                             <div className="text-2xl font-bold theme-text-primary">#{employee.ranking}</div>
                         </div>
-                        <div className="bg-black/40 border border-cyan-500/20 p-4 rounded-lg">
+                        <div className="theme-bg-tertiary border border-cyan-500/20 p-4 rounded-lg">
                             <div className="flex items-center gap-3 mb-2">
                                 <Activity className="text-cyan-400" size={20} />
                                 <span className="text-sm theme-text-primary/60">Win Rate</span>
                             </div>
                             <div className="text-2xl font-bold theme-text-primary">{employee.win_rate}%</div>
                         </div>
-                        <div className="bg-black/40 border border-green-500/20 p-4 rounded-lg">
+                        <div className="theme-bg-tertiary border border-green-500/20 p-4 rounded-lg">
                             <div className="flex items-center gap-3 mb-2">
                                 <Award className="text-green-400" size={20} />
                                 <span className="text-sm theme-text-primary/60">Current Streak</span>
                             </div>
                             <div className="text-2xl font-bold theme-text-primary">{employee.streak} Days</div>
                         </div>
-                        <div className="bg-black/40 border border-yellow-500/20 p-4 rounded-lg">
+                        <div className="theme-bg-tertiary border border-yellow-500/20 p-4 rounded-lg">
                             <div className="flex items-center gap-3 mb-2">
                                 <TrendingUp className="text-yellow-400" size={20} />
                                 <span className="text-sm theme-text-primary/60">Elo Rating</span>
@@ -111,7 +111,7 @@ export const EmployeeDetailsModal: React.FC<EmployeeDetailsModalProps> = ({ isOp
                     {employee.analytics && (
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                             {/* Skill Heatmap */}
-                            <div className="bg-black/40 border border-white/10 p-6 rounded-lg">
+                            <div className="theme-bg-tertiary theme-border p-6 rounded-lg">
                                 <h3 className="text-sm font-bold theme-text-primary mb-6 flex items-center gap-2">
                                     <Target size={16} className="text-purple-400" />
                                     SKILL_PROFICIENCY_HEATMAP
@@ -141,7 +141,7 @@ export const EmployeeDetailsModal: React.FC<EmployeeDetailsModalProps> = ({ isOp
                             </div>
 
                             {/* Progress Chart */}
-                            <div className="bg-black/40 border border-white/10 p-6 rounded-lg">
+                            <div className="theme-bg-tertiary theme-border p-6 rounded-lg">
                                 <div className="flex items-center justify-between mb-6">
                                     <h3 className="text-sm font-bold theme-text-primary flex items-center gap-2">
                                         <TrendingUp size={16} className="text-cyan-400" />
@@ -181,14 +181,14 @@ export const EmployeeDetailsModal: React.FC<EmployeeDetailsModalProps> = ({ isOp
                                     </ResponsiveContainer>
                                 </div>
                                 {/* Methodology Note */}
-                                <div className="mt-4 p-3 rounded-lg bg-white/5 border border-dashed border-white/10">
+                                <div className="mt-4 p-3 rounded-lg theme-bg-secondary border border-dashed theme-border">
                                     <p className="text-[10px] theme-text-secondary leading-relaxed">
                                         <strong className="theme-text-primary">📊 Methodology:</strong>
                                     </p>
                                     <ul className="list-disc list-inside mt-1 space-y-1 text-[10px] theme-text-secondary/80">
                                         <li><strong className="theme-text-primary/90">Baseline:</strong> Avg score of first 3 assessments.</li>
                                         <li><strong className="theme-text-primary/90">Current:</strong> Avg score of 3 most recent assessments.</li>
-                                        <li className="italic text-white/40 mt-1 list-none ml-2 text-[9px]">* Note: Scores may vary based on scenario difficulty (e.g. Hard vs Easy).</li>
+                                        <li className="italic theme-text-muted mt-1 list-none ml-2 text-[9px]">* Note: Scores may vary based on scenario difficulty (e.g. Hard vs Easy).</li>
                                     </ul>
                                 </div>
                             </div>
@@ -204,7 +204,7 @@ export const EmployeeDetailsModal: React.FC<EmployeeDetailsModalProps> = ({ isOp
                         <div className="space-y-3">
                             {employee.assessments.length > 0 ? (
                                 employee.assessments.map((assessment) => (
-                                    <div key={assessment.id} className="bg-white/5 border border-white/10 rounded-lg p-4 hover:border-cyan-500/30 transition-colors">
+                                    <div key={assessment.id} className="theme-bg-tertiary theme-border rounded-lg p-4 hover:border-cyan-500/30 transition-colors">
                                         <div className="flex items-start justify-between mb-2">
                                             <div>
                                                 <h4 className="font-medium theme-text-primary mb-1">{assessment.scenario?.title || 'Untitled Challenge'}</h4>
@@ -225,17 +225,17 @@ export const EmployeeDetailsModal: React.FC<EmployeeDetailsModalProps> = ({ isOp
                                             </div>
                                         </div>
                                         {assessment.feedback && (
-                                            <div className="mt-3 text-sm text-white/60 bg-black/20 p-3 rounded border border-white/5 font-mono">
+                                            <div className="mt-3 text-sm theme-text-secondary theme-bg-secondary p-3 rounded theme-border font-mono">
                                                 {assessment.feedback.split('\n')[0]}...
                                             </div>
                                         )}
-                                        <div className="mt-2 text-xs text-white/20 text-right">
+                                        <div className="mt-2 text-xs theme-text-muted text-right">
                                             {new Date(assessment.created_at).toLocaleDateString()}
                                         </div>
                                     </div>
                                 ))
                             ) : (
-                                <div className="text-center py-8 text-white/40 border border-dashed border-white/10 rounded-lg">
+                                <div className="text-center py-8 theme-text-muted border border-dashed theme-border rounded-lg">
                                     No recent activity found.
                                 </div>
                             )}

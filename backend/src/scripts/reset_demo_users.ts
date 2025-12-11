@@ -598,7 +598,28 @@ async function generateAssessmentHistory(userIdMap: Map<string, string>): Promis
                     scenario_id: scenario.id,
                     score,
                     difficulty: scenario.difficulty || 'Medium',
-                    feedback: JSON.stringify({ strengths: [], weaknesses: [] }),
+                    feedback: JSON.stringify(
+                        emp.username === 'John' ? {
+                            strengths: [
+                                'Strong grasp of foundational concepts',
+                                'Consistent code quality',
+                                'Good adherence to security best practices'
+                            ],
+                            weaknesses: [
+                                'Needs more practice with advanced patterns',
+                                'Could improve error handling robustness',
+                                'Documentation detailed but could be more concise'
+                            ],
+                            recommendations: [
+                                'Review the "Advanced Design Patterns" module',
+                                'Practice writing comprehensive unit tests',
+                                'Explore optimization techniques for large datasets'
+                            ]
+                        } : {
+                            strengths: [],
+                            weaknesses: []
+                        }
+                    ),
                     created_at: daysAgo(daysFromNow),
                     user_response: 'Standard Assessment Response',
                     completed: true

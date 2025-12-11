@@ -740,7 +740,7 @@ export const evaluatePreAssessmentAnswer = async (
 
 export const generatePersonalizedQuestions = async (
     jobTitle: string,
-    goalDescription: string,
+    topic: string,
     format: 'mcq' | 'text',
     difficulty: 'Easy' | 'Normal' | 'Hard',
     existingSkills?: Record<string, number>
@@ -756,26 +756,26 @@ export const generatePersonalizedQuestions = async (
     assessmentTitle: string;
     targetSkills: string[];
 }> => {
-    console.log(`[AWS Service] Generating personalized ${format} assessment for ${jobTitle} with goal: ${goalDescription}`);
+    console.log(`[AWS Service] Generating personalized ${format} assessment for ${jobTitle} on topic: ${topic}`);
 
     const prompt = `
-    You are an expert technical interviewer and career mentor.
-    
+    You are an expert technical interviewer.
+
     CANDIDATE PROFILE:
     Job Title: ${jobTitle}
-    Career Goal: ${goalDescription}
+    Assessment Topic: ${topic}
     Current Level: ${difficulty}
-    
+
     TASK:
-    Generate a personalized skill assessment with exactly 5 questions.
+    Generate a technical skill assessment with exactly 5 questions.
     Format: ${format === 'mcq' ? 'Multiple Choice (4 options)' : 'Short Answer / Open-ended text'}
-    
+
     REQUIREMENTS:
-    1. Focus on skills needed to reach the Career Goal from the current Job Title.
+    1. Focus STRICTLY on testing depth of knowledge in "${topic}".
     2. Questions should match the "${difficulty}" difficulty level.
-    3. Identify the specific technical skill tested by each question.
+    3. Identify the specific sub-skill or concept tested by each question.
     4. Create a catchy Title for this assessment module.
-    5. List the top 3 target skills this assessment covers.
+    5. List the top 3 specific skills/concepts this assessment covers.
     
     OUTPUT FORMAT (JSON ONLY):
     {

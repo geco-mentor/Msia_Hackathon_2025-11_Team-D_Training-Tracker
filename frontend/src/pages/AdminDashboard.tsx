@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useNavigate } from 'react-router-dom';
-import { Users, Activity, Trophy, Search, LogOut, Shield, Terminal, Target, Briefcase, Sun, Moon, LayoutGrid, Zap, Download } from 'lucide-react';
+import { Users, Activity, Trophy, Search, LogOut, Shield, Terminal, Target, Briefcase, Sun, Moon, LayoutGrid, Download } from 'lucide-react';
 import { AreaChart, Area, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { EmployeeDetailsModal } from '../components/EmployeeDetailsModal';
 import { KpiCard } from '../components/KpiCard';
@@ -250,7 +250,7 @@ export const AdminDashboard: React.FC = () => {
                 </div>
 
                 {/* KPI Cards Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <KpiCard
                         title="ACTIVE OPERATIVES"
                         value={employees.length}
@@ -259,23 +259,8 @@ export const AdminDashboard: React.FC = () => {
                         type="active"
                         isLoading={isLoading}
                     />
-                    <KpiCard
-                        title="AVG. COMPLETION RATE"
-                        value={`${analytics?.avgCompletionRate || 0}%`}
-                        subtext="vs last cycle"
-                        trend="+5%"
-                        icon={<Target size={24} />}
-                        type="completion"
-                        isLoading={isLoading}
-                    />
-                    <KpiCard
-                        title="TRAINING ROI"
-                        value={`+${analytics?.trainingROI || 0}%`}
-                        subtext="Skill Improvement"
-                        icon={<Zap size={24} />}
-                        type="roi"
-                        isLoading={isLoading}
-                    />
+
+
                     <KpiCard
                         title="TOTAL ASSESSMENTS"
                         value={analytics?.totalAssessments || 0}
@@ -298,20 +283,8 @@ export const AdminDashboard: React.FC = () => {
                             <strong className="text-blue-500 dark:text-blue-400">📊 Active Operatives</strong>
                             <p className="mt-1">Total count of employees in the system.</p>
                         </div>
-                        <div className="p-3 rounded bg-black/10 dark:bg-white/5 border border-dashed theme-border">
-                            <strong className="text-green-500 dark:text-green-400">🎯 Avg. Completion Rate</strong>
-                            <p className="mt-1 leading-relaxed">
-                                <code className="bg-black/20 px-1 rounded">Unique Completions ÷ (Employees × Scenarios)</code>
-                                <br />Measures how many unique employee-scenario pairs have been completed.
-                            </p>
-                        </div>
-                        <div className="p-3 rounded bg-black/10 dark:bg-white/5 border border-dashed theme-border">
-                            <strong className="text-yellow-500 dark:text-yellow-400">⚡ Training ROI</strong>
-                            <p className="mt-1 leading-relaxed">
-                                <code className="bg-black/20 px-1 rounded">(Post-Avg − Pre-Avg) ÷ Pre-Avg × 100</code>
-                                <br />Compares average post-assessment scores vs pre-assessment baselines.
-                            </p>
-                        </div>
+
+
                         <div className="p-3 rounded bg-black/10 dark:bg-white/5 border border-dashed theme-border">
                             <strong className="text-purple-500 dark:text-purple-400">🏆 Total Assessments</strong>
                             <p className="mt-1">Count of all assessment records in the database (pre + post).</p>

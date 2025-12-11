@@ -158,8 +158,8 @@ export const PersonalizedAssessmentModal: React.FC<PersonalizedAssessmentModalPr
     const renderSetup = () => (
         <div className="space-y-6">
             <div className="text-center">
-                <h3 className="text-xl font-bold theme-text-primary mb-2">Create Your Challenge</h3>
-                <p className="theme-text-secondary text-sm">Customize an assessment tailored to your career goals.</p>
+                <h3 className="text-xl font-bold theme-text-primary mb-2">Skill Assessment</h3>
+                <p className="theme-text-secondary text-sm">Test your expertise in specific technical areas.</p>
             </div>
 
             {error && (
@@ -202,13 +202,13 @@ export const PersonalizedAssessmentModal: React.FC<PersonalizedAssessmentModalPr
             {/* Goal Input */}
             <div>
                 <label className="block text-xs uppercase tracking-wider text-cyan-400 font-bold mb-2">
-                    I am a {userJobTitle} with a goal of...
+                    I want to test my expertise in...
                 </label>
                 <input
                     type="text"
                     value={goal}
                     onChange={(e) => setGoal(e.target.value)}
-                    placeholder="e.g. Becoming a Senior Engineer, Mastering AWS, Leading a Team..."
+                    placeholder="e.g. Generative AI, Python, React Performance, System Design..."
                     className="w-full bg-black/30 border theme-border rounded-lg p-3 theme-text-primary focus:border-cyan-500 focus:outline-none transition-colors"
                 />
             </div>

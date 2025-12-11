@@ -2,7 +2,7 @@ import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useNavigate } from 'react-router-dom';
-import { Users, Activity, LogOut, Shield, LayoutGrid, Target, Sun, Moon, Crown, TrendingUp, AlertTriangle, Zap } from 'lucide-react';
+import { Users, Activity, LogOut, Shield, LayoutGrid, Sun, Moon, Crown } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { EmployeeDetailsModal } from '../components/EmployeeDetailsModal';
 
@@ -12,7 +12,6 @@ export const ManagerDashboard: React.FC = () => {
     const navigate = useNavigate();
     const [teamMembers, setTeamMembers] = React.useState<any[]>([]);
     const [analytics, setAnalytics] = React.useState<any>(null);
-    const [predictions, setPredictions] = React.useState<any[]>([]);
     const [selectedEmployee, setSelectedEmployee] = React.useState<any>(null);
     const [isDetailsModalOpen, setIsDetailsModalOpen] = React.useState(false);
 
@@ -57,15 +56,6 @@ export const ManagerDashboard: React.FC = () => {
                     if (analyticsData.success) {
                         setAnalytics(analyticsData.data);
                     }
-
-                    // 3. Fetch Predictions (New)
-                    const predResponse = await fetch(`/api/analytics/predictions?${params.toString()}`, {
-                        headers: { 'Authorization': `Bearer ${token}` }
-                    });
-                    const predData = await predResponse.json();
-                    if (predData.success) {
-                        setPredictions(predData.data);
-                    }
                 }
             } catch (error) {
                 console.error('Failed to fetch manager dashboard data:', error);
@@ -107,10 +97,6 @@ export const ManagerDashboard: React.FC = () => {
         return Array.from(skills).sort().slice(0, 7); // Show top 7 alphabetical for UI fit
     }, [teamMembers]);
 
-    // Segment predictions
-    const atRisk = predictions.filter(p => p.status === 'At Risk');
-    const accelerating = predictions.filter(p => p.status === 'Accelerating');
-
     return (
         <div className="min-h-screen theme-bg-primary theme-text-primary font-mono selection:bg-cyan-500/30">
             {/* Top Bar */}
@@ -145,9 +131,9 @@ export const ManagerDashboard: React.FC = () => {
             <div className="max-w-7xl mx-auto p-8 space-y-8 animate-enter">
 
                 {/* HUD Grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* 1. Unit Status (Left) */}
-                    <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-4">
                         {/* Strength */}
                         <div className="theme-bg-secondary p-5 rounded-xl border-l-4 border-cyan-500 shadow-lg relative overflow-hidden group">
                             <div className="absolute right-0 top-0 opacity-5 group-hover:scale-110 transition-transform duration-500">
@@ -157,32 +143,6 @@ export const ManagerDashboard: React.FC = () => {
                             <div className="flex items-end gap-2">
                                 <h3 className="text-4xl font-bold theme-text-primary">{teamMembers.length}</h3>
                                 <span className="text-xs theme-text-secondary mb-2">Operatives</span>
-                            </div>
-                        </div>
-
-                        {/* Skill Index */}
-                        <div className="theme-bg-secondary p-5 rounded-xl border-l-4 border-purple-500 shadow-lg relative overflow-hidden group">
-                            <div className="absolute right-0 top-0 opacity-5 group-hover:scale-110 transition-transform duration-500">
-                                <Activity size={100} />
-                            </div>
-                            <p className="text-purple-500 text-xs font-bold tracking-wider mb-1">AVG SKILL RATING</p>
-                            <div className="flex items-end gap-2">
-                                <h3 className="text-4xl font-bold theme-text-primary">
-                                    {Math.round(teamMembers.reduce((acc, curr) => acc + (curr.elo_rating || 1000), 0) / (teamMembers.length || 1))}
-                                </h3>
-                                <span className="text-xs text-green-500 flex items-center mb-2"><TrendingUp size={12} className="mr-1" /> +12%</span>
-                            </div>
-                        </div>
-
-                        {/* Readiness */}
-                        <div className="theme-bg-secondary p-5 rounded-xl border-l-4 border-green-500 shadow-lg relative overflow-hidden group">
-                            <div className="absolute right-0 top-0 opacity-5 group-hover:scale-110 transition-transform duration-500">
-                                <Target size={100} />
-                            </div>
-                            <p className="text-green-500 text-xs font-bold tracking-wider mb-1">MISSION READINESS</p>
-                            <div className="flex items-end gap-2">
-                                <h3 className="text-4xl font-bold theme-text-primary">94%</h3>
-                                <span className="text-xs theme-text-secondary mb-2">Deployable</span>
                             </div>
                         </div>
                     </div>
@@ -225,113 +185,7 @@ export const ManagerDashboard: React.FC = () => {
                     )}
                 </div>
 
-                {/* 3. Predictive Analytics (New) */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Risk Radar */}
-                    <div className="theme-bg-secondary border border-red-500/30 rounded-xl overflow-hidden shadow-2xl relative">
-                        <div className="absolute top-0 right-0 p-4 opacity-10">
-                            <AlertTriangle size={100} className="text-red-500" />
-                        </div>
-                        <div className="p-5 border-b border-red-500/20 flex items-center justify-between bg-red-50 dark:bg-red-900/10">
-                            <h3 className="font-bold flex items-center gap-2 text-red-600 dark:text-red-500">
-                                <AlertTriangle size={18} />
-                                RISK RADAR
-                            </h3>
-                            <span className="text-[10px] bg-red-500/20 text-red-400 px-2 py-0.5 rounded border border-red-500/30">ATTENTION REQUIRED</span>
-                        </div>
-                        <div className="p-4 space-y-3">
-                            {atRisk.length > 0 ? (
-                                atRisk.map((p: any) => (
-                                    <div key={p.id} className="bg-gray-50 dark:bg-black/40 border border-red-500/20 p-3 rounded flex flex-col gap-2 group hover:border-red-500/50 transition-colors shadow-sm">
-                                        <div className="flex items-center justify-between">
-                                            <div>
-                                                <div
-                                                    className="font-bold text-gray-200 cursor-pointer hover:text-red-400 transition-colors"
-                                                    onClick={() => handleViewEmployee(p.id)}
-                                                >
-                                                    {p.name}
-                                                </div>
-                                                <div className="text-[10px] text-red-400 mt-1 flex flex-wrap gap-2">
-                                                    {p.factors.map((f: string, i: number) => (
-                                                        <span key={i} className="bg-red-500/10 px-1 rounded">{f}</span>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                            <div className="text-right">
-                                                <div className="text-xs text-gray-400">Projected ELO</div>
-                                                <div className="font-mono text-red-500 font-bold">{p.projectedElo} <span className="text-[10px]">↓</span></div>
-                                            </div>
-                                        </div>
 
-                                        {/* Actionable Insight: Training Request */}
-                                        {p.factors.includes('Uncertified for Goal') && (
-                                            <div className="pt-2 border-t border-red-500/10 flex items-center justify-between">
-                                                <span className="text-[10px] text-gray-400">Goal: {p.goal || 'Undefined'}</span>
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        alert(`Training request sent to HR for ${p.name}'s goal: ${p.goal}`);
-                                                    }}
-                                                    className="flex items-center gap-1 px-2 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-[10px] rounded border border-red-500/20 transition-colors"
-                                                >
-                                                    <Target size={10} />
-                                                    REQ. TRAINING
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
-                                ))
-                            ) : (
-                                <div className="text-center py-8 theme-text-secondary text-sm border-2 border-dashed border-gray-200 dark:border-white/5 rounded-lg bg-gray-50 dark:bg-transparent">
-                                    No operatives identified as high risk.
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Growth Velocity */}
-                    <div className="theme-bg-secondary border border-green-500/30 rounded-xl overflow-hidden shadow-2xl relative">
-                        <div className="absolute top-0 right-0 p-4 opacity-10">
-                            <Zap size={100} className="text-green-500" />
-                        </div>
-                        <div className="p-5 border-b border-green-500/20 flex items-center justify-between bg-green-50 dark:bg-green-900/10">
-                            <h3 className="font-bold flex items-center gap-2 text-green-600 dark:text-green-500">
-                                <Zap size={18} />
-                                GROWTH VELOCITY
-                            </h3>
-                            <span className="text-[10px] bg-green-500/20 text-green-400 px-2 py-0.5 rounded border border-green-500/30">ACCELERATING</span>
-                        </div>
-                        <div className="p-4 space-y-3">
-                            {accelerating.length > 0 ? (
-                                accelerating.map((p: any) => (
-                                    <div key={p.id} className="bg-gray-50 dark:bg-black/40 border border-green-500/20 p-3 rounded flex items-center justify-between group hover:border-green-500/50 transition-colors shadow-sm">
-                                        <div>
-                                            <div
-                                                className="font-bold text-gray-200 cursor-pointer hover:text-green-400 transition-colors"
-                                                onClick={() => handleViewEmployee(p.id)}
-                                            >
-                                                {p.name}
-                                            </div>
-                                            <div className="text-[10px] text-green-400 mt-1 flex gap-2">
-                                                {p.factors.map((f: string, i: number) => (
-                                                    <span key={i} className="bg-green-500/10 px-1 rounded">{f}</span>
-                                                ))}
-                                            </div>
-                                        </div>
-                                        <div className="text-right">
-                                            <div className="text-xs text-gray-400">Projected ELO</div>
-                                            <div className="font-mono text-green-500 font-bold">{p.projectedElo} <span className="text-[10px]">↑</span></div>
-                                        </div>
-                                    </div>
-                                ))
-                            ) : (
-                                <div className="text-center py-8 theme-text-secondary text-sm border-2 border-dashed border-gray-200 dark:border-white/5 rounded-lg bg-gray-50 dark:bg-transparent">
-                                    No operatives currently accelerating.
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
 
                 {/* 4. Skill Matrix Heatmap */}
                 <div className="theme-bg-secondary border theme-border rounded-xl overflow-hidden shadow-2xl">
@@ -443,6 +297,6 @@ export const ManagerDashboard: React.FC = () => {
                 onClose={() => setIsDetailsModalOpen(false)}
                 employee={selectedEmployee}
             />
-        </div>
+        </div >
     );
 };

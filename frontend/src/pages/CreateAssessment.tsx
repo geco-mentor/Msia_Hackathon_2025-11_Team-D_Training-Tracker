@@ -54,7 +54,7 @@ const CreateAssessment: React.FC = () => {
 
                             {/* 9 Rubrics Grid */}
                             <div>
-                                <label className="block text-xs font-bold text-gray-500 mb-4 uppercase tracking-wider flex items-center gap-2">
+                                <label className="block text-xs font-bold text-gray-800 mb-4 uppercase tracking-wider flex items-center gap-2">
                                     <Shield className="w-3 h-3" />
                                     Evaluation Rubrics (9 Criteria)
                                 </label>
@@ -62,11 +62,11 @@ const CreateAssessment: React.FC = () => {
 
                                     {/* Generic Criteria */}
                                     <div className="bg-black/30 border border-white/10 rounded-lg p-4">
-                                        <h4 className="text-cyan-400 font-bold mb-3 text-sm border-b border-white/10 pb-2">GENERIC CRITERIA</h4>
+                                        <h4 className="text-cyan-700 font-bold mb-3 text-sm border-b border-white/10 pb-2">GENERIC CRITERIA</h4>
                                         <ul className="space-y-2">
                                             {generatedScenario.rubric?.generic?.map((c: string, i: number) => (
-                                                <li key={i} className="text-xs text-gray-300 flex items-start gap-2">
-                                                    <span className="text-cyan-500/50 mt-0.5">•</span>
+                                                <li key={i} className="text-xs text-gray-900 flex items-start gap-2">
+                                                    <span className="text-cyan-700 mt-0.5">•</span>
                                                     {c}
                                                 </li>
                                             ))}
@@ -75,16 +75,16 @@ const CreateAssessment: React.FC = () => {
 
                                     {/* Department Criteria - Now shows all selected departments */}
                                     <div className="bg-black/30 border border-white/10 rounded-lg p-4">
-                                        <h4 className="text-purple-400 font-bold mb-3 text-sm border-b border-white/10 pb-2">DEPARTMENT CRITERIA</h4>
+                                        <h4 className="text-purple-700 font-bold mb-3 text-sm border-b border-white/10 pb-2">DEPARTMENT CRITERIA</h4>
                                         {Array.isArray(generatedScenario.rubric?.department) && generatedScenario.rubric.department.length > 0 ? (
                                             <div className="space-y-4">
                                                 {generatedScenario.rubric.department.map((dept: { deptName: string; criteria: string[] }, deptIdx: number) => (
                                                     <div key={deptIdx}>
-                                                        <h5 className="text-purple-300 text-xs font-semibold mb-2 uppercase">{dept.deptName}</h5>
+                                                        <h5 className="text-purple-800 text-xs font-semibold mb-2 uppercase">{dept.deptName}</h5>
                                                         <ul className="space-y-1.5">
                                                             {dept.criteria?.map((c: string, i: number) => (
-                                                                <li key={i} className="text-xs text-gray-300 flex items-start gap-2">
-                                                                    <span className="text-purple-500/50 mt-0.5">•</span>
+                                                                <li key={i} className="text-xs text-gray-900 flex items-start gap-2">
+                                                                    <span className="text-purple-700 mt-0.5">•</span>
                                                                     {c}
                                                                 </li>
                                                             ))}
@@ -93,17 +93,17 @@ const CreateAssessment: React.FC = () => {
                                                 ))}
                                             </div>
                                         ) : (
-                                            <p className="text-xs text-gray-500 italic">No department selected</p>
+                                            <p className="text-xs text-gray-700 italic">No department selected</p>
                                         )}
                                     </div>
 
                                     {/* Module Criteria */}
                                     <div className="bg-black/30 border border-white/10 rounded-lg p-4">
-                                        <h4 className="text-pink-400 font-bold mb-3 text-sm border-b border-white/10 pb-2">MODULE CRITERIA</h4>
+                                        <h4 className="text-pink-700 font-bold mb-3 text-sm border-b border-white/10 pb-2">MODULE CRITERIA</h4>
                                         <ul className="space-y-2">
                                             {generatedScenario.rubric?.module?.map((c: string, i: number) => (
-                                                <li key={i} className="text-xs text-gray-300 flex items-start gap-2">
-                                                    <span className="text-pink-500/50 mt-0.5">•</span>
+                                                <li key={i} className="text-xs text-gray-900 flex items-start gap-2">
+                                                    <span className="text-pink-700 mt-0.5">•</span>
                                                     {c}
                                                 </li>
                                             ))}

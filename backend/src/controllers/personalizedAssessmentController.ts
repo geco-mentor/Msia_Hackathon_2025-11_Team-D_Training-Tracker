@@ -30,9 +30,12 @@ export const generatePersonalizedAssessment = async (req: AuthRequest, res: Resp
         console.log(`[PersonalizedAssessment] Generating for ${userId}: ${format} - ${goalDescription}`);
 
         // 1. Generate Questions via AI
+        // If 'topic' is provided (new frontend), use it. Otherwise fallback to goalDescription.
+        const topic = req.body.topic || goalDescription;
+
         const aiData = await generatePersonalizedQuestions(
             jobTitle,
-            goalDescription,
+            topic, // Now passing topic/skill instead of just goal description
             format,
             difficulty || 'Normal'
         );
@@ -56,7 +59,7 @@ export const generatePersonalizedAssessment = async (req: AuthRequest, res: Resp
                 category: 'Personalized',
                 skill: safeTargetSkills[0],
                 difficulty: difficulty || 'Normal',
-                scenario_text: `Personalized assessment for ${jobTitle} aiming for ${goalDescription}`,
+                scenario_text: `Personalized assessment for ${jobTitle} on topic: ${topic}`,
                 task: `Complete this ${format === 'mcq' ? 'multiple choice' : 'text-based'} assessment.`,
                 rubric: safeRubric,
                 type: format === 'mcq' ? 'multiple_choice' : 'text',

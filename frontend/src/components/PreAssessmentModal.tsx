@@ -358,7 +358,7 @@ export const PreAssessmentModal: React.FC<PreAssessmentModalProps> = ({ scenario
                 )}
 
                 {/* Two Column Layout */}
-                <div className="flex-1 flex overflow-hidden">
+                <div className="flex-1 flex overflow-hidden min-h-0">
 
                     {/* Left Panel - Main Content */}
                     <div className="flex-1 p-6 overflow-y-auto border-r border-cyan-500/10">
@@ -612,7 +612,7 @@ export const PreAssessmentModal: React.FC<PreAssessmentModalProps> = ({ scenario
                     </div>
 
                     {/* Right Panel - Conversation History */}
-                    <div className="w-80 flex-shrink-0 theme-bg-tertiary border-l border-cyan-500/20 h-full">
+                    <div className="w-80 flex-shrink-0 theme-bg-tertiary border-l border-cyan-500/20 h-full flex flex-col">
                         <ConversationPanel
                             messages={conversationMessages}
                             isLoading={loading}

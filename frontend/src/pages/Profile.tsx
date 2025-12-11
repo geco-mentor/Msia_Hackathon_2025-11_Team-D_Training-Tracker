@@ -324,7 +324,7 @@ export const Profile: React.FC = () => {
                                 <ul className="space-y-2">
                                     {profile.assessmentFeedback.strengths.length > 0 ? (
                                         profile.assessmentFeedback.strengths.map((strength, idx) => (
-                                            <li key={idx} className="text-sm text-gray-300 flex items-start gap-2">
+                                            <li key={idx} className="text-sm text-black flex items-start gap-2">
                                                 <span className="text-green-400 mt-1">•</span>
                                                 {strength}
                                             </li>
@@ -344,7 +344,7 @@ export const Profile: React.FC = () => {
                                 <ul className="space-y-2">
                                     {profile.assessmentFeedback.weaknesses.length > 0 ? (
                                         profile.assessmentFeedback.weaknesses.map((weakness, idx) => (
-                                            <li key={idx} className="text-sm text-gray-300 flex items-start gap-2 group">
+                                            <li key={idx} className="text-sm text-black flex items-start gap-2 group">
                                                 <span className="text-orange-400 mt-1">•</span>
                                                 <span className="flex-1">{weakness}</span>
                                                 <button
@@ -371,7 +371,7 @@ export const Profile: React.FC = () => {
                                 <ul className="space-y-2">
                                     {profile.assessmentFeedback.recommendations.length > 0 ? (
                                         profile.assessmentFeedback.recommendations.map((rec, idx) => (
-                                            <li key={idx} className="text-sm text-gray-300 flex items-start gap-2">
+                                            <li key={idx} className="text-sm text-black flex items-start gap-2">
                                                 <span className="text-purple-400 mt-1">•</span>
                                                 {rec}
                                             </li>
