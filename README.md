@@ -4,7 +4,7 @@
 
 ## 📖 Executive Summary
 
-In the age of Generative AI, traditional training metrics (completion rates) are insufficient. **AI Training Effectiveness Tracker** solves the "Skill Gap" problem by using **AI to evaluate AI proficiency**. 
+In the age of Generative AI, traditional training metrics (completion rates) are insufficient. **AI Training Effectiveness Tracker** solves the "Skill Gap" problem by using **AI to evaluate AI proficiency**.
 
 We turn static training materials (PDFs, docs) into dynamic, interactive scenarios where employees demonstrate their skills in real-time. Our system assesses their answers using advanced Large Language Models (LLMs) to provide instant, personalized feedback and rigorous scoring.
 
@@ -15,16 +15,28 @@ We turn static training materials (PDFs, docs) into dynamic, interactive scenari
 
 ---
 
+## 🔐 Enterprise Security & SSO
+
+**This application is designed for Enterprise Environments.**
+
+We support **Single Sign-On (SSO)** integration to ensure seamless and secure access for all employees.
+*   **Seamless Login:** Employees can use their existing corporate credentials with no new passwords to remember.
+*   **Security Standard:** Compatible with major Identity Providers (IdP) like Okta, Azure AD, and AWS SSO.
+*   **Centralized Management:** User access and role assignment (Admin vs. Employee) can be managed directly through your IT department's existing directory.
+
+*(Note: For this hackathon demo, we are using a simplified local login system to demonstrate functionality without needing live enterprise infrastructure.)*
+
+---
+
 ## ✅ Key Features
 
 ### 🏢 For Administrators (HR / Team Leads)
 *   **Smart Content Ingestion:** Upload any training PDF or text file. We use **AWS Textract** to digitize it.
-*   **Auto-Rubric Generation:** **AWS Bedrock** analyzes your content to automatically generate grading rubrics (Generic, Departmental, and Module-specific).
+*   **Auto-Rubric Generation:** **AWS Bedrock** analyzes your content to automatically generate grading rubrics.
 *   **Analytics Dashboard:** 
     *   **Skill Heatmaps**: See which departments are excelling.
     *   **Performance Trends**: Track improvement over time.
     *   **Elo Rating System**: Understand true employee strength relative to peers.
-    *   **Leaderboards**: Identify top talent.
 
 ### 🧑‍💻 For Employees
 *   **Interactive Challenges:** Solve real-world micro-scenarios based on your actual job description.
@@ -39,104 +51,82 @@ We turn static training materials (PDFs, docs) into dynamic, interactive scenari
 *   **Frontend:** React, TypeScript, Vite, Tailwind CSS, Recharts (Analytics)
 *   **Backend:** Node.js, Express, TypeScript
 *   **Database:** Supabase (PostgreSQL)
-*   **AI & Cloud:** 
-    *   **AWS Bedrock** (LLM for Rubric Generation & Grading)
-    *   **AWS Textract** (PDF/Document Parsing)
-    *   **AWS Comprehend** (Text Analysis)
+*   **AI & Cloud:** AWS Bedrock, AWS Textract, AWS Comprehend
 
 ---
 
-## 🚀 Getting Started (Zero-Config)
+## 🚀 Getting Started (Step-by-Step for Non-Techies)
 
-Follow these instructions to get the application running on your local machine.
+Follow these simple instructions to get the application running on your computer.
 
-### 1. Prerequisites
-Before you start, ensure you have **Node.js** installed.
-*   [Download Node.js (LTS Version)](https://nodejs.org/) - Install the standard version.
+### Step 1: Install Node.js
+This software is the "engine" that runs our application.
+1.  Go to [nodejs.org](https://nodejs.org/).
+2.  Download the **"LTS" (Long Term Support)** version.
+3.  Run the installer and click "Next" until it is finished.
 
-### 2. Setup (First Time Only)
-Open your terminal (Command Prompt or PowerShell) in the project folder and run:
+### Step 2: Open the Terminal
+We need to type a few simple commands to start the app.
+1.  **Windows:** Press the `Windows Key`, type `PowerShell`, and press `Enter`.
+2.  **Mac:** Press `Command + Space`, type `Terminal`, and press `Enter`.
+3.  Navigate to this project folder. (e.g., Type `cd Downloads/ai-hackathon` and press Enter).
+
+### Step 3: Setup (First Time Only)
+Copy and paste this command into your terminal and press `Enter`:
 
 ```bash
 npm install
 npm run install:all
 ```
-*(This installs all the "batteries" needed for the app to work.)*
+*(This downloads all the necessary parts for the app to work. It might take a minute.)*
 
-### 3. Running the App
-To start everything (Backend, Frontend, Database checks), simply run:
+### Step 4: Run the App
+To start the program, copy and paste this command and press `Enter`:
 
 ```bash
 npm run dev
 ```
 
-**What happens next?**
-1.  The system checks your AWS connection.
-2.  It connects to the Database.
-3.  It launches the Backend API (Port 3001).
-4.  It launches the Frontend Interface.
-5.  **A browser window automatically opens** at `http://localhost:5173`.
+**Wait for 10-20 seconds...**
+A browser window will automatically open at `http://localhost:5173`. You are now ready to use the app!
 
 ---
 
-## �️ Usage Guide
+## ️ User Manual
 
-### Logging In
-*   **Admin Access:**
-    *   *(Note: Change this password immediately after first login!)*
-*   **Employee Access:**
-    *   Register a new account or log in with existing credentials.
+### logging In
+*   **Admin:** Use the provided admin credentials (check `cred.txt` if available).
+*   **Employee:** Click "Register" to create a new profile or log in.
 
-### 🅰️ Admin Workflow (Creating Assessments)
-1.  **Login** as Admin.
-2.  Navigate to **"Assessment Modules"**.
-3.  Click **"Create Assessment"**.
-4.  **Upload** your training material (PDF/Text). 
-    *   *The system will essentially "read" the book for you.*
-5.  Review the **AI-Generated Rubrics**. You can edit them if needed.
-6.  **Publish**. The assessment is now live for employees!
+### How to use as an Admin
+1.  Log in as **Admin**.
+2.  Go to **"Assessment Modules"** -> **"Create Assessment"**.
+3.  **Upload** a training PDF. The AI will read it.
+4.  Review the generated Rubrics and click **Publish**.
+5.  Go to **Dashboard** to view team analytics.
 
-### 🅱️ Employee Workflow (Taking Tests)
-1.  **Register/Login** as an Employee.
-2.  Select your **Department** (Engineering, HR, Sales, etc.).
-3.  On the Dashboard, click **"Start Challenge"**.
-4.  You will be presented with a customized scenario based on your role.
-5.  **Type your answer**. Be professional and thorough!
-6.  Click **Submit** and wait for the **AI Analysis**.
-7.  Review your **Score** and **Feedback**.
+### How to use as an Employee
+1.  Log in as an **Employee**.
+2.  Select your **Department** (e.g., Engineering, Sales).
+3.  Click **"Start Challenge"** on your dashboard.
+4.  **Answer the scenario** presented to you.
+5.  Receive **instant feedback** and see your score!
 
 ---
 
 ## 🤝 Collaboration & Github Workflow
 
-**IMPORTANT:** Follow these rules to ensure a smooth hackathon/client presentation.
-
-1.  **Development Workspace:**
-    *   Do **ALL** Alpha/Beta/Main development work on your **assigned Github account**.
-    *   This is your sandbox. Break things here, fix things here.
-
-2.  **Stable Releases:**
-    *   Commit and push **ONLY** your **stable, deployable, working version** to the `Geco` repository.
-    *   **Rule of Thumb:** If it crashes during a demo, it shouldn't be on the Geco repo.
-
-3.  **Collaborator Access:**
-    *   Access remains open for necessary tweaks/refinements.
-    *   **Post-Hackathon:** Continue to polish for client presentations ("at the drop of a hat").
+**IMPORTANT:**
+1.  **Development:** Break things in your own branch/workspace.
+2.  **Stable Releases:** Only push working code to the `Geco` repository.
+3.  **Demo Ready:** If it crashes, do not request a merge for the demo version.
 
 ---
 
-## � Available Scripts
+##  Available Scripts Reference
 
-| Command | Description |
+| Command | What it does |
 | :--- | :--- |
-| `npm run dev` | **Start Everything** (Recommended) |
-| `npm run dev:backend` | Start only Backend server |
-| `npm run dev:frontend` | Start only Frontend server |
-| `npm run test:aws` | Test connection to Amazon Bedrock |
-| `npm run test:db` | Test connection to Supabase |
-
----
-
-## 📄 License & Credits
-MIT License.
-Built for the AI Hackathon.
+| `npm run dev` | **Starts the whole app** |
+| `npm run test:aws` | Checks AWS AI connection |
+| `npm run test:db` | Checks Database connection |
