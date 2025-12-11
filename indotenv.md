@@ -1,0 +1,20 @@
+# AWS Services
+AWS_PROFILE=
+AWS_REGION=
+AWS_S3_REGION=
+AWS_S3_BUCKET_NAME=
+
+# Database Credentials
+database_password=
+SUPABASE_URL=
+SUPABASE_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+
+# For Front and Backend
+PORT=
+FRONTEND_URL=
+JWT_SECRET=
+NODE_ENV=
+
+# For Textract
+AWS_PROFILE_TEXTRACT=

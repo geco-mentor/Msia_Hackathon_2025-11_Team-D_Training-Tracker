@@ -1,0 +1,32 @@
+{
+    "name": "ai-training-tracker",
+    "version": "1.0.0",
+    "type": "module",
+    "description": "AI Training Effectiveness Tracker - Full Stack Application",
+    "scripts": {
+        "dev": "node dev-start.js",
+        "dev:backend": "cd backend && npm run dev",
+        "dev:frontend": "cd frontend && npm run dev",
+        "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install && cd ..",
+        "build": "cd backend && npm run build && cd ../frontend && npm run build",
+        "test:db": "cd connectivity-tests && node test-database.js",
+        "test:aws": "cd connectivity-tests && node test-aws.js"
+    },
+    "keywords": [
+        "ai",
+        "training",
+        "tracker",
+        "authentication"
+    ],
+    "author": "",
+    "license": "ISC",
+    "devDependencies": {
+        "concurrently": "^8.2.2"
+    },
+    "dependencies": {
+        "@supabase/supabase-js": "^2.86.0",
+        "bcrypt": "^6.0.0",
+        "dotenv": "^16.6.1",
+        "html2canvas": "^1.4.1"
+    }
+}
